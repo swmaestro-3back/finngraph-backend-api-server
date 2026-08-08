@@ -77,7 +77,7 @@ hs_err_pid*
 replay_pid*
 
 ### Claude Code ###
-.claude/settings.local.json
+.claude/
 CLAUDE.MD
 
 ### bkit ###

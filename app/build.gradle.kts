@@ -25,8 +25,7 @@ dependencies {
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    // Spring Boot 4에서 @WebMvcTest가 starter-test 밖으로 빠졌다. 기술별 테스트 자동설정이
-    // 모듈로 쪼개졌기 때문이다 (org.springframework.boot.webmvc.test.autoconfigure).
+
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")

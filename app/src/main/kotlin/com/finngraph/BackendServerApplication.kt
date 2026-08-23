@@ -1,4 +1,4 @@
-package com.finngraph.backendserver
+package com.finngraph
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

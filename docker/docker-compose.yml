@@ -1,0 +1,28 @@
+# finngraph 백엔드 개발용 Postgres.
+
+# 포트 15432 — ETL 저장소의 compose(동일 포트)와 동시에 띄우면 충돌한다.
+# 실데이터 연동 시점에는 둘 중 하나로 합쳐야 한다 (열린 항목).
+services:
+  db:
+    image: postgres:17
+    container_name: finngraph-db
+    environment:
+      POSTGRES_DB: finngraph
+      # 슈퍼유저. 애플리케이션은 이 계정을 쓰지 않는다 — init 스크립트가 만드는
+      # finngraph_migrator(DDL) / finngraph_api(SELECT only)를 쓴다.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: Asia/Seoul
+    ports:
+      - "15432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - finngraph-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d finngraph"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  finngraph-db-data:

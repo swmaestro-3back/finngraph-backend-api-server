@@ -1,0 +1,33 @@
+package com.finngraph.web
+
+import com.fasterxml.jackson.annotation.JsonInclude
+
+data class DataResponse<T>(val data: T)
+
+data class PageResponse<T>(
+    val data: List<T>,
+    val pagination: Pagination,
+)
+
+data class Pagination(
+    val page: Int,
+    val size: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+)
+
+data class ErrorResponse(val error: ErrorBody)
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+data class ErrorBody(
+    val code: String,
+    val message: String,
+    val details: Map<String, Any>? = null,
+)
+
+object ErrorCode {
+    const val NEWS_NOT_FOUND = "NEWS_NOT_FOUND"
+    const val INVALID_PARAMETER = "INVALID_PARAMETER"
+    const val DATABASE_ERROR = "DATABASE_ERROR"
+    const val INTERNAL_ERROR = "INTERNAL_ERROR"
+}

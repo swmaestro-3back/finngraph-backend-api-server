@@ -9,8 +9,6 @@ import org.springframework.stereotype.Component
 
 @Component
 class ViewNewsCompany(private val dsl: DSLContext) : NewsCompanyPort {
-    override val implKey: String = "view"
-
     override fun findByNewsIds(ids: List<NewsId>): Map<NewsId, List<CompanyRef>> {
         if (ids.isEmpty()) return emptyMap()
 

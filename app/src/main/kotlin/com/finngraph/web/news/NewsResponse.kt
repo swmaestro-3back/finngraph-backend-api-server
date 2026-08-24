@@ -1,4 +1,4 @@
-package com.finngraph.web
+package com.finngraph.web.news
 
 import com.finngraph.news.CompanyRef
 import com.finngraph.news.NewsDetail

@@ -1,4 +1,4 @@
-package com.finngraph.web
+package com.finngraph.web.common
 
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
@@ -7,14 +7,15 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    @ExceptionHandler(NewsNotFoundException::class)
-    fun handleNotFound(e: NewsNotFoundException): ResponseEntity<ErrorResponse> =
-        respond(HttpStatus.NOT_FOUND, ErrorCode.NEWS_NOT_FOUND, e.message ?: "뉴스를 찾을 수 없습니다")
+    @ExceptionHandler(ResourceNotFoundException::class)
+    fun handleNotFound(e: ResourceNotFoundException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.NOT_FOUND, e.code, e.message ?: "요청한 자원이 없습니다")
 
     @ExceptionHandler(InvalidParameterException::class)
     fun handleInvalidParameter(e: InvalidParameterException): ResponseEntity<ErrorResponse> =
@@ -43,6 +44,10 @@ class GlobalExceptionHandler {
             "일시적으로 데이터를 조회할 수 없습니다",
         )
     }
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResource(e: NoResourceFoundException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.NOT_FOUND, ErrorCode.NOT_FOUND, "요청한 경로가 없습니다")
 
     @ExceptionHandler(Exception::class)
     fun handleUnexpected(e: Exception): ResponseEntity<ErrorResponse> {

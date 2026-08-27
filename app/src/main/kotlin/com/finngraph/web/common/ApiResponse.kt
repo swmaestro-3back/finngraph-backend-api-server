@@ -1,4 +1,4 @@
-package com.finngraph.web
+package com.finngraph.web.common
 
 import com.fasterxml.jackson.annotation.JsonInclude
 
@@ -27,6 +27,9 @@ data class ErrorBody(
 
 object ErrorCode {
     const val NEWS_NOT_FOUND = "NEWS_NOT_FOUND"
+    const val THEME_NOT_FOUND = "THEME_NOT_FOUND"
+    const val STOCK_NOT_FOUND = "STOCK_NOT_FOUND"
+    const val NOT_FOUND = "NOT_FOUND"
     const val INVALID_PARAMETER = "INVALID_PARAMETER"
     const val DATABASE_ERROR = "DATABASE_ERROR"
     const val INTERNAL_ERROR = "INTERNAL_ERROR"

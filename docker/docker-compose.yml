@@ -4,7 +4,7 @@
 # 실데이터 연동 시점에는 둘 중 하나로 합쳐야 한다 (열린 항목).
 services:
   db:
-    image: postgres:17
+    image: pgvector/pgvector:pg17
     container_name: finngraph-db
     environment:
       POSTGRES_DB: finngraph

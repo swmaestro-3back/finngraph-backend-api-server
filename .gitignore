@@ -78,7 +78,8 @@ replay_pid*
 
 ### Claude Code ###
 .claude/
-CLAUDE.MD
+CLAUDE.md
 
 ### bkit ###
 .bkit/
+db/seed/

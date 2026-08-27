@@ -15,6 +15,12 @@ spring:
   jooq:
     sql-dialect: postgres
 
+server:
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 2048
+
 management:
   endpoints:
     web:
@@ -26,14 +32,13 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
-    distribution:
-      percentiles:
-        http.server.requests: 0.5,0.95,0.99
-        finngraph.query.count: 0.5,0.95,0.99
 
-finngraph:
-  bench:
+springdoc:
+  api-docs:
     enabled: false
+  swagger-ui:
+    enabled: false
+
 
 ---
 spring:
@@ -46,12 +51,8 @@ management:
     health:
       show-details: always
 
----
-spring:
-  config:
-    activate:
-      on-profile: bench
-
-finngraph:
-  bench:
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
     enabled: true

@@ -15,6 +15,12 @@ spring:
   jooq:
     sql-dialect: postgres
 
+server:
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 2048
+
 management:
   endpoints:
     web:

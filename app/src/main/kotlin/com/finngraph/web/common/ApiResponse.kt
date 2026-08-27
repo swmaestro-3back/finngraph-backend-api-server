@@ -27,6 +27,8 @@ data class ErrorBody(
 
 object ErrorCode {
     const val NEWS_NOT_FOUND = "NEWS_NOT_FOUND"
+    const val THEME_NOT_FOUND = "THEME_NOT_FOUND"
+    const val STOCK_NOT_FOUND = "STOCK_NOT_FOUND"
     const val NOT_FOUND = "NOT_FOUND"
     const val INVALID_PARAMETER = "INVALID_PARAMETER"
     const val DATABASE_ERROR = "DATABASE_ERROR"

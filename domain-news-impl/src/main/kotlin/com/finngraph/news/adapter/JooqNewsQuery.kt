@@ -21,7 +21,6 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             NEWS.SUMMARY,
             NEWS.LINK,
             NEWS.PUBLISHED_AT,
-            NEWS.SOURCE_TYPE,
         )
             .from(NEWS)
             .where(VISIBLE)
@@ -48,7 +47,6 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             NEWS.LINK,
             NEWS.ORIGINALLINK,
             NEWS.PUBLISHED_AT,
-            NEWS.SOURCE_TYPE,
         )
             .from(NEWS)
             .where(NEWS.ID.`in`(ids.map { it.value }))
@@ -62,7 +60,6 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
         summary = get(NEWS.SUMMARY),
         link = get(NEWS.LINK),
         publishedAt = get(NEWS.PUBLISHED_AT),
-        sourceType = get(NEWS.SOURCE_TYPE),
     )
 
     private fun Record.toNewsDetail() = NewsDetail(
@@ -72,13 +69,12 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
         link = get(NEWS.LINK),
         originallink = get(NEWS.ORIGINALLINK),
         publishedAt = get(NEWS.PUBLISHED_AT),
-        sourceType = get(NEWS.SOURCE_TYPE),
     )
 
     companion object {
         // isTrue() 가 만드는 IS TRUE 는 부분 인덱스 idx_news_visible 의 술어와 매칭되지 않는다
         // (플래너가 동치를 증명하지 못해 Seq Scan 으로 떨어진다). eq(true) 형태를 써야 한다.
         private val VISIBLE: Condition =
-            NEWS.IS_MATERIAL.eq(true).and(NEWS.RELATION_EXTRACTED.eq(true))
+            NEWS.IS_PROCESSED.eq(true).and(NEWS.RELATION_EXTRACTED.eq(true))
     }
 }

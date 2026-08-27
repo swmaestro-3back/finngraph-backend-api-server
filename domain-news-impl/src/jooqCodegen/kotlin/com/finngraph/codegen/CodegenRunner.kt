@@ -8,6 +8,7 @@ import org.jooq.meta.jaxb.Generator
 import org.jooq.meta.jaxb.Jdbc
 import org.jooq.meta.jaxb.Target
 import org.testcontainers.postgresql.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
 import java.nio.file.Files
 import java.nio.file.Path
 import java.sql.DriverManager
@@ -18,7 +19,7 @@ fun main(args: Array<String>) {
     val outputDir = args[1]
     require(Files.exists(schemaSql)) { "스키마 파일 없음: $schemaSql" }
 
-    val postgres = PostgreSQLContainer(IMAGE)
+    val postgres = PostgreSQLContainer(DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
     postgres.start()
     try {
         applySchema(postgres, Files.readString(schemaSql))
@@ -50,7 +51,7 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                 Database()
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
-                    .withIncludes("news|news_relations|news_companies")
+                    .withIncludes("news|news_companies|relation_sources|companies")
                     .withOutputSchemaToDefault(true),
             )
             .withGenerate(
@@ -67,4 +68,4 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
             ),
     )
 
-private const val IMAGE = "postgres:17"
+private const val IMAGE = "pgvector/pgvector:pg17"

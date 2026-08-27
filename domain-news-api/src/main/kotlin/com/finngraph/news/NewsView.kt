@@ -8,7 +8,6 @@ data class NewsView(
     val summary: String?,
     val link: String?,
     val publishedAt: OffsetDateTime?,
-    val sourceType: String?,
 )
 
 data class NewsDetail(
@@ -18,5 +17,4 @@ data class NewsDetail(
     val link: String?,
     val originallink: String?,
     val publishedAt: OffsetDateTime?,
-    val sourceType: String?,
 )

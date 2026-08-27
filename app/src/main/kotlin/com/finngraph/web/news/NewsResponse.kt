@@ -11,7 +11,6 @@ data class NewsResponse(
     val summary: String?,
     val link: String?,
     val publishedAt: OffsetDateTime?,
-    val sourceType: String?,
 ) {
     companion object {
         fun from(view: NewsView) = NewsResponse(
@@ -20,7 +19,6 @@ data class NewsResponse(
             summary = view.summary,
             link = view.link,
             publishedAt = view.publishedAt,
-            sourceType = view.sourceType,
         )
     }
 }
@@ -32,7 +30,6 @@ data class NewsDetailResponse(
     val link: String?,
     val originallink: String?,
     val publishedAt: OffsetDateTime?,
-    val sourceType: String?,
 ) {
     companion object {
         fun from(detail: NewsDetail) = NewsDetailResponse(
@@ -42,7 +39,6 @@ data class NewsDetailResponse(
             link = detail.link,
             originallink = detail.originallink,
             publishedAt = detail.publishedAt,
-            sourceType = detail.sourceType,
         )
     }
 }

@@ -18,15 +18,16 @@ class StockController(
     private val stockCandle: StockCandlePort,
     private val stockFlow: StockFlowPort,
     private val stockFinancials: StockFinancialsPort,
+    private val stockThemeComposer: StockThemeComposer,
 ) : StockApi {
 
     override fun list(): DataResponse<List<StockSummaryResponse>> =
-        DataResponse(stockQuery.findAll().map { StockSummaryResponse.from(it) })
+        DataResponse(stockThemeComposer.listWithThemes())
 
     override fun detail(ticker: String): DataResponse<StockDetailResponse> {
         val target = toTicker(ticker)
-        val found = stockQuery.findByTicker(target) ?: throw notFound(ticker)
-        return DataResponse(StockDetailResponse.from(found))
+        val found = stockThemeComposer.detailWithTheme(target) ?: throw notFound(ticker)
+        return DataResponse(found)
     }
 
     override fun candles(ticker: String, period: String, limit: Int?): DataResponse<List<CandleResponse>> {

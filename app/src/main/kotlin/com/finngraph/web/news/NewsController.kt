@@ -1,10 +1,10 @@
 package com.finngraph.web.news
 
-import com.finngraph.news.NewsCompanyPort
-import com.finngraph.news.NewsId
-import com.finngraph.news.NewsQueryPort
-import com.finngraph.news.NewsView
-import com.finngraph.news.PageResult
+import com.finngraph.news.model.NewsId
+import com.finngraph.news.model.NewsView
+import com.finngraph.news.model.PageResult
+import com.finngraph.news.port.NewsCompanyPort
+import com.finngraph.news.port.NewsQueryPort
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException

@@ -1,12 +1,12 @@
 package com.finngraph.stock.adapter
 
-import com.finngraph.stock.AnnualFinancials
-import com.finngraph.stock.StockFinancialsPort
-import com.finngraph.stock.Ticker
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANY_FINANCIALS
 import com.finngraph.stock.adapter.jooq.tables.references.DIVIDENDS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.VALUATION_DAILY
+import com.finngraph.stock.model.AnnualFinancials
+import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.port.StockFinancialsPort
 import org.jooq.DSLContext
 import org.jooq.DatePart
 import org.jooq.Field

@@ -1,5 +1,9 @@
-package com.finngraph.stock
+package com.finngraph.stock.port
 
+import com.finngraph.stock.model.StockDetailView
+import com.finngraph.stock.model.StockListView
+import com.finngraph.stock.model.StockPriceView
+import com.finngraph.stock.model.Ticker
 import java.time.LocalDate
 
 interface StockQueryPort {

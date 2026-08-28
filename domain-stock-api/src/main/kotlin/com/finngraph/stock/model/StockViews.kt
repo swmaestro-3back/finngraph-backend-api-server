@@ -1,4 +1,4 @@
-package com.finngraph.stock
+package com.finngraph.stock.model
 
 import java.math.BigDecimal
 import java.time.LocalDate

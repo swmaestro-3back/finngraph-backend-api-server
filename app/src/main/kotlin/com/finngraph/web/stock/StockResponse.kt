@@ -1,10 +1,10 @@
 package com.finngraph.web.stock
 
-import com.finngraph.stock.AnnualFinancials
-import com.finngraph.stock.Candle
-import com.finngraph.stock.InvestorFlow
-import com.finngraph.stock.StockDetailView
-import com.finngraph.stock.StockListView
+import com.finngraph.stock.model.AnnualFinancials
+import com.finngraph.stock.model.Candle
+import com.finngraph.stock.model.InvestorFlow
+import com.finngraph.stock.model.StockDetailView
+import com.finngraph.stock.model.StockListView
 import java.math.BigDecimal
 import java.time.LocalDate
 

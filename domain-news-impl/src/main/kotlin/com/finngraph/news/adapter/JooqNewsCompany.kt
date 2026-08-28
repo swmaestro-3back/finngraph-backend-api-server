@@ -1,10 +1,10 @@
 package com.finngraph.news.adapter
 
-import com.finngraph.news.CompanyRef
-import com.finngraph.news.NewsCompanyPort
-import com.finngraph.news.NewsId
 import com.finngraph.news.adapter.jooq.tables.references.COMPANIES
 import com.finngraph.news.adapter.jooq.tables.references.NEWS_COMPANIES
+import com.finngraph.news.model.CompanyRef
+import com.finngraph.news.model.NewsId
+import com.finngraph.news.port.NewsCompanyPort
 import org.jooq.DSLContext
 import org.springframework.stereotype.Component
 

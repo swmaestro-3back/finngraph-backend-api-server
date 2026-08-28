@@ -1,16 +1,16 @@
 package com.finngraph.stock.adapter
 
-import com.finngraph.stock.StockDetailView
-import com.finngraph.stock.StockListView
-import com.finngraph.stock.StockPriceView
-import com.finngraph.stock.StockQueryPort
-import com.finngraph.stock.Ticker
 import com.finngraph.stock.adapter.jooq.tables.Stocks
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANY_FINANCIALS
 import com.finngraph.stock.adapter.jooq.tables.references.DAILY_CANDLES
 import com.finngraph.stock.adapter.jooq.tables.references.INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.VALUATION_DAILY
+import com.finngraph.stock.model.StockDetailView
+import com.finngraph.stock.model.StockListView
+import com.finngraph.stock.model.StockPriceView
+import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.port.StockQueryPort
 import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Field

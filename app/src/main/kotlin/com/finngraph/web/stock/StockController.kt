@@ -1,11 +1,11 @@
 package com.finngraph.web.stock
 
-import com.finngraph.stock.CandlePeriod
-import com.finngraph.stock.StockCandlePort
-import com.finngraph.stock.StockFinancialsPort
-import com.finngraph.stock.StockFlowPort
-import com.finngraph.stock.StockQueryPort
-import com.finngraph.stock.Ticker
+import com.finngraph.stock.model.CandlePeriod
+import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.port.StockCandlePort
+import com.finngraph.stock.port.StockFinancialsPort
+import com.finngraph.stock.port.StockFlowPort
+import com.finngraph.stock.port.StockQueryPort
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException

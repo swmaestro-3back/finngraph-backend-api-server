@@ -1,4 +1,4 @@
-package com.finngraph.stock
+package com.finngraph.stock.model
 
 @JvmInline
 value class Ticker(val value: String) {

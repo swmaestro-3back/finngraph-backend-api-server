@@ -1,12 +1,12 @@
 package com.finngraph.stock.adapter
 
-import com.finngraph.stock.Candle
-import com.finngraph.stock.CandlePeriod
-import com.finngraph.stock.StockCandlePort
-import com.finngraph.stock.Ticker
 import com.finngraph.stock.adapter.jooq.tables.references.DAILY_CANDLES
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_PERIOD_CANDLES
+import com.finngraph.stock.model.Candle
+import com.finngraph.stock.model.CandlePeriod
+import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.port.StockCandlePort
 import org.jooq.DSLContext
 import org.jooq.Record1
 import org.jooq.Select

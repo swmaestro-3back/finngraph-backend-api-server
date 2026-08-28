@@ -1,10 +1,10 @@
 package com.finngraph.stock.adapter
 
-import com.finngraph.stock.InvestorFlow
-import com.finngraph.stock.StockFlowPort
-import com.finngraph.stock.Ticker
 import com.finngraph.stock.adapter.jooq.tables.references.INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
+import com.finngraph.stock.model.InvestorFlow
+import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.port.StockFlowPort
 import org.jooq.DSLContext
 import org.springframework.stereotype.Component
 

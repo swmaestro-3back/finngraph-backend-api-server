@@ -1,6 +1,6 @@
 package com.finngraph.theme.adapter
 
-import com.finngraph.theme.adapter.jooq.tables.references.DAILY_CANDLES
+import com.finngraph.theme.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import org.jooq.Field
 import org.jooq.Table
 import org.jooq.impl.DSL
@@ -25,7 +25,7 @@ internal object ThemeQuerySupport {
     private const val CHANGE = "change"
     private const val TRADE_VALUE = "trade_value"
 
-    val BASE_DATE: Field<LocalDate?> = DAILY_CANDLES.`as`(BASE_CANDLES).let { dc ->
+    val BASE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
         DSL.field(DSL.select(DSL.max(dc.TRADE_DATE)).from(dc))
     }
 
@@ -43,7 +43,7 @@ internal object ThemeQuerySupport {
     private val W_TRADE_VALUE: Field<Long?> = DSL.field(DSL.name(WINDOWED, TRADE_VALUE), SQLDataType.BIGINT)
 
     fun priceTable(): Table<*> {
-        val dc = DAILY_CANDLES.`as`(WINDOW_CANDLES)
+        val dc = STOCK_CANDLES_DAILY.`as`(WINDOW_CANDLES)
         val windowed = DSL.select(
             dc.STOCK_ID,
             dc.TRADE_DATE,

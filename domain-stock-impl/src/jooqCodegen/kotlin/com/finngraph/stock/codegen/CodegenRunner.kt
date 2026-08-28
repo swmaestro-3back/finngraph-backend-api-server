@@ -52,8 +52,8 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
                     .withIncludes(
-                        "stocks|daily_candles|stock_period_candles|investor_flows|" +
-                            "valuation_daily|dividends|company_financials|companies",
+                        "stocks|stock_candles_daily|stock_candles_period|stock_investor_flows|" +
+                            "stock_valuations_daily|stock_dividends|company_financials|companies",
                     )
                     .withOutputSchemaToDefault(true),
             )

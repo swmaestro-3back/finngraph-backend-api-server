@@ -2,10 +2,10 @@ package com.finngraph.stock.adapter
 
 import com.finngraph.stock.adapter.jooq.tables.Stocks
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANY_FINANCIALS
-import com.finngraph.stock.adapter.jooq.tables.references.DAILY_CANDLES
-import com.finngraph.stock.adapter.jooq.tables.references.INVESTOR_FLOWS
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
-import com.finngraph.stock.adapter.jooq.tables.references.VALUATION_DAILY
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.StockPriceView
@@ -58,28 +58,28 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             STOCKS.MARKET,
             PX_PRICE,
             PX_CHANGE,
-            VALUATION_DAILY.MARKET_CAP,
-            VALUATION_DAILY.PER,
-            VALUATION_DAILY.PBR,
-            VALUATION_DAILY.EPS,
-            VALUATION_DAILY.DIVIDEND_YIELD,
-            VALUATION_DAILY.R_1W,
-            VALUATION_DAILY.R_1M,
-            VALUATION_DAILY.R_3M,
+            STOCK_VALUATIONS_DAILY.MARKET_CAP,
+            STOCK_VALUATIONS_DAILY.PER,
+            STOCK_VALUATIONS_DAILY.PBR,
+            STOCK_VALUATIONS_DAILY.EPS,
+            STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD,
+            STOCK_VALUATIONS_DAILY.R_1W,
+            STOCK_VALUATIONS_DAILY.R_1M,
+            STOCK_VALUATIONS_DAILY.R_3M,
             ROE,
             FOREIGN_RATIO,
             BASE_DATE_COLUMN,
         )
             .from(STOCKS)
             .leftJoin(priceTable(filter)).on(PX_STOCK_ID.eq(STOCKS.ID))
-            .leftJoin(VALUATION_DAILY)
-            .on(VALUATION_DAILY.LISTING_ID.eq(STOCKS.ID).and(VALUATION_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .leftJoin(STOCK_VALUATIONS_DAILY)
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
             .where(filter(STOCKS))
             .orderBy(STOCKS.TICKER.asc())
             .fetch()
 
     private fun priceTable(filter: (Stocks) -> Condition): Table<*> {
-        val dc = DAILY_CANDLES.`as`(WINDOW_CANDLES)
+        val dc = STOCK_CANDLES_DAILY.`as`(WINDOW_CANDLES)
         val windowed = DSL.select(
             dc.STOCK_ID,
             dc.TRADE_DATE,
@@ -149,14 +149,14 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
-        w1 = get(VALUATION_DAILY.R_1W),
-        m1 = get(VALUATION_DAILY.R_1M),
-        m3 = get(VALUATION_DAILY.R_3M),
-        marketCap = get(VALUATION_DAILY.MARKET_CAP),
-        per = get(VALUATION_DAILY.PER),
-        pbr = get(VALUATION_DAILY.PBR),
+        w1 = get(STOCK_VALUATIONS_DAILY.R_1W),
+        m1 = get(STOCK_VALUATIONS_DAILY.R_1M),
+        m3 = get(STOCK_VALUATIONS_DAILY.R_3M),
+        marketCap = get(STOCK_VALUATIONS_DAILY.MARKET_CAP),
+        per = get(STOCK_VALUATIONS_DAILY.PER),
+        pbr = get(STOCK_VALUATIONS_DAILY.PBR),
         roe = get(ROE),
-        dividendYield = get(VALUATION_DAILY.DIVIDEND_YIELD),
+        dividendYield = get(STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD),
     )
 
     private fun Record.toDetailView(revenueYoY: BigDecimal?) = StockDetailView(
@@ -165,12 +165,12 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
-        marketCap = get(VALUATION_DAILY.MARKET_CAP),
-        per = get(VALUATION_DAILY.PER),
-        pbr = get(VALUATION_DAILY.PBR),
+        marketCap = get(STOCK_VALUATIONS_DAILY.MARKET_CAP),
+        per = get(STOCK_VALUATIONS_DAILY.PER),
+        pbr = get(STOCK_VALUATIONS_DAILY.PBR),
         roe = get(ROE),
-        eps = get(VALUATION_DAILY.EPS),
-        dividendYield = get(VALUATION_DAILY.DIVIDEND_YIELD),
+        eps = get(STOCK_VALUATIONS_DAILY.EPS),
+        dividendYield = get(STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD),
         foreignRatio = get(FOREIGN_RATIO),
         revenueYoY = revenueYoY,
         baseDate = get(BASE_DATE_COLUMN),
@@ -182,7 +182,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
-        marketCap = get(VALUATION_DAILY.MARKET_CAP),
+        marketCap = get(STOCK_VALUATIONS_DAILY.MARKET_CAP),
     )
 
     companion object {
@@ -207,7 +207,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
         private val ACTIVE: (Stocks) -> Condition = { s -> s.IS_ACTIVE.eq(true) }
 
-        private val BASE_DATE: Field<LocalDate?> = DAILY_CANDLES.`as`(BASE_CANDLES).let { dc ->
+        private val BASE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
             DSL.field(DSL.select(DSL.max(dc.TRADE_DATE)).from(dc))
         }
 
@@ -243,13 +243,13 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         ).`as`("roe")
 
         private val FOREIGN_RATIO: Field<BigDecimal?> = DSL.field(
-            DSL.select(INVESTOR_FLOWS.FOREIGN_RATIO)
-                .from(INVESTOR_FLOWS)
+            DSL.select(STOCK_INVESTOR_FLOWS.FOREIGN_HOLD_RATIO)
+                .from(STOCK_INVESTOR_FLOWS)
                 .where(
-                    INVESTOR_FLOWS.STOCK_ID.eq(STOCKS.ID)
-                        .and(INVESTOR_FLOWS.TRADE_DATE.le(BASE_DATE)),
+                    STOCK_INVESTOR_FLOWS.STOCK_ID.eq(STOCKS.ID)
+                        .and(STOCK_INVESTOR_FLOWS.TRADE_DATE.le(BASE_DATE)),
                 )
-                .orderBy(INVESTOR_FLOWS.TRADE_DATE.desc())
+                .orderBy(STOCK_INVESTOR_FLOWS.TRADE_DATE.desc())
                 .limit(1),
         ).`as`("foreign_ratio")
     }

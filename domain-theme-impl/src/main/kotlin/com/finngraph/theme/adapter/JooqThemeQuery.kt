@@ -9,7 +9,7 @@ import com.finngraph.theme.adapter.ThemeQuerySupport.PX_TRADE_VALUE
 import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
 import com.finngraph.theme.adapter.jooq.tables.references.THEME_STOCKS
-import com.finngraph.theme.adapter.jooq.tables.references.VALUATION_DAILY
+import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.theme.model.ThemeName
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
@@ -68,8 +68,8 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             .from(THEMES)
             .leftJoin(THEME_STOCKS).on(THEME_STOCKS.THEME_ID.eq(THEMES.ID))
             .leftJoin(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
-            .leftJoin(VALUATION_DAILY)
-            .on(VALUATION_DAILY.LISTING_ID.eq(STOCKS.ID).and(VALUATION_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .leftJoin(STOCK_VALUATIONS_DAILY)
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
             .leftJoin(ThemeQuerySupport.priceTable()).on(PX_STOCK_ID.eq(STOCKS.ID))
             .where(nameFilter)
             .groupBy(THEMES.ID, THEMES.NAME, THEMES.DESCRIPTION)
@@ -78,14 +78,14 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     }
 
     private fun topStocks(nameFilter: Condition): Map<String, List<ThemeTopStock>> =
-        dsl.select(THEME_NAME, STOCK_TICKER, STOCK_NAME, VALUATION_DAILY.MARKET_CAP)
+        dsl.select(THEME_NAME, STOCK_TICKER, STOCK_NAME, STOCK_VALUATIONS_DAILY.MARKET_CAP)
             .from(THEMES)
             .join(THEME_STOCKS).on(THEME_STOCKS.THEME_ID.eq(THEMES.ID))
             .join(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
-            .leftJoin(VALUATION_DAILY)
-            .on(VALUATION_DAILY.LISTING_ID.eq(STOCKS.ID).and(VALUATION_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .leftJoin(STOCK_VALUATIONS_DAILY)
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
             .where(nameFilter)
-            .orderBy(THEME_NAME.asc(), VALUATION_DAILY.MARKET_CAP.desc().nullsLast(), STOCKS.ID.asc())
+            .orderBy(THEME_NAME.asc(), STOCK_VALUATIONS_DAILY.MARKET_CAP.desc().nullsLast(), STOCKS.ID.asc())
             .fetch()
             .groupBy(
                 { requireNotNull(it.get(THEME_NAME)) },
@@ -93,7 +93,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
                     ThemeTopStock(
                         ticker = requireNotNull(it.get(STOCK_TICKER)),
                         name = requireNotNull(it.get(STOCK_NAME)),
-                        marketCap = it.get(VALUATION_DAILY.MARKET_CAP),
+                        marketCap = it.get(STOCK_VALUATIONS_DAILY.MARKET_CAP),
                     )
                 },
             )
@@ -125,16 +125,16 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         private val STOCK_TICKER = STOCKS.TICKER.`as`("stock_ticker")
         private val STOCK_NAME = STOCKS.NAME.`as`("stock_name")
 
-        private val CAP_NUMERIC: Field<BigDecimal?> = VALUATION_DAILY.MARKET_CAP.cast(SQLDataType.NUMERIC)
+        private val CAP_NUMERIC: Field<BigDecimal?> = STOCK_VALUATIONS_DAILY.MARKET_CAP.cast(SQLDataType.NUMERIC)
 
         private val STOCK_COUNT = DSL.count(THEME_STOCKS.STOCK_ID).`as`("stock_count")
-        private val MARKET_CAP_SUM = DSL.sum(VALUATION_DAILY.MARKET_CAP).`as`("market_cap_sum")
+        private val MARKET_CAP_SUM = DSL.sum(STOCK_VALUATIONS_DAILY.MARKET_CAP).`as`("market_cap_sum")
         private val TRADING_VALUE_SUM = DSL.sum(PX_TRADE_VALUE).`as`("trading_value_sum")
 
         private val CHANGE_WEIGHTED = weighted(PX_CHANGE).`as`("change")
-        private val W1_WEIGHTED = weighted(VALUATION_DAILY.R_1W).`as`("w1")
-        private val M1_WEIGHTED = weighted(VALUATION_DAILY.R_1M).`as`("m1")
-        private val M3_WEIGHTED = weighted(VALUATION_DAILY.R_3M).`as`("m3")
+        private val W1_WEIGHTED = weighted(STOCK_VALUATIONS_DAILY.R_1W).`as`("w1")
+        private val M1_WEIGHTED = weighted(STOCK_VALUATIONS_DAILY.R_1M).`as`("m1")
+        private val M3_WEIGHTED = weighted(STOCK_VALUATIONS_DAILY.R_3M).`as`("m3")
 
         private fun weighted(metric: Field<BigDecimal?>): Field<BigDecimal?> =
             DSL.round(
@@ -145,7 +145,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
 
         private val THEME_CAP: Field<BigDecimal?> = run {
             val ts = THEME_STOCKS.`as`("cap_ts")
-            val vd = VALUATION_DAILY.`as`("cap_vd")
+            val vd = STOCK_VALUATIONS_DAILY.`as`("cap_vd")
             DSL.field(
                 DSL.select(DSL.sum(vd.MARKET_CAP))
                     .from(ts)

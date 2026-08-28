@@ -59,8 +59,7 @@ data class InvestorFlow(
     val tradeDate: LocalDate,
     val foreignNet: Long?,
     val institutionNet: Long?,
-    val pensionNet: Long?,
-    val personalNet: Long?,
+    val individualNet: Long?,
     val foreignRatio: BigDecimal?,
 )
 

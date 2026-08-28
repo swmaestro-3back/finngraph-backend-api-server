@@ -1,11 +1,11 @@
 package com.finngraph.news.adapter
 
-import com.finngraph.news.NewsDetail
-import com.finngraph.news.NewsId
-import com.finngraph.news.NewsQueryPort
-import com.finngraph.news.NewsView
-import com.finngraph.news.PageResult
 import com.finngraph.news.adapter.jooq.tables.references.NEWS
+import com.finngraph.news.model.NewsDetail
+import com.finngraph.news.model.NewsId
+import com.finngraph.news.model.NewsView
+import com.finngraph.news.model.PageResult
+import com.finngraph.news.port.NewsQueryPort
 import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Record

@@ -1,4 +1,4 @@
-package com.finngraph.news
+package com.finngraph.news.model
 
 data class PageResult<T>(
     val content: List<T>,

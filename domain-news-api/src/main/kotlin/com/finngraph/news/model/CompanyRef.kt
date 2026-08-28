@@ -1,4 +1,4 @@
-package com.finngraph.news
+package com.finngraph.news.model
 
 data class CompanyRef(
     val companyName: String,

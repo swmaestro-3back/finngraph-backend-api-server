@@ -1,8 +1,8 @@
 package com.finngraph.web.news
 
-import com.finngraph.news.CompanyRef
-import com.finngraph.news.NewsDetail
-import com.finngraph.news.NewsView
+import com.finngraph.news.model.CompanyRef
+import com.finngraph.news.model.NewsDetail
+import com.finngraph.news.model.NewsView
 import java.time.OffsetDateTime
 
 data class NewsResponse(

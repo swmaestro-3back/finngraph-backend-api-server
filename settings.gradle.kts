@@ -8,4 +8,6 @@ include(
     "app",
     "domain-news-api",
     "domain-news-impl",
+    "domain-stock-api",
+    "domain-stock-impl",
 )

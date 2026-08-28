@@ -14,6 +14,9 @@ dependencies {
     implementation(project(":domain-news-api"))
     runtimeOnly(project(":domain-news-impl"))
 
+    implementation(project(":domain-stock-api"))
+    runtimeOnly(project(":domain-stock-impl"))
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

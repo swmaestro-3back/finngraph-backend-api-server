@@ -104,7 +104,7 @@ data class InvestorFlowResponse(
     val date: LocalDate,
     val foreignNet: Long?,
     val institutionNet: Long?,
-    val pensionNet: Long?,
+    val individualNet: Long?,
     val foreignRatio: BigDecimal?,
 ) {
     companion object {
@@ -112,7 +112,7 @@ data class InvestorFlowResponse(
             date = flow.tradeDate,
             foreignNet = flow.foreignNet,
             institutionNet = flow.institutionNet,
-            pensionNet = flow.pensionNet,
+            individualNet = flow.individualNet,
             foreignRatio = flow.foreignRatio,
         )
     }

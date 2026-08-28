@@ -1,6 +1,6 @@
 package com.finngraph.stock.adapter
 
-import com.finngraph.stock.adapter.jooq.tables.references.INVESTOR_FLOWS
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.model.InvestorFlow
 import com.finngraph.stock.model.Ticker
@@ -12,27 +12,25 @@ import org.springframework.stereotype.Component
 class JooqStockFlow(private val dsl: DSLContext) : StockFlowPort {
     override fun findFlows(ticker: Ticker, limit: Int): List<InvestorFlow> =
         dsl.select(
-            INVESTOR_FLOWS.TRADE_DATE,
-            INVESTOR_FLOWS.FOREIGN_NET,
-            INVESTOR_FLOWS.INSTITUTION_NET,
-            INVESTOR_FLOWS.PENSION_NET,
-            INVESTOR_FLOWS.PERSONAL_NET,
-            INVESTOR_FLOWS.FOREIGN_RATIO,
+            STOCK_INVESTOR_FLOWS.TRADE_DATE,
+            STOCK_INVESTOR_FLOWS.FOREIGN_NET_QTY,
+            STOCK_INVESTOR_FLOWS.INSTITUTION_NET_QTY,
+            STOCK_INVESTOR_FLOWS.INDIVIDUAL_NET_QTY,
+            STOCK_INVESTOR_FLOWS.FOREIGN_HOLD_RATIO,
         )
-            .from(INVESTOR_FLOWS)
-            .join(STOCKS).on(STOCKS.ID.eq(INVESTOR_FLOWS.STOCK_ID))
+            .from(STOCK_INVESTOR_FLOWS)
+            .join(STOCKS).on(STOCKS.ID.eq(STOCK_INVESTOR_FLOWS.STOCK_ID))
             .where(STOCKS.TICKER.eq(ticker.value))
             .and(STOCKS.IS_ACTIVE.eq(true))
-            .orderBy(INVESTOR_FLOWS.TRADE_DATE.desc())
+            .orderBy(STOCK_INVESTOR_FLOWS.TRADE_DATE.desc())
             .limit(limit)
             .fetch {
                 InvestorFlow(
-                    tradeDate = requireNotNull(it.get(INVESTOR_FLOWS.TRADE_DATE)),
-                    foreignNet = it.get(INVESTOR_FLOWS.FOREIGN_NET),
-                    institutionNet = it.get(INVESTOR_FLOWS.INSTITUTION_NET),
-                    pensionNet = it.get(INVESTOR_FLOWS.PENSION_NET),
-                    personalNet = it.get(INVESTOR_FLOWS.PERSONAL_NET),
-                    foreignRatio = it.get(INVESTOR_FLOWS.FOREIGN_RATIO),
+                    tradeDate = requireNotNull(it.get(STOCK_INVESTOR_FLOWS.TRADE_DATE)),
+                    foreignNet = it.get(STOCK_INVESTOR_FLOWS.FOREIGN_NET_QTY),
+                    institutionNet = it.get(STOCK_INVESTOR_FLOWS.INSTITUTION_NET_QTY),
+                    individualNet = it.get(STOCK_INVESTOR_FLOWS.INDIVIDUAL_NET_QTY),
+                    foreignRatio = it.get(STOCK_INVESTOR_FLOWS.FOREIGN_HOLD_RATIO),
                 )
             }
             .asReversed()

@@ -1,9 +1,9 @@
 package com.finngraph.stock.adapter
 
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANY_FINANCIALS
-import com.finngraph.stock.adapter.jooq.tables.references.DIVIDENDS
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_DIVIDENDS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
-import com.finngraph.stock.adapter.jooq.tables.references.VALUATION_DAILY
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.AnnualFinancials
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockFinancialsPort
@@ -128,27 +128,27 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
     }
 
     private fun yearEndValuations(stockId: Long): Map<Int, Valuation> {
-        val tradeYear = DSL.extract(VALUATION_DAILY.TRADE_DATE, DatePart.YEAR)
+        val tradeYear = DSL.extract(STOCK_VALUATIONS_DAILY.TRADE_DATE, DatePart.YEAR)
         val year = tradeYear.`as`(TRADE_YEAR)
         val rank = DSL.rowNumber().over(
-            DSL.partitionBy(tradeYear).orderBy(VALUATION_DAILY.TRADE_DATE.desc()),
+            DSL.partitionBy(tradeYear).orderBy(STOCK_VALUATIONS_DAILY.TRADE_DATE.desc()),
         ).`as`(RANK)
 
         val ranked = dsl.select(
             year,
-            VALUATION_DAILY.EPS,
-            VALUATION_DAILY.PER,
-            VALUATION_DAILY.PBR,
+            STOCK_VALUATIONS_DAILY.EPS,
+            STOCK_VALUATIONS_DAILY.PER,
+            STOCK_VALUATIONS_DAILY.PBR,
             rank,
         )
-            .from(VALUATION_DAILY)
-            .where(VALUATION_DAILY.LISTING_ID.eq(stockId))
+            .from(STOCK_VALUATIONS_DAILY)
+            .where(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(stockId))
             .asTable(RANKED)
 
         val yearColumn = ranked.column(year)
-        val epsColumn = ranked.column(VALUATION_DAILY.EPS)
-        val perColumn = ranked.column(VALUATION_DAILY.PER)
-        val pbrColumn = ranked.column(VALUATION_DAILY.PBR)
+        val epsColumn = ranked.column(STOCK_VALUATIONS_DAILY.EPS)
+        val perColumn = ranked.column(STOCK_VALUATIONS_DAILY.PER)
+        val pbrColumn = ranked.column(STOCK_VALUATIONS_DAILY.PBR)
 
         return dsl.selectFrom(ranked)
             .where(ranked.column(rank).eq(1))
@@ -163,15 +163,15 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
     }
 
     private fun annualDps(stockId: Long): Map<Int, BigDecimal> {
-        val recordYear = DSL.extract(DIVIDENDS.RECORD_DATE, DatePart.YEAR)
+        val recordYear = DSL.extract(STOCK_DIVIDENDS.RECORD_DATE, DatePart.YEAR)
 
-        return dsl.select(recordYear, DIVIDENDS.DPS)
-            .from(DIVIDENDS)
-            .where(DIVIDENDS.LISTING_ID.eq(stockId))
+        return dsl.select(recordYear, STOCK_DIVIDENDS.DPS)
+            .from(STOCK_DIVIDENDS)
+            .where(STOCK_DIVIDENDS.LISTING_ID.eq(stockId))
             .fetch()
             .mapNotNull { record ->
                 val year = record.get(recordYear) ?: return@mapNotNull null
-                val dps = record.get(DIVIDENDS.DPS) ?: return@mapNotNull null
+                val dps = record.get(STOCK_DIVIDENDS.DPS) ?: return@mapNotNull null
                 year to dps
             }
             .groupingBy { it.first }

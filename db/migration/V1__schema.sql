@@ -1,4 +1,3 @@
-
 CREATE EXTENSION IF NOT EXISTS vector;
 
 DO $$
@@ -120,7 +119,7 @@ CREATE TABLE IF NOT EXISTS service_companies (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS daily_candles (
+CREATE TABLE IF NOT EXISTS stock_candles_daily (
     stock_id    BIGINT  NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
     trade_date  DATE    NOT NULL,
     open        NUMERIC NOT NULL,
@@ -134,9 +133,9 @@ CREATE TABLE IF NOT EXISTS daily_candles (
     PRIMARY KEY (stock_id, trade_date)
 );
 
-CREATE INDEX IF NOT EXISTS daily_candles_date_idx ON daily_candles (trade_date);
+CREATE INDEX IF NOT EXISTS stock_candles_daily_date_idx ON stock_candles_daily (trade_date);
 
-CREATE TABLE IF NOT EXISTS stock_period_candles (
+CREATE TABLE IF NOT EXISTS stock_candles_period (
     stock_id    BIGINT  NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
     period      TEXT    NOT NULL,
     base_date   DATE    NOT NULL,
@@ -150,23 +149,18 @@ CREATE TABLE IF NOT EXISTS stock_period_candles (
     PRIMARY KEY (stock_id, period, base_date)
 );
 
-CREATE TABLE IF NOT EXISTS investor_flows (
-    stock_id        BIGINT NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
-    trade_date      DATE   NOT NULL,
-    personal_net    BIGINT,
-    institution_net BIGINT,
-    foreign_net     BIGINT,
-    foreign_ratio   NUMERIC,
-    trust_net       BIGINT,
-    pension_net     BIGINT,
-    insurance_net   BIGINT,
-    bank_net        BIGINT,
-    etc_corp_net    BIGINT,
-    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+CREATE TABLE IF NOT EXISTS stock_investor_flows (
+    stock_id            BIGINT NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
+    trade_date          DATE   NOT NULL,
+    individual_net_qty  BIGINT,
+    institution_net_qty BIGINT,
+    foreign_net_qty     BIGINT,
+    foreign_hold_ratio  NUMERIC,
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (stock_id, trade_date)
 );
 
-CREATE TABLE IF NOT EXISTS dividends (
+CREATE TABLE IF NOT EXISTS stock_dividends (
     listing_id  BIGINT NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
     record_date DATE   NOT NULL,
     divi_kind   TEXT   NOT NULL,
@@ -176,7 +170,7 @@ CREATE TABLE IF NOT EXISTS dividends (
     PRIMARY KEY (listing_id, record_date, divi_kind)
 );
 
-CREATE TABLE IF NOT EXISTS valuation_daily (
+CREATE TABLE IF NOT EXISTS stock_valuations_daily (
     listing_id     BIGINT NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
     trade_date     DATE   NOT NULL,
     market_cap     BIGINT,
@@ -221,30 +215,21 @@ CREATE INDEX IF NOT EXISTS idx_news_companies_news    ON news_companies (news_id
 CREATE INDEX IF NOT EXISTS idx_news_companies_company ON news_companies (company_id);
 
 CREATE TABLE IF NOT EXISTS themes (
-    id                  BIGSERIAL PRIMARY KEY,
-    name                TEXT NOT NULL UNIQUE,
-    description         TEXT,
-    embedding           vector(1024),
-    embedding_text_hash TEXT
+    id          BIGSERIAL PRIMARY KEY,
+    name        TEXT NOT NULL UNIQUE,
+    description TEXT
 );
 
 CREATE TABLE IF NOT EXISTS theme_stocks (
-    id               BIGSERIAL PRIMARY KEY,
-    theme_id         BIGINT NOT NULL REFERENCES themes (id) ON DELETE CASCADE,
-    stock_id         BIGINT NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
-    reason           TEXT,
-    reason_embedding vector(1024),
-    reason_text_hash TEXT,
+    id       BIGSERIAL PRIMARY KEY,
+    theme_id BIGINT NOT NULL REFERENCES themes (id) ON DELETE CASCADE,
+    stock_id BIGINT NOT NULL REFERENCES stocks (id) ON DELETE CASCADE,
+    reason   TEXT,
     UNIQUE (theme_id, stock_id)
 );
 
 CREATE INDEX IF NOT EXISTS theme_stocks_theme_idx ON theme_stocks (theme_id);
 CREATE INDEX IF NOT EXISTS theme_stocks_stock_idx ON theme_stocks (stock_id);
-
-CREATE INDEX IF NOT EXISTS themes_embedding_hnsw_idx
-  ON themes USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX IF NOT EXISTS theme_stocks_reason_embedding_hnsw_idx
-  ON theme_stocks USING hnsw (reason_embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS search_keywords (
     id               BIGSERIAL PRIMARY KEY,
@@ -270,6 +255,10 @@ CREATE TABLE IF NOT EXISTS disclosures (
     corp_cls               TEXT,
     report_nm              TEXT NOT NULL,
     is_correction          BOOLEAN NOT NULL DEFAULT false,
+    correction_target_report TEXT,
+    correction_target_date DATE,
+    correction_reason      TEXT,
+    original_rcept_no      TEXT,
     rcept_dt               DATE NOT NULL,
     flr_nm                 TEXT,
     link                   TEXT NOT NULL,
@@ -298,6 +287,11 @@ CREATE INDEX IF NOT EXISTS disclosures_counterparty_corp_code_idx
 CREATE INDEX IF NOT EXISTS disclosures_counterparty_company_idx
   ON disclosures (((fields ->> 'counterparty_company_id')::bigint))
   WHERE fields ->> 'counterparty_company_id' IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS disclosures_corp_code_rcept_dt_idx
+  ON disclosures (corp_code, rcept_dt);
+CREATE INDEX IF NOT EXISTS disclosures_original_rcept_no_idx
+  ON disclosures (original_rcept_no) WHERE original_rcept_no IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS relation_sources (
     id            BIGSERIAL PRIMARY KEY,

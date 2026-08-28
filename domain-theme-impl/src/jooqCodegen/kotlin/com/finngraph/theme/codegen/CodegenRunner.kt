@@ -52,11 +52,7 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
                     .withIncludes(
-                        "themes|theme_stocks|stocks|daily_candles|valuation_daily|news|news_companies",
-                    )
-                    .withExcludes(
-                        "themes\\.embedding|themes\\.embedding_text_hash|" +
-                            "theme_stocks\\.reason_embedding|theme_stocks\\.reason_text_hash",
+                        "themes|theme_stocks|stocks|stock_candles_daily|stock_valuations_daily|news|news_companies",
                     )
                     .withOutputSchemaToDefault(true),
             )

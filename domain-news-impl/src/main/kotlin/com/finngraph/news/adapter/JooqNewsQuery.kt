@@ -74,7 +74,6 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
     companion object {
         // isTrue() 가 만드는 IS TRUE 는 부분 인덱스 idx_news_visible 의 술어와 매칭되지 않는다
         // (플래너가 동치를 증명하지 못해 Seq Scan 으로 떨어진다). eq(true) 형태를 써야 한다.
-        private val VISIBLE: Condition =
-            NEWS.IS_PROCESSED.eq(true).and(NEWS.RELATION_EXTRACTED.eq(true))
+        private val VISIBLE: Condition = NEWS.TRIPLE_EXTRACTED.eq(true)
     }
 }

@@ -1,4 +1,7 @@
-package com.finngraph.web.stock
+package com.finngraph.web.composition
+
+import com.finngraph.web.stock.StockDetailResponse
+import com.finngraph.web.stock.StockSummaryResponse
 
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockQueryPort

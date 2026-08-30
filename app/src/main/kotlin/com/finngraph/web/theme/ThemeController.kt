@@ -84,7 +84,8 @@ class ThemeController(
         id = id,
         title = title,
         summary = summary,
-        link = url,
+        url = url,
         publishedAt = publishedAt,
+        collectedAt = collectedAt,
     )
 }

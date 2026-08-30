@@ -1,24 +1,26 @@
 package com.finngraph.web.news
 
-import com.finngraph.news.model.CompanyRef
 import com.finngraph.news.model.NewsDetail
 import com.finngraph.news.model.NewsView
+import java.math.BigDecimal
 import java.time.OffsetDateTime
 
 data class NewsResponse(
     val id: Long,
     val title: String?,
     val summary: String?,
-    val link: String?,
+    val url: String?,
     val publishedAt: OffsetDateTime?,
+    val collectedAt: OffsetDateTime?,
 ) {
     companion object {
         fun from(view: NewsView) = NewsResponse(
             id = view.id,
             title = view.title,
             summary = view.summary,
-            link = view.link,
+            url = view.url,
             publishedAt = view.publishedAt,
+            collectedAt = view.collectedAt,
         )
     }
 }
@@ -27,27 +29,28 @@ data class NewsDetailResponse(
     val id: Long,
     val title: String?,
     val summary: String?,
-    val link: String?,
-    val originallink: String?,
+    val url: String?,
+    val originalUrl: String?,
     val publishedAt: OffsetDateTime?,
+    val collectedAt: OffsetDateTime?,
 ) {
     companion object {
         fun from(detail: NewsDetail) = NewsDetailResponse(
             id = detail.id,
             title = detail.title,
             summary = detail.summary,
-            link = detail.link,
-            originallink = detail.originallink,
+            url = detail.url,
+            originalUrl = detail.originalUrl,
             publishedAt = detail.publishedAt,
+            collectedAt = detail.collectedAt,
         )
     }
 }
 
-data class CompanyResponse(
+data class NewsRelatedStockResponse(
     val companyName: String,
     val ticker: String?,
-) {
-    companion object {
-        fun from(ref: CompanyRef) = CompanyResponse(ref.companyName, ref.ticker)
-    }
-}
+    val market: String?,
+    val price: BigDecimal?,
+    val change: BigDecimal?,
+)

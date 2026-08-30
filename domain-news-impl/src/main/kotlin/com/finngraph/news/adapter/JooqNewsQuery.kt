@@ -1,6 +1,7 @@
 package com.finngraph.news.adapter
 
 import com.finngraph.news.adapter.jooq.tables.references.NEWS
+import com.finngraph.news.adapter.jooq.tables.references.RELATION_SOURCES
 import com.finngraph.news.model.NewsDetail
 import com.finngraph.news.model.NewsId
 import com.finngraph.news.model.NewsView
@@ -9,33 +10,14 @@ import com.finngraph.news.port.NewsQueryPort
 import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Record
+import org.jooq.Record1
+import org.jooq.Select
 import org.springframework.stereotype.Component
 
 @Component
 class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
-    override fun findPage(page: Int, size: Int): PageResult<NewsView> {
-
-        val rows = dsl.select(
-            NEWS.ID,
-            NEWS.TITLE,
-            NEWS.SUMMARY,
-            NEWS.LINK,
-            NEWS.PUBLISHED_AT,
-        )
-            .from(NEWS)
-            .where(VISIBLE)
-            .orderBy(NEWS.PUBLISHED_AT.desc().nullsLast(), NEWS.ID.desc())
-            .limit(size)
-            .offset(page.toLong() * size)
-            .fetch { it.toNewsView() }
-
-        val total = dsl.selectCount()
-            .from(NEWS)
-            .where(VISIBLE)
-            .fetchOne(0, Long::class.javaObjectType) ?: 0L
-
-        return PageResult(content = rows, page = page, size = size, totalElements = total)
-    }
+    override fun findPage(page: Int, size: Int): PageResult<NewsView> =
+        fetchPage(VISIBLE, page, size)
 
     override fun findByIds(ids: List<NewsId>): Map<NewsId, NewsDetail> {
         if (ids.isEmpty()) return emptyMap()
@@ -47,28 +29,68 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             NEWS.LINK,
             NEWS.ORIGINALLINK,
             NEWS.PUBLISHED_AT,
+            NEWS.COLLECTED_AT,
         )
             .from(NEWS)
-            .where(NEWS.ID.`in`(ids.map { it.value }))
+            .where(NEWS.ID.`in`(ids.map { it.value }).and(VISIBLE))
             .fetch { it.toNewsDetail() }
             .associateBy { NewsId(it.id) }
     }
+
+    override fun findPageByTicker(ticker: String, page: Int, size: Int): PageResult<NewsView> =
+        fetchPage(NEWS.ID.`in`(relatedNewsIds(ticker)).and(VISIBLE), page, size)
+
+    private fun fetchPage(condition: Condition, page: Int, size: Int): PageResult<NewsView> {
+        val rows = dsl.select(
+            NEWS.ID,
+            NEWS.TITLE,
+            NEWS.SUMMARY,
+            NEWS.LINK,
+            NEWS.PUBLISHED_AT,
+            NEWS.COLLECTED_AT,
+        )
+            .from(NEWS)
+            .where(condition)
+            .orderBy(NEWS.PUBLISHED_AT.desc().nullsLast(), NEWS.ID.desc())
+            .limit(size)
+            .offset(page.toLong() * size)
+            .fetch { it.toNewsView() }
+
+        val total = dsl.selectCount()
+            .from(NEWS)
+            .where(condition)
+            .fetchOne(0, Long::class.javaObjectType) ?: 0L
+
+        return PageResult(content = rows, page = page, size = size, totalElements = total)
+    }
+
+    private fun relatedNewsIds(ticker: String): Select<Record1<Long?>> =
+        dsl.select(RELATION_SOURCES.NEWS_ID)
+            .from(RELATION_SOURCES)
+            .where(RELATION_SOURCES.SUBJECT_CODE.eq(ticker))
+            .union(
+                dsl.select(RELATION_SOURCES.NEWS_ID)
+                    .from(RELATION_SOURCES)
+                    .where(RELATION_SOURCES.OBJECT_CODE.eq(ticker)),
+            )
 
     private fun Record.toNewsView() = NewsView(
         id = requireNotNull(get(NEWS.ID)),
         title = get(NEWS.TITLE),
         summary = get(NEWS.SUMMARY),
-        link = get(NEWS.LINK),
+        url = get(NEWS.LINK),
         publishedAt = get(NEWS.PUBLISHED_AT),
+        collectedAt = get(NEWS.COLLECTED_AT),
     )
 
     private fun Record.toNewsDetail() = NewsDetail(
         id = requireNotNull(get(NEWS.ID)),
         title = get(NEWS.TITLE),
         summary = get(NEWS.SUMMARY),
-        link = get(NEWS.LINK),
-        originallink = get(NEWS.ORIGINALLINK),
+        url = get(NEWS.LINK),
+        originalUrl = get(NEWS.ORIGINALLINK),
         publishedAt = get(NEWS.PUBLISHED_AT),
+        collectedAt = get(NEWS.COLLECTED_AT),
     )
 
     companion object {

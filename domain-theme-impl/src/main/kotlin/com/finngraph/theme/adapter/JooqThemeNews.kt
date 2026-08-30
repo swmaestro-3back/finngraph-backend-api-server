@@ -63,7 +63,6 @@ class JooqThemeNews(private val dsl: DSLContext) : ThemeNewsPort {
             .where(THEMES.NAME.eq(name.value))
 
     companion object {
-        private val NEWS_VISIBLE: Condition =
-            NEWS.IS_PROCESSED.eq(true).and(NEWS.RELATION_EXTRACTED.eq(true))
+        private val NEWS_VISIBLE: Condition = NEWS.TRIPLE_EXTRACTED.eq(true)
     }
 }

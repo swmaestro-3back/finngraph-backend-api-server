@@ -194,14 +194,13 @@ CREATE TABLE IF NOT EXISTS news (
     originallink        TEXT,
     published_at        TIMESTAMPTZ,
     collected_at        TIMESTAMPTZ DEFAULT now(),
-    is_processed        BOOLEAN NOT NULL DEFAULT FALSE,
-    relation_extracted  BOOLEAN,
+    triple_extracted    BOOLEAN,
     cluster_rep_news_id BIGINT REFERENCES news (id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_news_cluster_rep ON news (cluster_rep_news_id);
 CREATE INDEX IF NOT EXISTS idx_news_unprocessed
-  ON news (id) WHERE NOT is_processed;
+  ON news (id) WHERE triple_extracted IS NULL;
 
 CREATE TABLE IF NOT EXISTS news_companies (
     id         BIGSERIAL PRIMARY KEY,
@@ -217,7 +216,8 @@ CREATE INDEX IF NOT EXISTS idx_news_companies_company ON news_companies (company
 CREATE TABLE IF NOT EXISTS themes (
     id          BIGSERIAL PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    sources     TEXT[] NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS theme_stocks (
@@ -249,30 +249,37 @@ ON CONFLICT (keyword) DO NOTHING;
 CREATE TABLE IF NOT EXISTS disclosures (
     id                     BIGSERIAL PRIMARY KEY,
     rcept_no               TEXT NOT NULL,
-    corp_code              TEXT NOT NULL,
+
     company_id             BIGINT REFERENCES companies (id),
+    corp_code              TEXT NOT NULL,
     ticker                 VARCHAR(20),
     corp_cls               TEXT,
+
     report_nm              TEXT NOT NULL,
-    is_correction          BOOLEAN NOT NULL DEFAULT false,
-    correction_target_report TEXT,
-    correction_target_date DATE,
-    correction_reason      TEXT,
-    original_rcept_no      TEXT,
     rcept_dt               DATE NOT NULL,
     flr_nm                 TEXT,
     link                   TEXT NOT NULL,
+
     contract_type          TEXT,
     contract_name          TEXT,
+    order_date             DATE,
+    start_date             DATE,
+    end_date               DATE,
+
     counterparty           TEXT,
     counterparty_corp_name TEXT,
     counterparty_corp_code TEXT,
     counterparty_ticker    VARCHAR(20),
-    start_date             DATE,
-    end_date               DATE,
-    order_date             DATE,
+
+    is_correction          BOOLEAN NOT NULL DEFAULT false,
+    original_rcept_no      TEXT,
+    correction_target_report TEXT,
+    correction_target_date DATE,
+    correction_reason      TEXT,
+
     fields                 JSONB NOT NULL DEFAULT '{}'::jsonb,
     meta                   JSONB NOT NULL DEFAULT '{}'::jsonb,
+
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -317,6 +324,9 @@ CREATE TABLE IF NOT EXISTS relation_sources (
     polarity        TEXT,
     tense           TEXT,
 
+    subject_impact  TEXT,
+    object_impact   TEXT,
+
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     CONSTRAINT chk_relsrc_news_key       CHECK ((source_type = 'news')       = (news_id  IS NOT NULL)),
@@ -344,10 +354,28 @@ SELECT subject_name, subject_type, relation, object_name, object_type,
        count(*) FILTER (WHERE source_type = 'news')       AS news_mention_count,
        count(*) FILTER (WHERE source_type = 'disclosure') AS disclosure_count,
        min(mentioned_at) AS first_mentioned_at,
-       max(mentioned_at) AS last_mentioned_at
+       max(mentioned_at) AS last_mentioned_at,
+       array_agg(rcept_no ORDER BY mentioned_at, rcept_no)
+           FILTER (WHERE source_type = 'disclosure')      AS disclosure_rcept_nos,
+       array_agg(item ORDER BY mentioned_at, rcept_no)
+           FILTER (WHERE source_type = 'disclosure' AND item IS NOT NULL)
+                                                          AS disclosure_items,
+       array_agg(news_id ORDER BY mentioned_at, news_id)
+           FILTER (WHERE source_type = 'news')            AS news_ids,
+       array_agg(item ORDER BY mentioned_at, news_id)
+           FILTER (WHERE source_type = 'news' AND item IS NOT NULL)
+                                                          AS news_items,
+       count(*) FILTER (WHERE source_type = 'news' AND subject_impact = 'positive')
+                                                          AS subject_positive_count,
+       count(*) FILTER (WHERE source_type = 'news' AND subject_impact = 'negative')
+                                                          AS subject_negative_count,
+       count(*) FILTER (WHERE source_type = 'news' AND object_impact = 'positive')
+                                                          AS object_positive_count,
+       count(*) FILTER (WHERE source_type = 'news' AND object_impact = 'negative')
+                                                          AS object_negative_count
 FROM relation_sources
 GROUP BY 1, 2, 3, 4, 5;
 
 CREATE INDEX IF NOT EXISTS idx_news_visible
   ON news (published_at DESC NULLS LAST, id DESC)
-  WHERE is_processed AND relation_extracted;
+  WHERE triple_extracted;

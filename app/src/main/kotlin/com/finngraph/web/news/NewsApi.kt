@@ -61,7 +61,7 @@ interface NewsApi {
     fun detail(@Parameter(description = "뉴스 id") @PathVariable id: Long): DataResponse<NewsDetailResponse>
 
     @Operation(
-        summary = "뉴스별 관련 기업",
+        summary = "뉴스별 관련 기업 + 시세",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -70,7 +70,12 @@ interface NewsApi {
             description = "id 가 양수가 아니거나 숫자가 아님",
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 뉴스",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
     )
     @GetMapping("/{id}/companies")
-    fun companies(@Parameter(description = "뉴스 id") @PathVariable id: Long): DataResponse<List<CompanyResponse>>
+    fun companies(@Parameter(description = "뉴스 id") @PathVariable id: Long): DataResponse<List<NewsRelatedStockResponse>>
 }

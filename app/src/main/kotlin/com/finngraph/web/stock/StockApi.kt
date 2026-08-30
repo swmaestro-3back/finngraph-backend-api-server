@@ -2,6 +2,8 @@ package com.finngraph.web.stock
 
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorResponse
+import com.finngraph.web.common.PageResponse
+import com.finngraph.web.news.NewsResponse
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.Parameter
 import io.swagger.v3.oas.annotations.media.Content
@@ -124,4 +126,27 @@ interface StockApi {
     fun financials(
         @Parameter(description = "종목코드") @PathVariable ticker: String,
     ): DataResponse<List<AnnualFinancialsResponse>>
+
+    @Operation(
+        summary = "종목별 뉴스",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 검증 실패, page < 0, size < 1, size > 100",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 종목",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{ticker}/news")
+    fun news(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+        @Parameter(description = "0-기반 페이지 번호") @RequestParam(required = false, defaultValue = "0") page: Int,
+        @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(required = false, defaultValue = "20") size: Int,
+    ): PageResponse<NewsResponse>
 }

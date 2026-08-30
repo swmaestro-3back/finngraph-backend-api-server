@@ -10,4 +10,6 @@ interface NewsQueryPort {
     fun findPage(page: Int, size: Int): PageResult<NewsView>
 
     fun findByIds(ids: List<NewsId>): Map<NewsId, NewsDetail>
+
+    fun findPageByTicker(ticker: String, page: Int, size: Int): PageResult<NewsView>
 }

@@ -83,3 +83,4 @@ CLAUDE.md
 ### bkit ###
 .bkit/
 db/seed/
+api-spec/

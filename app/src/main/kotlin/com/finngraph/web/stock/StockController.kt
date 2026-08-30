@@ -6,10 +6,17 @@ import com.finngraph.stock.port.StockCandlePort
 import com.finngraph.stock.port.StockFinancialsPort
 import com.finngraph.stock.port.StockFlowPort
 import com.finngraph.stock.port.StockQueryPort
+import com.finngraph.news.model.NewsView
+import com.finngraph.news.model.PageResult
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException
+import com.finngraph.web.common.PageResponse
+import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
+import com.finngraph.web.composition.StockNewsComposer
+import com.finngraph.web.composition.StockThemeComposer
+import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -19,6 +26,7 @@ class StockController(
     private val stockFlow: StockFlowPort,
     private val stockFinancials: StockFinancialsPort,
     private val stockThemeComposer: StockThemeComposer,
+    private val stockNewsComposer: StockNewsComposer,
 ) : StockApi {
 
     override fun list(): DataResponse<List<StockSummaryResponse>> =
@@ -50,6 +58,13 @@ class StockController(
         val target = toTicker(ticker)
         requireStock(target, ticker)
         return DataResponse(stockFinancials.findAnnual(target).map(AnnualFinancialsResponse::from))
+    }
+
+    override fun news(ticker: String, page: Int, size: Int): PageResponse<NewsResponse> {
+        val target = toTicker(ticker)
+        validatePaging(page, size)
+        val result = stockNewsComposer.newsPage(target, page, size) ?: throw notFound(ticker)
+        return result.toResponse()
     }
 
     private fun toTicker(raw: String): Ticker {
@@ -98,6 +113,25 @@ class StockController(
             mapOf("limit" to "must be between 1 and $MAX_FLOW_LIMIT"),
         )
     }
+
+    private fun validatePaging(page: Int, size: Int) {
+        val errors = buildMap {
+            if (page < 0) put("page", "must be >= 0")
+            if (size < 1) put("size", "must be >= 1")
+            if (size > PageResult.MAX_SIZE) put("size", "must be <= ${PageResult.MAX_SIZE}")
+        }
+        if (errors.isEmpty()) return
+
+        val message =
+            if (size > PageResult.MAX_SIZE) "size는 ${PageResult.MAX_SIZE} 이하여야 합니다"
+            else "페이징 파라미터가 올바르지 않습니다"
+        throw InvalidParameterException(message, errors)
+    }
+
+    private fun PageResult<NewsView>.toResponse() = PageResponse(
+        data = content.map(NewsResponse::from),
+        pagination = Pagination(page, size, totalElements, totalPages),
+    )
 
     private data class CandleParams(val period: CandlePeriod, val limit: Int)
 

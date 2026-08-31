@@ -3,7 +3,7 @@ services:
     build:
       context: ..
       dockerfile: docker/app.Dockerfile
-    container_name: finngraph-app
+    container_name: finngraph-backend
     environment:
       SPRING_PROFILES_ACTIVE: ${APP_PROFILE:-local}
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/finngraph

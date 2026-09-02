@@ -95,6 +95,8 @@ class SecurityConfig {
             "/api/v1/news/{id}",
             "/api/v1/news/{id}/companies",
             "/actuator/health",
+            "/actuator/health/readiness",
+            "/actuator/health/liveness",
             "/actuator/metrics",
             "/actuator/metrics/*",
             "/actuator/prometheus",

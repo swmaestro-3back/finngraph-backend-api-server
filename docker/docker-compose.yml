@@ -14,12 +14,20 @@ services:
       APP_DATASOURCE_URL: jdbc:postgresql://app-db:5432/finngraph_app
       APP_DATASOURCE_USERNAME: ${APP_DB_RUNTIME_USER:-finngraph_app_runtime}
       APP_DATASOURCE_PASSWORD: ${APP_DB_RUNTIME_PASSWORD:-app}
+      SPRING_DATA_REDIS_HOST: redis
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_ADMIN_KEY: ${KAKAO_ADMIN_KEY:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
       TZ: Asia/Seoul
     ports:
       - "8081:8080"
     restart: unless-stopped
     depends_on:
       app-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - etl
@@ -45,8 +53,25 @@ services:
       retries: 10
       start_period: 10s
 
+  redis:
+    image: redis:7-alpine
+    container_name: finngraph-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "127.0.0.1:16379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
 volumes:
   app-db-data:
+  redis-data:
 
 networks:
   etl:

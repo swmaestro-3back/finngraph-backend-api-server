@@ -8,12 +8,31 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     maximum-pool-size: 10
 
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+
 app:
   datasource:
     url: ${APP_DATASOURCE_URL}
     username: ${APP_DATASOURCE_USERNAME}
     password: ${APP_DATASOURCE_PASSWORD}
     maximum-pool-size: 5
+
+  jwt:
+    secret: ${JWT_SECRET}
+    access-ttl: 30m
+    refresh-ttl: 14d
+
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    admin-key: ${KAKAO_ADMIN_KEY:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:}
+    token-uri: https://kauth.kakao.com/oauth/token
+    user-uri: https://kapi.kakao.com/v2/user/me
+    unlink-uri: https://kapi.kakao.com/v1/user/unlink
 
 server:
   compression:

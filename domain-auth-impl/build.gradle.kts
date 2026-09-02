@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(project(":domain-auth-api"))
     implementation("org.springframework.boot:spring-boot-starter-jooq")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")

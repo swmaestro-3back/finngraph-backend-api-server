@@ -12,6 +12,7 @@ tasks.named<BootRun>("bootRun") {
 
 tasks.named<Test>("test") {
     systemProperty("finngraph.app.schema.sql", rootProject.file("db/migration-app/V1__app_schema.sql").absolutePath)
+    systemProperty("finngraph.etl.schema.sql", rootProject.file("db/migration/V1__schema.sql").absolutePath)
 }
 
 dependencies {
@@ -35,6 +36,11 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     runtimeOnly("org.postgresql:postgresql")
 
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.81")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
+
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -44,6 +50,9 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
+    testImplementation("org.springframework.security:spring-security-test")
+    testImplementation("org.springframework.boot:spring-boot-resttestclient")
+    testImplementation("org.springframework.boot:spring-boot-restclient")
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")

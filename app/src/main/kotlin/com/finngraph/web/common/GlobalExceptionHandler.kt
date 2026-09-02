@@ -1,5 +1,7 @@
 package com.finngraph.web.common
 
+import com.finngraph.auth.DuplicateCredentialException
+import com.finngraph.auth.model.AuthProvider
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
@@ -34,6 +36,26 @@ class GlobalExceptionHandler {
             message = "${e.name} 값의 형식이 올바르지 않습니다",
             details = mapOf("fieldErrors" to mapOf(e.name to "type mismatch")),
         )
+
+    @ExceptionHandler(AuthenticationFailedException::class)
+    fun handleAuthenticationFailed(e: AuthenticationFailedException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.UNAUTHORIZED, e.code, e.message ?: "인증 실패했습니다.")
+
+    @ExceptionHandler(DuplicateCredentialException::class)
+    fun handleDuplicateCredential(e: DuplicateCredentialException): ResponseEntity<ErrorResponse> =
+        when (e.provider) {
+            AuthProvider.EMAIL -> respond(HttpStatus.CONFLICT, ErrorCode.EMAIL_DUPLICATE, "이미 가입된 이메일 입니다.")
+            AuthProvider.KAKAO -> {
+                log.error("카카오 자격증명 중복", e)
+                respond(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, "요청을 처리하지 못 했습니다.")
+            }
+        }
+
+    @ExceptionHandler(UpstreamUnavailableException::class)
+    fun handleUpstreamUnavailable(e: UpstreamUnavailableException): ResponseEntity<ErrorResponse> {
+        log.error("외부 서비스 호출 실패", e)
+        return respond(HttpStatus.BAD_GATEWAY, e.code, e.message ?: "외부 서비스를 이용할 수 없습니다.")
+    }
 
     @ExceptionHandler(DataAccessException::class, org.jooq.exception.DataAccessException::class)
     fun handleDatabase(e: Exception): ResponseEntity<ErrorResponse> {

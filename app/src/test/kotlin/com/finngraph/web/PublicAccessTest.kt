@@ -33,7 +33,7 @@ class PublicAccessTest {
     }
 
     @Test
-    fun `조회 상세는 무토큰으로 404이며 401이 아님.`() {
+    fun `조회 상세는 무토큰으로 404이며 401이 아님`() {
         val authFailures = (PRIMARY_DETAIL_ENDPOINTS + SUB_RESOURCE_ENDPOINTS)
             .associateWith { get(it).statusCode }
             .filterValues { it.isAuthFailure() }
@@ -64,7 +64,7 @@ class PublicAccessTest {
     }
 
     @Test
-    fun `redis가 죽어도 조회 영향을 받지 않음.`() {
+    fun `redis가 죽어도 조회 영향을 받지 않음`() {
         rest.postForEntity(
             "/api/v1/auth/signup",
             mapOf(

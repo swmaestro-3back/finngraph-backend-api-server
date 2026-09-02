@@ -3,7 +3,7 @@ name: finngraph-backend
 services:
   app:
     build:
-      context: ..
+      context: .
       dockerfile: docker/app.Dockerfile
     container_name: finngraph-backend
     environment:
@@ -44,7 +44,7 @@ services:
     ports:
       - "127.0.0.1:15433:5432"
     volumes:
-      - ./init:/docker-entrypoint-initdb.d:ro
+      - ./docker/init:/docker-entrypoint-initdb.d:ro
       - app-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${APP_DB_USER:-finngraph_app} -d finngraph_app"]

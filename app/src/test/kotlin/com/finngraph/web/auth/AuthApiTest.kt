@@ -42,7 +42,7 @@ class AuthApiTest {
     lateinit var kakaoClient: KakaoOAuthClient
 
     @Test
-    fun `비밀번호는 OWASP 권고 파라미터의 Argon2id로 해싱됨.`() {
+    fun `비밀번호는 OWASP 권고 파라미터의 Argon2id로 해싱됨`() {
         val encoded = assertNotNull(passwordEncoder.encode(DEFAULT_PASSWORD))
 
         assertTrue(encoded.startsWith(ARGON2ID_PREFIX), encoded)
@@ -51,7 +51,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `U-01 이메일 가입은 201과 access토큰 및 refresh쿠키를 반환한다.`() {
+    fun `U-01 이메일 가입은 201과 access토큰 및 refresh쿠키를 반환한다`() {
         val response = signup("u01@finngraph.test")
 
         assertEquals(HttpStatus.CREATED, response.statusCode)
@@ -72,7 +72,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `멀티바이트 비밀번호로 가입하고 같은 비밀번호로 로그인.`() {
+    fun `멀티바이트 비밀번호로 가입하고 같은 비밀번호로 로그인`() {
         val password = "한글비밀번호입니다1234567890abcdef"
         assertEquals(HttpStatus.CREATED, signup("u02@finngraph.test", password).statusCode)
 
@@ -82,7 +82,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `가입 검증 실패는 400과 fieldErrors를 줌.`() {
+    fun `가입 검증 실패는 400과 fieldErrors를 줌`() {
         val response = post(
             "/api/v1/auth/signup",
             mapOf("email" to "not-an-email", "password" to "short", "nickname" to "ا"),
@@ -113,7 +113,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `자격 불일치는 401 INVALID_CREDENTIALS로 구분 없이 응답.`() {
+    fun `자격 불일치는 401 INVALID_CREDENTIALS로 구분 없이 응답`() {
         signup("u06@finngraph.test")
 
         val wrongPassword = login("u06@finngraph.test", "wrongpassword1")
@@ -138,7 +138,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `카카오는 최초에 가입하고 두 번째부터 로그인.`() {
+    fun `카카오는 최초에 가입하고 두 번째부터 로그인`() {
         given(kakaoClient.exchange(anyString())).willReturn(KakaoUser("kakao-u08", "카카오사용자"))
 
         val first = post("/api/v1/auth/kakao", mapOf("code" to "authorization-code"))
@@ -195,7 +195,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `재발급된 stale 쿠키로 로그아웃해도 family 전체가 폐기.`() {
+    fun `재발급된 stale 쿠키로 로그아웃해도 family 전체가 폐기`() {
         val issued = signup("u11@finngraph.test")
         val stale = issued.refreshCookie()
         val active = postWithCookie("/api/v1/auth/refresh", stale).refreshCookie()

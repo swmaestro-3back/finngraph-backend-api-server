@@ -12,4 +12,8 @@ include(
     "domain-stock-impl",
     "domain-theme-api",
     "domain-theme-impl",
+    "domain-user-api",
+    "domain-user-impl",
+    "domain-auth-api",
+    "domain-auth-impl",
 )

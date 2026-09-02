@@ -38,6 +38,6 @@ internal fun jooqDslContext(
 }
 
 internal fun requireJdbcUrl(url: String, property: String): String {
-    require(url.startsWith("jdbc:")) { "$property가 jdbc URL이 아님: $url"}
+    require(url.startsWith("jdbc:")) { "${property}가 jdbc URL이 아님: $url" }
     return url
 }

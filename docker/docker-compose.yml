@@ -12,8 +12,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${ETL_DB_USER:-threeback}
       SPRING_DATASOURCE_PASSWORD: ${ETL_DB_PASSWORD:-12345678}
       APP_DATASOURCE_URL: jdbc:postgresql://app-db:5432/finngraph_app
-      APP_DATASOURCE_USERNAME: ${APP_DB_USER:-finngraph_app}
-      APP_DATASOURCE_PASSWORD: ${APP_DB_PASSWORD:-app}
+      APP_DATASOURCE_USERNAME: ${APP_DB_RUNTIME_USER:-finngraph_app_runtime}
+      APP_DATASOURCE_PASSWORD: ${APP_DB_RUNTIME_PASSWORD:-app}
       TZ: Asia/Seoul
     ports:
       - "8081:8080"
@@ -36,6 +36,7 @@ services:
     ports:
       - "127.0.0.1:15433:5432"
     volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
       - app-db-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${APP_DB_USER:-finngraph_app} -d finngraph_app"]

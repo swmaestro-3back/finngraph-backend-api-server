@@ -10,6 +10,10 @@ tasks.named<BootRun>("bootRun") {
     systemProperty("spring.profiles.active", System.getProperty("spring.profiles.active") ?: "local")
 }
 
+tasks.named<Test>("test") {
+    systemProperty("finngraph.app.schema.sql", rootProject.file("db/migration-app/V1__app_schema.sql").absolutePath)
+}
+
 dependencies {
     implementation(project(":domain-news-api"))
     runtimeOnly(project(":domain-news-impl"))

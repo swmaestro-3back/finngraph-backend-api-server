@@ -24,6 +24,12 @@ dependencies {
     implementation(project(":domain-theme-api"))
     runtimeOnly(project(":domain-theme-impl"))
 
+    implementation(project(":domain-user-api"))
+    runtimeOnly(project(":domain-user-impl"))
+
+    implementation(project(":domain-auth-api"))
+    runtimeOnly(project(":domain-auth-impl"))
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

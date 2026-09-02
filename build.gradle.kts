@@ -54,8 +54,15 @@ subprojects {
 }
 
 flyway {
-    url = System.getenv("FLYWAY_URL") ?: "jdbc:postgresql://localhost:15432/finngraph"
-    user = System.getenv("FLYWAY_USER") ?: "finngraph_migrator"
-    password = System.getenv("FLYWAY_PASSWORD") ?: "migrator"
-    locations = arrayOf("filesystem:db/migration")
+    url = System.getenv("FLYWAY_URL") ?: "jdbc:postgresql://localhost:15433/finngraph_app"
+    user = System.getenv("FLYWAY_USER") ?: "finngraph_app"
+    password = System.getenv("FLYWAY_PASSWORD") ?: "app"
+    locations = arrayOf("filesystem:db/migration-app")
+}
+
+tasks.named("flywayMigrate") {
+    doFirst {
+        val target = flyway.url.orEmpty()
+        require(target.endsWith("/finngraph_app")) { "flywayMigrate의 대상이 app DB가 아님: $target" }
+    }
 }

@@ -2,18 +2,18 @@ spring:
   application:
     name: backend-server
 
-  # ETL이 적재한 Postgres. 런타임 계정은 SELECT 전용이며 hikari.read-only로 이중 차단한다.
-  # flyway-core가 의존성에 없으므로 spring.flyway.* 설정 자체가 불필요하다.
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
     password: ${SPRING_DATASOURCE_PASSWORD}
-    hikari:
-      read-only: true
-      pool-name: finngraph-read
+    maximum-pool-size: 10
 
-  jooq:
-    sql-dialect: postgres
+app:
+  datasource:
+    url: ${APP_DATASOURCE_URL}
+    username: ${APP_DATASOURCE_USERNAME}
+    password: ${APP_DATASOURCE_PASSWORD}
+    maximum-pool-size: 5
 
 server:
   compression:

@@ -51,7 +51,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `U-01 이메일 가입은 201과 access토큰 및 refresh쿠키를 반환한다`() {
+    fun `이메일 가입은 201과 access토큰 및 refresh쿠키를 반환한다`() {
         val response = signup("u01@finngraph.test")
 
         assertEquals(HttpStatus.CREATED, response.statusCode)
@@ -166,7 +166,7 @@ class AuthApiTest {
     }
 
     @Test
-    fun `U-09b 같은 토큰을 동시에 제시하면 정확히 하나만 회전한다`() {
+    fun `같은 토큰을 동시에 제시하면 정확히 하나만 회전한다`() {
         val cookie = signup("u09b@finngraph.test").refreshCookie()
         val pool = Executors.newFixedThreadPool(2)
 

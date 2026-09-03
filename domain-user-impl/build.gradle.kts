@@ -53,6 +53,7 @@ val generateJooq = tasks.register<JavaExec>("generateJooq") {
 
     inputs.files(appMigrations).withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.dir(jooqOutputDir)
+    outputs.cacheIf { true }
 }
 
 extensions.getByType<KotlinJvmProjectExtension>()

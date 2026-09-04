@@ -14,6 +14,8 @@ object TestContainers {
 
     const val REDIS_PORT = 6379
 
+    private val MIGRATION_FILE = Regex("V\\d+__.*\\.sql")
+
     val etlPostgres: PostgreSQLContainer = PostgreSQLContainer("pgvector/pgvector:pg17").apply {
         start()
         applySchema(this, "finngraph.etl.schema.sql")
@@ -21,7 +23,7 @@ object TestContainers {
 
     val appPostgres: PostgreSQLContainer = PostgreSQLContainer("postgres:17").apply {
         start()
-        applySchema(this, "finngraph.app.schema.sql")
+        applyMigrations(this, "finngraph.app.migrations.dir")
     }
 
     val redis: RedisContainer = RedisContainer("redis:7-alpine").apply {
@@ -49,6 +51,26 @@ object TestContainers {
         DriverManager.getConnection(container.jdbcUrl, container.username, container.password)
             .use { connection -> connection.createStatement().use { it.execute(schema) } }
     }
+
+    private fun applyMigrations(container: PostgreSQLContainer, dirProperty: String) {
+        val dir = Path.of(System.getProperty(dirProperty))
+        val migrations = Files.list(dir).use { files ->
+            files.filter { it.fileName.toString().matches(MIGRATION_FILE) }
+                .sorted(compareBy<Path> { versionOf(it.fileName.toString()) })
+                .toList()
+        }
+        check(migrations.isNotEmpty()) { "app 마이그레이션 파일이 없음: $dir" }
+
+        DriverManager.getConnection(container.jdbcUrl, container.username, container.password)
+            .use { connection ->
+                connection.createStatement().use { statement ->
+                    migrations.forEach { statement.execute(Files.readString(it)) }
+                }
+            }
+    }
+
+    private fun versionOf(fileName: String): Int =
+        fileName.removePrefix("V").substringBefore("__").toInt()
 
     private const val REDIS_TIMEOUT = "2s"
 }

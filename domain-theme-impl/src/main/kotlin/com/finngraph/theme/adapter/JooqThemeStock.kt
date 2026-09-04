@@ -49,4 +49,13 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
                     reason = it.get(THEME_STOCKS.REASON),
                 )
             }
+
+    override fun findTickers(name: ThemeName): List<String> =
+        dsl.select(STOCKS.TICKER)
+            .from(THEMES)
+            .join(THEME_STOCKS).on(THEME_STOCKS.THEME_ID.eq(THEMES.ID))
+            .join(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
+            .where(THEMES.NAME.eq(name.value).and(STOCKS.IS_ACTIVE.eq(true)))
+            .orderBy(STOCKS.TICKER.asc())
+            .fetch { requireNotNull(it.get(STOCKS.TICKER)) }
 }

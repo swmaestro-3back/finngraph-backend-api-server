@@ -6,4 +6,6 @@ import com.finngraph.theme.model.ThemeStockView
 interface ThemeStockPort {
 
     fun findStocks(name: ThemeName): List<ThemeStockView>
+
+    fun findTickers(name: ThemeName): List<String>
 }

@@ -37,6 +37,7 @@ class EtlJooqConfig {
             maximumPoolSize = properties.maximumPoolSize
             poolName = ETL_POOL_NAME
             isReadOnly = true
+            addDataSourceProperty("readOnlyMode", "always")
         }
 
     @Bean

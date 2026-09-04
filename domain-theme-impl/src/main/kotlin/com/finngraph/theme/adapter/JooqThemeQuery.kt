@@ -4,7 +4,6 @@ import com.finngraph.theme.adapter.ThemeQuerySupport.BASE_DATE
 import com.finngraph.theme.adapter.ThemeQuerySupport.BASE_DATE_COLUMN
 import com.finngraph.theme.adapter.ThemeQuerySupport.DERIVED_SCALE
 import com.finngraph.theme.adapter.ThemeQuerySupport.PX_CHANGE
-import com.finngraph.theme.adapter.ThemeQuerySupport.PX_STOCK_ID
 import com.finngraph.theme.adapter.ThemeQuerySupport.PX_TRADE_VALUE
 import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
@@ -74,7 +73,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             .leftJoin(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
             .leftJoin(STOCK_VALUATIONS_DAILY)
             .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
-            .leftJoin(ThemeQuerySupport.priceTable()).on(PX_STOCK_ID.eq(STOCKS.ID))
+            .leftJoin(ThemeQuerySupport.priceTable()).on(DSL.trueCondition())
             .where(nameFilter)
             .groupBy(THEMES.ID, THEMES.NAME, THEMES.DESCRIPTION)
             .orderBy(THEMES.NAME.asc())

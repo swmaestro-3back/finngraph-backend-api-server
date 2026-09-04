@@ -40,8 +40,8 @@ class ThemeController(
     override fun news(name: String, page: Int, size: Int): PageResponse<NewsResponse> {
         val target = toThemeName(name)
         validatePaging(page, size)
-        val result = themeNewsComposer.newsPage(target, page, size) ?: throw notFound(name)
-        return result.toResponse()
+        requireTheme(target, name)
+        return themeNewsComposer.newsPage(target, page, size).toResponse()
     }
 
     private fun toThemeName(raw: String): ThemeName {
@@ -55,7 +55,7 @@ class ThemeController(
     }
 
     private fun requireTheme(target: ThemeName, raw: String) {
-        themeQuery.findByName(target) ?: throw notFound(raw)
+        if (!themeQuery.exists(target)) throw notFound(raw)
     }
 
     private fun notFound(raw: String) =

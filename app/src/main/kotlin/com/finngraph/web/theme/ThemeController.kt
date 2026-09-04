@@ -1,9 +1,9 @@
 package com.finngraph.web.theme
 
-import com.finngraph.theme.model.NewsRef
-import com.finngraph.theme.model.PageResult
+import com.finngraph.composition.ThemeNewsComposer
+import com.finngraph.news.model.NewsView
+import com.finngraph.news.model.PageResult
 import com.finngraph.theme.model.ThemeName
-import com.finngraph.theme.port.ThemeNewsPort
 import com.finngraph.theme.port.ThemeQueryPort
 import com.finngraph.theme.port.ThemeStockPort
 import com.finngraph.web.common.DataResponse
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 class ThemeController(
     private val themeQuery: ThemeQueryPort,
     private val themeStock: ThemeStockPort,
-    private val themeNews: ThemeNewsPort,
+    private val themeNewsComposer: ThemeNewsComposer,
 ) : ThemeApi {
 
     override fun list(): DataResponse<List<ThemeSummaryResponse>> =
@@ -40,8 +40,8 @@ class ThemeController(
     override fun news(name: String, page: Int, size: Int): PageResponse<NewsResponse> {
         val target = toThemeName(name)
         validatePaging(page, size)
-        requireTheme(target, name)
-        return themeNews.findNews(target, page, size).toResponse()
+        val result = themeNewsComposer.newsPage(target, page, size) ?: throw notFound(name)
+        return result.toResponse()
     }
 
     private fun toThemeName(raw: String): ThemeName {
@@ -75,17 +75,8 @@ class ThemeController(
         throw InvalidParameterException(message, errors)
     }
 
-    private fun PageResult<NewsRef>.toResponse() = PageResponse(
-        data = content.map { it.toNewsResponse() },
+    private fun PageResult<NewsView>.toResponse() = PageResponse(
+        data = content.map(NewsResponse::from),
         pagination = Pagination(page, size, totalElements, totalPages),
-    )
-
-    private fun NewsRef.toNewsResponse() = NewsResponse(
-        id = id,
-        title = title,
-        summary = summary,
-        url = url,
-        publishedAt = publishedAt,
-        collectedAt = collectedAt,
     )
 }

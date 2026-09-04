@@ -2,7 +2,6 @@ package com.finngraph.theme.model
 
 import java.math.BigDecimal
 import java.time.LocalDate
-import java.time.OffsetDateTime
 
 data class ThemeSummary(
     val name: String,
@@ -33,13 +32,4 @@ data class ThemeStockView(
     val tradingValue: Long?,
     val marketCap: Long?,
     val reason: String?,
-)
-
-data class NewsRef(
-    val id: Long,
-    val title: String?,
-    val summary: String?,
-    val url: String?,
-    val publishedAt: OffsetDateTime?,
-    val collectedAt: OffsetDateTime?,
 )

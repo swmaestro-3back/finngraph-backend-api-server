@@ -50,8 +50,21 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         if (tickers.isEmpty()) return emptyMap()
 
         val values = tickers.map { it.value }.distinct()
-        return fetchStocks { s -> s.TICKER.`in`(values).and(s.IS_ACTIVE.eq(true)) }
-            .map { it.toPriceView() }
+        val filter: (Stocks) -> Condition = { s -> s.TICKER.`in`(values).and(s.IS_ACTIVE.eq(true)) }
+        return dsl.select(
+            STOCKS.TICKER,
+            STOCKS.NAME,
+            STOCKS.MARKET,
+            PX_PRICE,
+            PX_CHANGE,
+            STOCK_VALUATIONS_DAILY.MARKET_CAP,
+        )
+            .from(STOCKS)
+            .leftJoin(priceTable(filter)).on(PX_STOCK_ID.eq(STOCKS.ID))
+            .leftJoin(STOCK_VALUATIONS_DAILY)
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .where(filter(STOCKS))
+            .fetch { it.toPriceView() }
             .associateBy { Ticker(it.ticker) }
     }
 

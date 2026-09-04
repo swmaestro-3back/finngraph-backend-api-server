@@ -66,6 +66,18 @@ class BackendServerApplicationTests {
         assertFailsWith<DataAccessException> { etlDslContext.fetchCount(DSL.table("users")) }
     }
 
+    @Test
+    fun `ETL데이터소스는 autocommit 경로에서도 write작업을 거부한다`() {
+        val thrown = assertFailsWith<RuntimeException> {
+            etlDslContext.execute("insert into themes (name) values ('readonly-probe')")
+        }
+        assertTrue(
+            generateSequence<Throwable>(thrown) { it.cause }
+                .any { it.message?.contains("read-only") == true },
+            thrown.stackTraceToString(),
+        )
+    }
+
     companion object {
         @DynamicPropertySource
         @JvmStatic

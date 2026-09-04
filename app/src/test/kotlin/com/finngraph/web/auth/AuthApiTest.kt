@@ -2,8 +2,8 @@ package com.finngraph.web.auth
 
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
-import com.finngraph.web.security.KakaoOAuthClient
-import com.finngraph.web.security.KakaoUser
+import com.finngraph.composition.port.KakaoOAuthPort
+import com.finngraph.composition.port.KakaoUser
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
@@ -39,7 +39,7 @@ class AuthApiTest {
     lateinit var passwordEncoder: PasswordEncoder
 
     @MockitoBean
-    lateinit var kakaoClient: KakaoOAuthClient
+    lateinit var kakaoClient: KakaoOAuthPort
 
     @Test
     fun `비밀번호는 OWASP 권고 파라미터의 Argon2id로 해싱됨`() {

@@ -1,8 +1,9 @@
-package com.finngraph.web.security
+package com.finngraph.security
 
-import com.finngraph.web.common.AuthenticationFailedException
-import com.finngraph.web.common.ErrorCode
-import com.finngraph.web.common.UpstreamUnavailableException
+import com.finngraph.composition.port.KakaoAuthFailedException
+import com.finngraph.composition.port.KakaoOAuthPort
+import com.finngraph.composition.port.KakaoUnavailableException
+import com.finngraph.composition.port.KakaoUser
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.http.client.SimpleClientHttpRequestFactory
@@ -13,15 +14,8 @@ import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 import java.time.Duration
 
-data class KakaoUser(val id: String, val nickname: String?)
-
-interface KakaoOAuthClient {
-    fun exchange(code: String): KakaoUser
-    fun unlink(kakaoUserId: String)
-}
-
 @Component
-class RestClientKakaoOAuthClient(private val properties: KakaoProperties) : KakaoOAuthClient {
+class RestClientKakaoOAuthClient(private val properties: KakaoProperties) : KakaoOAuthPort {
 
     private val client = RestClient.builder()
         .requestFactory(
@@ -68,7 +62,7 @@ class RestClientKakaoOAuthClient(private val properties: KakaoProperties) : Kaka
                 .retrieve()
                 .body(Map::class.java)
         }
-        return body?.get("access_token")?.toString() ?: throw authFailed()
+        return body?.get("access_token")?.toString() ?: throw KakaoAuthFailedException()
     }
 
     private fun requestUser(accessToken: String): KakaoUser {
@@ -78,9 +72,9 @@ class RestClientKakaoOAuthClient(private val properties: KakaoProperties) : Kaka
                 .header(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
                 .retrieve()
                 .body(Map::class.java)
-        } ?: throw authFailed()
+        } ?: throw KakaoAuthFailedException()
 
-        val id = body["id"]?.toString() ?: throw authFailed()
+        val id = body["id"]?.toString() ?: throw KakaoAuthFailedException()
         val nickname = ((body["kakao_account"] as? Map<*, *>)?.get("profile") as? Map<*, *>)
             ?.get("nickname")
             ?.toString()
@@ -90,17 +84,10 @@ class RestClientKakaoOAuthClient(private val properties: KakaoProperties) : Kaka
     private fun <T> call(request: () -> T): T = try {
         request()
     } catch (e: HttpClientErrorException) {
-        throw authFailed()
+        throw KakaoAuthFailedException()
     } catch (e: RestClientException) {
-        throw UpstreamUnavailableException(
-            ErrorCode.KAKAO_UNAVAILABLE,
-            "카카오 서비스를 이용할 수 없습니다.",
-            e,
-        )
+        throw KakaoUnavailableException(e)
     }
-
-    private fun authFailed() =
-        AuthenticationFailedException(ErrorCode.KAKAO_AUTH_FAILED, "카카오 인증에 실패했습니다.")
 
     private companion object {
         val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(3)

@@ -11,11 +11,15 @@ tasks.named<BootRun>("bootRun") {
 }
 
 tasks.named<Test>("test") {
-    systemProperty("finngraph.app.schema.sql", rootProject.file("db/migration-app/V1__app_schema.sql").absolutePath)
+    systemProperty("finngraph.app.migrations.dir", rootProject.file("db/migration-app").absolutePath)
     systemProperty("finngraph.etl.schema.sql", rootProject.file("db/migration/V1__schema.sql").absolutePath)
+    inputs.dir(rootProject.file("db/migration-app"))
+    inputs.file(rootProject.file("db/migration/V1__schema.sql"))
 }
 
 dependencies {
+    implementation(project(":composition"))
+
     implementation(project(":domain-news-api"))
     runtimeOnly(project(":domain-news-impl"))
 

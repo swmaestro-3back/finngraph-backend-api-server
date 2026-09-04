@@ -1,6 +1,8 @@
 package com.finngraph.news.adapter
 
+import com.finngraph.news.adapter.jooq.tables.references.COMPANIES
 import com.finngraph.news.adapter.jooq.tables.references.NEWS
+import com.finngraph.news.adapter.jooq.tables.references.NEWS_COMPANIES
 import com.finngraph.news.adapter.jooq.tables.references.RELATION_SOURCES
 import com.finngraph.news.model.NewsDetail
 import com.finngraph.news.model.NewsId
@@ -40,6 +42,11 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
     override fun findPageByTicker(ticker: String, page: Int, size: Int): PageResult<NewsView> =
         fetchPage(NEWS.ID.`in`(relatedNewsIds(ticker)).and(VISIBLE), page, size)
 
+    override fun findPageByCompanyTickers(tickers: List<String>, page: Int, size: Int): PageResult<NewsView> {
+        if (tickers.isEmpty()) return PageResult(emptyList(), page, size, 0)
+        return fetchPage(NEWS.ID.`in`(companyNewsIds(tickers)).and(VISIBLE), page, size)
+    }
+
     private fun fetchPage(condition: Condition, page: Int, size: Int): PageResult<NewsView> {
         val rows = dsl.select(
             NEWS.ID,
@@ -63,6 +70,12 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
 
         return PageResult(content = rows, page = page, size = size, totalElements = total)
     }
+
+    private fun companyNewsIds(tickers: List<String>): Select<Record1<Long?>> =
+        dsl.select(NEWS_COMPANIES.NEWS_ID)
+            .from(NEWS_COMPANIES)
+            .join(COMPANIES).on(COMPANIES.ID.eq(NEWS_COMPANIES.COMPANY_ID))
+            .where(COMPANIES.TICKER.`in`(tickers).and(COMPANIES.DELISTED_AT.isNull))
 
     private fun relatedNewsIds(ticker: String): Select<Record1<Long?>> =
         dsl.select(RELATION_SOURCES.NEWS_ID)

@@ -4,7 +4,6 @@ import com.finngraph.theme.adapter.ThemeQuerySupport.BASE_DATE
 import com.finngraph.theme.adapter.ThemeQuerySupport.BASE_DATE_COLUMN
 import com.finngraph.theme.adapter.ThemeQuerySupport.DERIVED_SCALE
 import com.finngraph.theme.adapter.ThemeQuerySupport.PX_CHANGE
-import com.finngraph.theme.adapter.ThemeQuerySupport.PX_STOCK_ID
 import com.finngraph.theme.adapter.ThemeQuerySupport.PX_TRADE_VALUE
 import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
@@ -26,6 +25,9 @@ import java.math.BigDecimal
 @Component
 class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
 
+    override fun exists(name: ThemeName): Boolean =
+        dsl.fetchExists(dsl.selectOne().from(THEMES).where(THEMES.NAME.eq(name.value)))
+
     override fun findAll(): List<ThemeSummary> = summaries(DSL.noCondition())
 
     override fun findByName(name: ThemeName): ThemeSummary? =
@@ -39,6 +41,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             .from(STOCKS)
             .join(THEME_STOCKS).on(THEME_STOCKS.STOCK_ID.eq(STOCKS.ID))
             .join(THEMES).on(THEMES.ID.eq(THEME_STOCKS.THEME_ID))
+            .leftJoin(THEME_CAPS).on(CAP_THEME_ID.eq(THEME_STOCKS.THEME_ID))
             .where(STOCKS.TICKER.`in`(values).and(STOCKS.IS_ACTIVE.eq(true)))
             .fetch {
                 Membership(
@@ -70,7 +73,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             .leftJoin(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
             .leftJoin(STOCK_VALUATIONS_DAILY)
             .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
-            .leftJoin(ThemeQuerySupport.priceTable()).on(PX_STOCK_ID.eq(STOCKS.ID))
+            .leftJoin(ThemeQuerySupport.priceTable()).on(DSL.trueCondition())
             .where(nameFilter)
             .groupBy(THEMES.ID, THEMES.NAME, THEMES.DESCRIPTION)
             .orderBy(THEMES.NAME.asc())
@@ -143,16 +146,25 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
                 DERIVED_SCALE,
             )
 
-        private val THEME_CAP: Field<BigDecimal?> = run {
+        private const val THEME_CAPS_ALIAS = "theme_caps"
+        private const val CAP_THEME_ID_NAME = "cap_theme_id"
+        private const val THEME_CAP_NAME = "theme_cap"
+
+        private val THEME_CAPS = run {
             val ts = THEME_STOCKS.`as`("cap_ts")
             val vd = STOCK_VALUATIONS_DAILY.`as`("cap_vd")
-            DSL.field(
-                DSL.select(DSL.sum(vd.MARKET_CAP))
-                    .from(ts)
-                    .join(vd).on(vd.LISTING_ID.eq(ts.STOCK_ID).and(vd.TRADE_DATE.eq(BASE_DATE)))
-                    .where(ts.THEME_ID.eq(THEME_STOCKS.THEME_ID)),
-            ).`as`("theme_cap")
+            DSL.select(ts.THEME_ID.`as`(CAP_THEME_ID_NAME), DSL.sum(vd.MARKET_CAP).`as`(THEME_CAP_NAME))
+                .from(ts)
+                .join(vd).on(vd.LISTING_ID.eq(ts.STOCK_ID).and(vd.TRADE_DATE.eq(BASE_DATE)))
+                .groupBy(ts.THEME_ID)
+                .asTable(THEME_CAPS_ALIAS)
         }
+
+        private val CAP_THEME_ID: Field<Long?> =
+            DSL.field(DSL.name(THEME_CAPS_ALIAS, CAP_THEME_ID_NAME), SQLDataType.BIGINT)
+
+        private val THEME_CAP: Field<BigDecimal?> =
+            DSL.field(DSL.name(THEME_CAPS_ALIAS, THEME_CAP_NAME), SQLDataType.NUMERIC)
 
         private val PRIMARY_ORDER: Comparator<Membership> =
             compareBy<Membership> { it.cap == null }

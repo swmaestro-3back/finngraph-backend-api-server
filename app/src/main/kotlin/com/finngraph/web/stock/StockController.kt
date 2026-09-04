@@ -8,14 +8,14 @@ import com.finngraph.stock.port.StockFlowPort
 import com.finngraph.stock.port.StockQueryPort
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
+import com.finngraph.news.port.NewsQueryPort
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException
 import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
-import com.finngraph.web.composition.StockNewsComposer
-import com.finngraph.web.composition.StockThemeComposer
+import com.finngraph.composition.StockThemeComposer
 import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
 
@@ -26,16 +26,18 @@ class StockController(
     private val stockFlow: StockFlowPort,
     private val stockFinancials: StockFinancialsPort,
     private val stockThemeComposer: StockThemeComposer,
-    private val stockNewsComposer: StockNewsComposer,
+    private val newsQuery: NewsQueryPort,
 ) : StockApi {
 
     override fun list(): DataResponse<List<StockSummaryResponse>> =
-        DataResponse(stockThemeComposer.listWithThemes())
+        DataResponse(
+            stockThemeComposer.listWithThemes().map { StockSummaryResponse.from(it.stock, it.primaryTheme) },
+        )
 
     override fun detail(ticker: String): DataResponse<StockDetailResponse> {
         val target = toTicker(ticker)
         val found = stockThemeComposer.detailWithTheme(target) ?: throw notFound(ticker)
-        return DataResponse(found)
+        return DataResponse(StockDetailResponse.from(found.stock, found.primaryTheme))
     }
 
     override fun candles(ticker: String, period: String, limit: Int?): DataResponse<List<CandleResponse>> {
@@ -63,8 +65,8 @@ class StockController(
     override fun news(ticker: String, page: Int, size: Int): PageResponse<NewsResponse> {
         val target = toTicker(ticker)
         validatePaging(page, size)
-        val result = stockNewsComposer.newsPage(target, page, size) ?: throw notFound(ticker)
-        return result.toResponse()
+        requireStock(target, ticker)
+        return newsQuery.findPageByTicker(target.value, page, size).toResponse()
     }
 
     private fun toTicker(raw: String): Ticker {
@@ -79,7 +81,7 @@ class StockController(
     }
 
     private fun requireStock(target: Ticker, raw: String) {
-        stockQuery.findByTicker(target) ?: throw notFound(raw)
+        if (!stockQuery.exists(target)) throw notFound(raw)
     }
 
     private fun notFound(raw: String) =

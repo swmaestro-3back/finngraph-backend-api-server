@@ -30,6 +30,13 @@ import kotlin.math.abs
 @Component
 class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
+    override fun exists(ticker: Ticker): Boolean =
+        dsl.fetchExists(
+            dsl.selectOne()
+                .from(STOCKS)
+                .where(STOCKS.TICKER.eq(ticker.value).and(STOCKS.IS_ACTIVE.eq(true))),
+        )
+
     override fun findAll(): List<StockListView> =
         fetchStocks(ACTIVE).map { it.toListView() }
 
@@ -43,8 +50,21 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         if (tickers.isEmpty()) return emptyMap()
 
         val values = tickers.map { it.value }.distinct()
-        return fetchStocks { s -> s.TICKER.`in`(values).and(s.IS_ACTIVE.eq(true)) }
-            .map { it.toPriceView() }
+        val filter: (Stocks) -> Condition = { s -> s.TICKER.`in`(values).and(s.IS_ACTIVE.eq(true)) }
+        return dsl.select(
+            STOCKS.TICKER,
+            STOCKS.NAME,
+            STOCKS.MARKET,
+            PX_PRICE,
+            PX_CHANGE,
+            STOCK_VALUATIONS_DAILY.MARKET_CAP,
+        )
+            .from(STOCKS)
+            .leftJoin(priceTable()).on(DSL.trueCondition())
+            .leftJoin(STOCK_VALUATIONS_DAILY)
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .where(filter(STOCKS))
+            .fetch { it.toPriceView() }
             .associateBy { Ticker(it.ticker) }
     }
 
@@ -71,41 +91,38 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             BASE_DATE_COLUMN,
         )
             .from(STOCKS)
-            .leftJoin(priceTable(filter)).on(PX_STOCK_ID.eq(STOCKS.ID))
+            .leftJoin(priceTable()).on(DSL.trueCondition())
             .leftJoin(STOCK_VALUATIONS_DAILY)
             .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
             .where(filter(STOCKS))
             .orderBy(STOCKS.TICKER.asc())
             .fetch()
 
-    private fun priceTable(filter: (Stocks) -> Condition): Table<*> {
-        val dc = STOCK_CANDLES_DAILY.`as`(WINDOW_CANDLES)
-        val windowed = DSL.select(
-            dc.STOCK_ID,
-            dc.TRADE_DATE,
-            dc.CLOSE,
-            DSL.lag(dc.CLOSE).over().partitionBy(dc.STOCK_ID).orderBy(dc.TRADE_DATE).`as`(PREV_CLOSE),
+    private fun priceTable(): Table<*> {
+        val lc = STOCK_CANDLES_DAILY.`as`(LATEST_CANDLES)
+        val pc = STOCK_CANDLES_DAILY.`as`(PREV_CANDLES)
+        val prev = DSL.lateral(
+            DSL.select(pc.CLOSE.`as`(PREV_CLOSE))
+                .from(pc)
+                .where(pc.STOCK_ID.eq(lc.STOCK_ID).and(pc.TRADE_DATE.lt(lc.TRADE_DATE)))
+                .orderBy(pc.TRADE_DATE.desc())
+                .limit(1)
+                .asTable(PREV),
         )
-            .from(dc)
-            .where(dc.STOCK_ID.`in`(stockIds(filter)))
-            .asTable(WINDOWED)
 
-        return DSL.select(
-            W_STOCK_ID,
-            W_CLOSE.`as`(PRICE),
-            DSL.round(
-                W_CLOSE.minus(W_PREV_CLOSE).div(DSL.nullif(W_PREV_CLOSE, BigDecimal.ZERO)).times(HUNDRED),
-                DERIVED_SCALE,
-            ).`as`(CHANGE),
+        return DSL.lateral(
+            DSL.select(
+                lc.CLOSE.`as`(PRICE),
+                DSL.round(
+                    lc.CLOSE.minus(PREV_CLOSE_FIELD).div(DSL.nullif(PREV_CLOSE_FIELD, BigDecimal.ZERO)).times(HUNDRED),
+                    DERIVED_SCALE,
+                ).`as`(CHANGE),
+            )
+                .from(lc)
+                .leftJoin(prev).on(DSL.trueCondition())
+                .where(lc.STOCK_ID.eq(STOCKS.ID).and(lc.TRADE_DATE.eq(BASE_DATE)))
+                .asTable(PX),
         )
-            .from(windowed)
-            .where(W_TRADE_DATE.eq(BASE_DATE))
-            .asTable(PX)
-    }
-
-    private fun stockIds(filter: (Stocks) -> Condition): Select<Record1<Long?>> {
-        val s = STOCKS.`as`(STOCK_ID_SOURCE)
-        return DSL.select(s.ID).from(s).where(filter(s))
     }
 
     private fun companyIds(filter: (Stocks) -> Condition): Select<Record1<Long?>> {
@@ -191,16 +208,13 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val DERIVED_SCALE = 4
 
         private const val BASE_CANDLES = "base_candles"
-        private const val WINDOW_CANDLES = "wc"
-        private const val WINDOWED = "w"
+        private const val LATEST_CANDLES = "lc"
+        private const val PREV_CANDLES = "pc"
+        private const val PREV = "prev"
         private const val PX = "px"
         private const val PRICE = "price"
         private const val CHANGE = "change"
         private const val PREV_CLOSE = "prev_close"
-        private const val STOCK_ID = "stock_id"
-        private const val TRADE_DATE = "trade_date"
-        private const val CLOSE = "close"
-        private const val STOCK_ID_SOURCE = "sid"
         private const val COMPANY_ID_SOURCE = "cid"
 
         private val HUNDRED: BigDecimal = BigDecimal("100")
@@ -213,12 +227,8 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
         private val BASE_DATE_COLUMN: Field<LocalDate?> = BASE_DATE.`as`("base_date")
 
-        private val W_STOCK_ID: Field<Long?> = DSL.field(DSL.name(WINDOWED, STOCK_ID), SQLDataType.BIGINT)
-        private val W_TRADE_DATE: Field<LocalDate?> = DSL.field(DSL.name(WINDOWED, TRADE_DATE), SQLDataType.LOCALDATE)
-        private val W_CLOSE: Field<BigDecimal> = DSL.field(DSL.name(WINDOWED, CLOSE), SQLDataType.NUMERIC)
-        private val W_PREV_CLOSE: Field<BigDecimal> = DSL.field(DSL.name(WINDOWED, PREV_CLOSE), SQLDataType.NUMERIC)
+        private val PREV_CLOSE_FIELD: Field<BigDecimal?> = DSL.field(DSL.name(PREV, PREV_CLOSE), SQLDataType.NUMERIC)
 
-        private val PX_STOCK_ID: Field<Long?> = DSL.field(DSL.name(PX, STOCK_ID), SQLDataType.BIGINT)
         private val PX_PRICE: Field<BigDecimal?> = DSL.field(DSL.name(PX, PRICE), SQLDataType.NUMERIC)
         private val PX_CHANGE: Field<BigDecimal?> = DSL.field(DSL.name(PX, CHANGE), SQLDataType.NUMERIC)
 

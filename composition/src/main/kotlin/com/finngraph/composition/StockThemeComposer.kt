@@ -1,12 +1,21 @@
-package com.finngraph.web.composition
+package com.finngraph.composition
 
-import com.finngraph.web.stock.StockDetailResponse
-import com.finngraph.web.stock.StockSummaryResponse
-
+import com.finngraph.stock.model.StockDetailView
+import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockQueryPort
 import com.finngraph.theme.port.ThemeQueryPort
 import org.springframework.stereotype.Component
+
+data class StockWithTheme(
+    val stock: StockListView,
+    val primaryTheme: String?,
+)
+
+data class StockDetailWithTheme(
+    val stock: StockDetailView,
+    val primaryTheme: String?,
+)
 
 @Component
 class StockThemeComposer(
@@ -14,17 +23,17 @@ class StockThemeComposer(
     private val themeQuery: ThemeQueryPort,
 ) {
 
-    fun listWithThemes(): List<StockSummaryResponse> {
+    fun listWithThemes(): List<StockWithTheme> {
         val stocks = stockQuery.findAll()
         if (stocks.isEmpty()) return emptyList()
 
         val primaryThemes = themeQuery.findPrimaryThemeByTickers(stocks.map { it.ticker })
-        return stocks.map { StockSummaryResponse.from(it, primaryThemes[it.ticker]) }
+        return stocks.map { StockWithTheme(it, primaryThemes[it.ticker]) }
     }
 
-    fun detailWithTheme(ticker: Ticker): StockDetailResponse? {
+    fun detailWithTheme(ticker: Ticker): StockDetailWithTheme? {
         val found = stockQuery.findByTicker(ticker) ?: return null
         val primaryThemes = themeQuery.findPrimaryThemeByTickers(listOf(found.ticker))
-        return StockDetailResponse.from(found, primaryThemes[found.ticker])
+        return StockDetailWithTheme(found, primaryThemes[found.ticker])
     }
 }

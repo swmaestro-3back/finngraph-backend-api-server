@@ -6,6 +6,7 @@ rootProject.name = "backend-server"
 
 include(
     "app",
+    "composition",
     "domain-news-api",
     "domain-news-impl",
     "domain-stock-api",

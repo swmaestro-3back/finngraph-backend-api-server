@@ -1,12 +1,20 @@
-package com.finngraph.web.composition
+package com.finngraph.composition
 
 import com.finngraph.news.model.NewsId
 import com.finngraph.news.port.NewsCompanyPort
 import com.finngraph.news.port.NewsQueryPort
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockQueryPort
-import com.finngraph.web.news.NewsRelatedStockResponse
 import org.springframework.stereotype.Component
+import java.math.BigDecimal
+
+data class RelatedStock(
+    val companyName: String,
+    val ticker: String?,
+    val market: String?,
+    val price: BigDecimal?,
+    val change: BigDecimal?,
+)
 
 @Component
 class NewsStockComposer(
@@ -15,7 +23,7 @@ class NewsStockComposer(
     private val stockQuery: StockQueryPort,
 ) {
 
-    fun relatedStocks(id: NewsId): List<NewsRelatedStockResponse>? {
+    fun relatedStocks(id: NewsId): List<RelatedStock>? {
         newsQuery.findByIds(listOf(id))[id] ?: return null
 
         val refs = newsCompany.findByNewsIds(listOf(id))[id] ?: emptyList()
@@ -26,7 +34,7 @@ class NewsStockComposer(
 
         return refs.map { ref ->
             val priced = ref.ticker?.let { prices[Ticker(it)] }
-            NewsRelatedStockResponse(
+            RelatedStock(
                 companyName = ref.companyName,
                 ticker = ref.ticker,
                 market = priced?.market,

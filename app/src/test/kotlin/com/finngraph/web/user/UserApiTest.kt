@@ -2,8 +2,8 @@ package com.finngraph.web.user
 
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
-import com.finngraph.web.security.KakaoOAuthClient
-import com.finngraph.web.security.KakaoUser
+import com.finngraph.composition.port.KakaoOAuthPort
+import com.finngraph.composition.port.KakaoUser
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
@@ -34,7 +34,7 @@ class UserApiTest {
     lateinit var rest: TestRestTemplate
 
     @MockitoBean
-    lateinit var kakaoClient: KakaoOAuthClient
+    lateinit var kakaoClient: KakaoOAuthPort
 
     @Test
     fun `내 프로필은 가입 정보를 그대로 반환`() {

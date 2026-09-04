@@ -1,5 +1,7 @@
-package com.finngraph.web.security
+package com.finngraph.security
 
+import com.finngraph.composition.port.AccessToken
+import com.finngraph.composition.port.AccessTokenPort
 import com.nimbusds.jose.jwk.source.ImmutableSecret
 import com.nimbusds.jose.proc.SecurityContext
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult
@@ -24,7 +26,7 @@ sealed interface TokenResolution {
 }
 
 @Component
-class JwtTokenService(private val properties: JwtProperties) {
+class JwtTokenService(private val properties: JwtProperties) : AccessTokenPort {
 
     private val secretKey: SecretKey = decodeSecret(properties.secret)
 
@@ -36,6 +38,9 @@ class JwtTokenService(private val properties: JwtProperties) {
         .apply { setJwtValidator { OAuth2TokenValidatorResult.success() } }
 
     val accessTtl: Duration = properties.accessTtl
+
+    override fun issue(userId: Long): AccessToken =
+        AccessToken(issueAccessToken(userId), accessTtl.seconds)
 
     fun issueAccessToken(userId: Long): String {
         val issuedAt = Instant.now()

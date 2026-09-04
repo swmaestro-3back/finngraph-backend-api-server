@@ -2,6 +2,8 @@ package com.finngraph.web.common
 
 import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.AuthProvider
+import com.finngraph.composition.port.KakaoAuthFailedException
+import com.finngraph.composition.port.KakaoUnavailableException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
@@ -51,10 +53,14 @@ class GlobalExceptionHandler {
             }
         }
 
-    @ExceptionHandler(UpstreamUnavailableException::class)
-    fun handleUpstreamUnavailable(e: UpstreamUnavailableException): ResponseEntity<ErrorResponse> {
+    @ExceptionHandler(KakaoAuthFailedException::class)
+    fun handleKakaoAuthFailed(e: KakaoAuthFailedException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.UNAUTHORIZED, ErrorCode.KAKAO_AUTH_FAILED, e.message ?: "카카오 인증에 실패했습니다.")
+
+    @ExceptionHandler(KakaoUnavailableException::class)
+    fun handleKakaoUnavailable(e: KakaoUnavailableException): ResponseEntity<ErrorResponse> {
         log.error("외부 서비스 호출 실패", e)
-        return respond(HttpStatus.BAD_GATEWAY, e.code, e.message ?: "외부 서비스를 이용할 수 없습니다.")
+        return respond(HttpStatus.BAD_GATEWAY, ErrorCode.KAKAO_UNAVAILABLE, e.message ?: "카카오 서비스를 이용할 수 없습니다.")
     }
 
     @ExceptionHandler(DataAccessException::class, org.jooq.exception.DataAccessException::class)

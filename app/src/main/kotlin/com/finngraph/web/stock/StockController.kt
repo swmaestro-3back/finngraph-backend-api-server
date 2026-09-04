@@ -14,8 +14,8 @@ import com.finngraph.web.common.InvalidParameterException
 import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
-import com.finngraph.web.composition.StockNewsComposer
-import com.finngraph.web.composition.StockThemeComposer
+import com.finngraph.composition.StockNewsComposer
+import com.finngraph.composition.StockThemeComposer
 import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
 
@@ -30,12 +30,14 @@ class StockController(
 ) : StockApi {
 
     override fun list(): DataResponse<List<StockSummaryResponse>> =
-        DataResponse(stockThemeComposer.listWithThemes())
+        DataResponse(
+            stockThemeComposer.listWithThemes().map { StockSummaryResponse.from(it.stock, it.primaryTheme) },
+        )
 
     override fun detail(ticker: String): DataResponse<StockDetailResponse> {
         val target = toTicker(ticker)
         val found = stockThemeComposer.detailWithTheme(target) ?: throw notFound(ticker)
-        return DataResponse(found)
+        return DataResponse(StockDetailResponse.from(found.stock, found.primaryTheme))
     }
 
     override fun candles(ticker: String, period: String, limit: Int?): DataResponse<List<CandleResponse>> {

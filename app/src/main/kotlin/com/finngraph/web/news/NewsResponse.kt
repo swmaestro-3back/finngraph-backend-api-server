@@ -1,5 +1,6 @@
 package com.finngraph.web.news
 
+import com.finngraph.composition.RelatedStock
 import com.finngraph.news.model.NewsDetail
 import com.finngraph.news.model.NewsView
 import java.math.BigDecimal
@@ -53,4 +54,14 @@ data class NewsRelatedStockResponse(
     val market: String?,
     val price: BigDecimal?,
     val change: BigDecimal?,
-)
+) {
+    companion object {
+        fun from(related: RelatedStock) = NewsRelatedStockResponse(
+            companyName = related.companyName,
+            ticker = related.ticker,
+            market = related.market,
+            price = related.price,
+            change = related.change,
+        )
+    }
+}

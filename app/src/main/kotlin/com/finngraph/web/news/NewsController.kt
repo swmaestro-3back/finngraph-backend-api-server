@@ -10,7 +10,7 @@ import com.finngraph.web.common.InvalidParameterException
 import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
-import com.finngraph.web.composition.NewsStockComposer
+import com.finngraph.composition.NewsStockComposer
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -35,7 +35,7 @@ class NewsController(
         val target = toNewsId(id)
         val related = newsStockComposer.relatedStocks(target)
             ?: throw ResourceNotFoundException(ErrorCode.NEWS_NOT_FOUND, "뉴스를 찾을 수 없습니다: $id")
-        return DataResponse(related)
+        return DataResponse(related.map(NewsRelatedStockResponse::from))
     }
 
     private fun toNewsId(raw: Long): NewsId = try {

@@ -1,4 +1,4 @@
-package com.finngraph.web.composition
+package com.finngraph.composition
 
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult

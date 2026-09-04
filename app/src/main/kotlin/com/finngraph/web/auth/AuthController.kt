@@ -1,36 +1,28 @@
 package com.finngraph.web.auth
 
-import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.Email
-import com.finngraph.auth.model.RotationResult
-import com.finngraph.auth.port.CredentialPort
-import com.finngraph.auth.port.TokenPort
+import com.finngraph.composition.AccountComposer
+import com.finngraph.composition.IssuedSession
+import com.finngraph.composition.KakaoSignupResult
+import com.finngraph.composition.SessionComposer
+import com.finngraph.composition.port.KakaoOAuthPort
 import com.finngraph.user.model.Nickname
 import com.finngraph.web.common.AuthenticationFailedException
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException
-import com.finngraph.web.composition.KakaoSignupResult
-import com.finngraph.web.composition.SignupComposer
-import com.finngraph.web.composition.UserProfileComposer
-import com.finngraph.web.security.JwtTokenService
-import com.finngraph.web.security.KakaoOAuthClient
-import com.finngraph.web.security.RefreshTokens
+import com.finngraph.web.security.RefreshTokenCookies
+import com.finngraph.web.user.MeResponse
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpHeaders
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
 class AuthController(
-    private val signupComposer: SignupComposer,
-    private val userProfile: UserProfileComposer,
-    private val credentials: CredentialPort,
-    private val tokens: TokenPort,
-    private val jwt: JwtTokenService,
-    private val refreshTokens: RefreshTokens,
-    private val passwordEncoder: PasswordEncoder,
-    private val kakaoClient: KakaoOAuthClient,
+    private val accountComposer: AccountComposer,
+    private val sessionComposer: SessionComposer,
+    private val refreshTokens: RefreshTokenCookies,
+    private val kakaoClient: KakaoOAuthPort,
 ) : AuthApi {
 
     override fun kakaoLogin(
@@ -40,15 +32,10 @@ class AuthController(
         val kakaoUser = kakaoClient.exchange(validateCode(request.code))
         val nickname = kakaoNickname(kakaoUser.nickname, kakaoUser.id)
 
-        val result = try {
-            signupComposer.signupOrLoginKakao(kakaoUser.id, nickname)
-        } catch (e: DuplicateCredentialException) {
-            signupComposer.signupOrLoginKakao(kakaoUser.id, nickname)
-        }
+        val result = accountComposer.signupOrLoginKakao(kakaoUser.id, nickname)
+        val isNewUser = result is KakaoSignupResult.SignedUp
 
-        return DataResponse(
-            issueSession(result.userId, result is KakaoSignupResult.SignedUp, response),
-        )
+        return respond(issueSession(result.userId), isNewUser, response)
     }
 
     override fun signup(
@@ -56,11 +43,9 @@ class AuthController(
         response: HttpServletResponse,
     ): DataResponse<AuthTokenResponse> {
         val command = validateSignup(request)
-        val passwordHash = checkNotNull(passwordEncoder.encode(command.password)) {
-            "PasswordEncoder가 해시를 생성하지 못했습니다"
-        }
-        val userId = signupComposer.signupEmail(command.email, passwordHash, command.nickname)
-        return DataResponse(issueSession(userId, isNewUser = true, response = response))
+        val userId = accountComposer.signupEmail(command.email, command.password, command.nickname)
+
+        return respond(issueSession(userId), isNewUser = true, response)
     }
 
     override fun login(
@@ -70,10 +55,9 @@ class AuthController(
         validateLogin(request)
 
         val email = runCatching { Email.of(request.email!!) }.getOrElse { throw invalidCredentials() }
-        val credential = credentials.findByEmail(email) ?: throw invalidCredentials()
-        if (!passwordEncoder.matches(request.password!!, credential.passwordHash)) throw invalidCredentials()
+        val userId = accountComposer.loginEmail(email, request.password!!) ?: throw invalidCredentials()
 
-        return DataResponse(issueSession(credential.userId, isNewUser = false, response = response))
+        return respond(issueSession(userId), isNewUser = false, response)
     }
 
     override fun refresh(
@@ -81,50 +65,35 @@ class AuthController(
         response: HttpServletResponse,
     ): DataResponse<AuthTokenResponse> {
         val presented = refreshToken ?: throw unauthorized()
-        val rotated = refreshTokens.generate()
 
-        return when (
-            val result = tokens.rotate(
-                refreshTokens.hash(presented),
-                refreshTokens.hash(rotated),
-                refreshTokens.ttl,
-            )
-        ) {
-            is RotationResult.Rotated -> {
-                setCookie(response, refreshTokens.cookie(rotated).toString())
-                DataResponse(profileResponse(result.userId, isNewUser = false))
-            }
-
-            is RotationResult.ReuseDetected, RotationResult.Unknown -> {
-                setCookie(response, refreshTokens.expiredCookie().toString())
-                throw unauthorized()
-            }
+        val session = sessionComposer.rotate(presented) ?: run {
+            setCookie(response, refreshTokens.expiredCookie().toString())
+            throw unauthorized()
         }
+        return respond(session, isNewUser = false, response)
     }
 
     override fun logout(refreshToken: String?, response: HttpServletResponse) {
-        refreshToken?.let { tokens.revoke(refreshTokens.hash(it)) }
+        refreshToken?.let(sessionComposer::revoke)
         setCookie(response, refreshTokens.expiredCookie().toString())
     }
 
-    private fun issueSession(
-        userId: Long,
+    private fun issueSession(userId: Long): IssuedSession =
+        sessionComposer.issue(userId) ?: throw unauthorized()
+
+    private fun respond(
+        session: IssuedSession,
         isNewUser: Boolean,
         response: HttpServletResponse,
-    ): AuthTokenResponse {
-        val refreshToken = refreshTokens.generate()
-        tokens.issue(userId, refreshTokens.hash(refreshToken), refreshTokens.ttl)
-        setCookie(response, refreshTokens.cookie(refreshToken).toString())
-        return profileResponse(userId, isNewUser)
-    }
-
-    private fun profileResponse(userId: Long, isNewUser: Boolean): AuthTokenResponse {
-        val profile = userProfile.profile(userId) ?: throw unauthorized()
-        return AuthTokenResponse(
-            accessToken = jwt.issueAccessToken(userId),
-            expiresIn = jwt.accessTtl.seconds,
-            isNewUser = isNewUser,
-            user = profile,
+    ): DataResponse<AuthTokenResponse> {
+        setCookie(response, refreshTokens.cookie(session.refreshToken).toString())
+        return DataResponse(
+            AuthTokenResponse(
+                accessToken = session.accessToken,
+                expiresIn = session.expiresIn,
+                isNewUser = isNewUser,
+                user = MeResponse.from(session.profile),
+            ),
         )
     }
 
@@ -135,7 +104,7 @@ class AuthController(
         val code = raw?.trim().orEmpty()
         if (code.isEmpty() || code.length > MAX_CODE_LENGTH) {
             throw InvalidParameterException(
-                "카카오 인가 코드가 올바르지 않습니다",
+                "카카오 인가 코드가 올바르지 않습니다.",
                 mapOf("code" to "must not be blank and at most $MAX_CODE_LENGTH characters"),
             )
         }
@@ -147,7 +116,7 @@ class AuthController(
             if (request.email.isNullOrBlank()) put("email", "must not be blank")
             if (request.password.isNullOrBlank()) put("password", "must not be blank")
         }
-        if (errors.isNotEmpty()) throw InvalidParameterException("로그인 정보가 올바르지 않습니다", errors)
+        if (errors.isNotEmpty()) throw InvalidParameterException("로그인 정보가 올바르지 않습니다.", errors)
     }
 
     private fun validateSignup(request: SignupRequest): SignupCommand {
@@ -180,7 +149,7 @@ class AuthController(
             null
         }
 
-        if (errors.isNotEmpty()) throw InvalidParameterException("가입 정보가 올바르지 않습니다", errors)
+        if (errors.isNotEmpty()) throw InvalidParameterException("가입 정보가 올바르지 않습니다.", errors)
         return SignupCommand(email!!, password, nickname!!)
     }
 
@@ -189,10 +158,10 @@ class AuthController(
             .getOrElse { Nickname.of(FALLBACK_NICKNAME_PREFIX + kakaoUserId.takeLast(FALLBACK_SUFFIX_LENGTH)) }
 
     private fun invalidCredentials() =
-        AuthenticationFailedException(ErrorCode.INVALID_CREDENTIALS, "이메일 또는 비밀번호가 올바르지 않습니다")
+        AuthenticationFailedException(ErrorCode.INVALID_CREDENTIALS, "이메일 또는 비밀번호가 올바르지 않습니다.")
 
     private fun unauthorized() =
-        AuthenticationFailedException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다")
+        AuthenticationFailedException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.")
 
     private data class SignupCommand(
         val email: Email,

@@ -16,6 +16,8 @@ tasks.named<Test>("test") {
 }
 
 dependencies {
+    implementation(project(":composition"))
+
     implementation(project(":domain-news-api"))
     runtimeOnly(project(":domain-news-impl"))
 

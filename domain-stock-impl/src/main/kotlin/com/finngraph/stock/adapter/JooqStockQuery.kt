@@ -30,6 +30,13 @@ import kotlin.math.abs
 @Component
 class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
+    override fun exists(ticker: Ticker): Boolean =
+        dsl.fetchExists(
+            dsl.selectOne()
+                .from(STOCKS)
+                .where(STOCKS.TICKER.eq(ticker.value).and(STOCKS.IS_ACTIVE.eq(true))),
+        )
+
     override fun findAll(): List<StockListView> =
         fetchStocks(ACTIVE).map { it.toListView() }
 

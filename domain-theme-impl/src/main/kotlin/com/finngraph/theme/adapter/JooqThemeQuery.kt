@@ -26,6 +26,9 @@ import java.math.BigDecimal
 @Component
 class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
 
+    override fun exists(name: ThemeName): Boolean =
+        dsl.fetchExists(dsl.selectOne().from(THEMES).where(THEMES.NAME.eq(name.value)))
+
     override fun findAll(): List<ThemeSummary> = summaries(DSL.noCondition())
 
     override fun findByName(name: ThemeName): ThemeSummary? =

@@ -7,6 +7,6 @@ interface UserPort {
 
     fun create(nickname: Nickname): Long
     fun findById(id: Long): UserView?
-    fun updateNickname(id: Long, nickname: Nickname): Boolean
+    fun updateNickname(id: Long, nickname: Nickname): UserView?
     fun delete(id: Long): Boolean
 }

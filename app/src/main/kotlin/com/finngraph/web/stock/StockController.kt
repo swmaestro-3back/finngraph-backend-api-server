@@ -140,7 +140,7 @@ class StockController(
     private companion object {
         const val MAX_TICKER_LENGTH = 20
         const val MAX_CANDLE_LIMIT = 500
-        const val MAX_FLOW_LIMIT = 200
+        const val MAX_FLOW_LIMIT = 250
         const val DEFAULT_DAILY_LIMIT = 65
         const val DEFAULT_WEEKLY_LIMIT = 52
         const val DEFAULT_MONTHLY_LIMIT = 36

@@ -89,7 +89,7 @@ interface StockApi {
         ApiResponse(responseCode = "200", description = "조회 성공"),
         ApiResponse(
             responseCode = "400",
-            description = "ticker 검증 실패, limit 이 1~200 범위 밖",
+            description = "ticker 검증 실패, limit 이 1~250 범위 밖",
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
         ApiResponse(
@@ -101,7 +101,7 @@ interface StockApi {
     @GetMapping("/{ticker}/investor-flows")
     fun investorFlows(
         @Parameter(description = "종목코드") @PathVariable ticker: String,
-        @Parameter(description = "거래일 개수 (1~200)")
+        @Parameter(description = "거래일 개수 (1~250)")
         @RequestParam(required = false, defaultValue = "40")
         limit: Int,
     ): DataResponse<List<InvestorFlowResponse>>

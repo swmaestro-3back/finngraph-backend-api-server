@@ -65,6 +65,10 @@ spring:
     activate:
       on-profile: local
 
+app:
+  jwt:
+    secure-cookie: false
+
 management:
   endpoint:
     health:

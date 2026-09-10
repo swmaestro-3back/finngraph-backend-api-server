@@ -50,9 +50,9 @@ interface ThemeApi {
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
     )
-    @GetMapping("/{name}")
+    @GetMapping("/{id}")
     fun detail(
-        @Parameter(description = "테마명 (URL 인코딩)") @PathVariable name: String,
+        @Parameter(description = "테마 id") @PathVariable id: Long,
     ): DataResponse<ThemeSummaryResponse>
 
     @Operation(
@@ -72,9 +72,9 @@ interface ThemeApi {
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
     )
-    @GetMapping("/{name}/stocks")
+    @GetMapping("/{id}/stocks")
     fun stocks(
-        @Parameter(description = "테마명 (URL 인코딩)") @PathVariable name: String,
+        @Parameter(description = "테마 id") @PathVariable id: Long,
     ): DataResponse<List<ThemeStockResponse>>
 
     @Operation(
@@ -93,9 +93,9 @@ interface ThemeApi {
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
     )
-    @GetMapping("/{name}/news")
+    @GetMapping("/{id}/news")
     fun news(
-        @Parameter(description = "테마명 (URL 인코딩)") @PathVariable name: String,
+        @Parameter(description = "테마 id") @PathVariable id: Long,
         @Parameter(description = "0-기반 페이지 번호") @RequestParam(required = false, defaultValue = "0") page: Int,
         @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(required = false, defaultValue = "20") size: Int,
     ): PageResponse<NewsResponse>

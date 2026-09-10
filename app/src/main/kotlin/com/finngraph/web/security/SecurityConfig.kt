@@ -90,9 +90,9 @@ class SecurityConfig {
 
         val PUBLIC_GET = arrayOf(
             "/api/v1/themes",
-            "/api/v1/themes/{name}",
-            "/api/v1/themes/{name}/stocks",
-            "/api/v1/themes/{name}/news",
+            "/api/v1/themes/{id}",
+            "/api/v1/themes/{id}/stocks",
+            "/api/v1/themes/{id}/news",
             "/api/v1/stocks",
             "/api/v1/stocks/{ticker}",
             "/api/v1/stocks/{ticker}/candles",

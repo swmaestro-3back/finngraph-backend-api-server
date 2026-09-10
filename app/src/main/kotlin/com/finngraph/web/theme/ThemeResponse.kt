@@ -6,6 +6,7 @@ import com.finngraph.theme.model.ThemeTopStock
 import java.math.BigDecimal
 
 data class ThemeSummaryResponse(
+    val id: Long,
     val name: String,
     val description: String?,
     val change: BigDecimal?,
@@ -19,6 +20,7 @@ data class ThemeSummaryResponse(
 ) {
     companion object {
         fun from(summary: ThemeSummary) = ThemeSummaryResponse(
+            id = summary.id,
             name = summary.name,
             description = summary.description,
             change = summary.change,

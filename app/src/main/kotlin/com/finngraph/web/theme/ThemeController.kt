@@ -3,7 +3,7 @@ package com.finngraph.web.theme
 import com.finngraph.composition.ThemeNewsComposer
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
-import com.finngraph.theme.model.ThemeName
+import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.port.ThemeQueryPort
 import com.finngraph.theme.port.ThemeStockPort
 import com.finngraph.web.common.DataResponse
@@ -25,40 +25,39 @@ class ThemeController(
     override fun list(): DataResponse<List<ThemeSummaryResponse>> =
         DataResponse(themeQuery.findAll().map(ThemeSummaryResponse::from))
 
-    override fun detail(name: String): DataResponse<ThemeSummaryResponse> {
-        val target = toThemeName(name)
-        val found = themeQuery.findByName(target) ?: throw notFound(name)
+    override fun detail(id: Long): DataResponse<ThemeSummaryResponse> {
+        val target = toThemeId(id)
+        val found = themeQuery.findById(target) ?: throw notFound(id)
         return DataResponse(ThemeSummaryResponse.from(found))
     }
 
-    override fun stocks(name: String): DataResponse<List<ThemeStockResponse>> {
-        val target = toThemeName(name)
-        requireTheme(target, name)
+    override fun stocks(id: Long): DataResponse<List<ThemeStockResponse>> {
+        val target = toThemeId(id)
+        requireTheme(target, id)
         return DataResponse(themeStock.findStocks(target).map(ThemeStockResponse::from))
     }
 
-    override fun news(name: String, page: Int, size: Int): PageResponse<NewsResponse> {
-        val target = toThemeName(name)
+    override fun news(id: Long, page: Int, size: Int): PageResponse<NewsResponse> {
+        val target = toThemeId(id)
         validatePaging(page, size)
-        requireTheme(target, name)
+        requireTheme(target, id)
         return themeNewsComposer.newsPage(target, page, size).toResponse()
     }
 
-    private fun toThemeName(raw: String): ThemeName {
-        if (raw.isBlank()) {
-            throw InvalidParameterException(
-                "테마 이름이 올바르지 않습니다",
-                mapOf("name" to "must not be blank"),
-            )
-        }
-        return ThemeName(raw)
+    private fun toThemeId(raw: Long): ThemeId = try {
+        ThemeId(raw)
+    } catch (e: IllegalArgumentException) {
+        throw InvalidParameterException(
+            e.message ?: "id가 올바르지 않습니다",
+            mapOf("id" to "must be positive"),
+        )
     }
 
-    private fun requireTheme(target: ThemeName, raw: String) {
+    private fun requireTheme(target: ThemeId, raw: Long) {
         if (!themeQuery.exists(target)) throw notFound(raw)
     }
 
-    private fun notFound(raw: String) =
+    private fun notFound(raw: Long) =
         ResourceNotFoundException(ErrorCode.THEME_NOT_FOUND, "테마를 찾을 수 없습니다: $raw")
 
     private fun validatePaging(page: Int, size: Int) {

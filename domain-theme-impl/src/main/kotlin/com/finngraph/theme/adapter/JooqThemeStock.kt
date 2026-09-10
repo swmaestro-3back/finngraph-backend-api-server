@@ -8,7 +8,7 @@ import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
 import com.finngraph.theme.adapter.jooq.tables.references.THEME_STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
-import com.finngraph.theme.model.ThemeName
+import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeStockView
 import com.finngraph.theme.port.ThemeStockPort
 import org.jooq.DSLContext
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component
 @Component
 class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
 
-    override fun findStocks(name: ThemeName): List<ThemeStockView> =
+    override fun findStocks(id: ThemeId): List<ThemeStockView> =
         dsl.select(
             STOCKS.TICKER,
             STOCKS.NAME,
@@ -35,7 +35,7 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
             .leftJoin(STOCK_VALUATIONS_DAILY)
             .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
             .leftJoin(ThemeQuerySupport.priceTable()).on(DSL.trueCondition())
-            .where(THEMES.NAME.eq(name.value))
+            .where(THEMES.ID.eq(id.value))
             .orderBy(STOCK_VALUATIONS_DAILY.MARKET_CAP.desc().nullsLast(), STOCKS.TICKER.asc())
             .fetch {
                 ThemeStockView(
@@ -50,12 +50,12 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
                 )
             }
 
-    override fun findTickers(name: ThemeName): List<String> =
+    override fun findTickers(id: ThemeId): List<String> =
         dsl.select(STOCKS.TICKER)
             .from(THEMES)
             .join(THEME_STOCKS).on(THEME_STOCKS.THEME_ID.eq(THEMES.ID))
             .join(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
-            .where(THEMES.NAME.eq(name.value).and(STOCKS.IS_ACTIVE.eq(true)))
+            .where(THEMES.ID.eq(id.value).and(STOCKS.IS_ACTIVE.eq(true)))
             .orderBy(STOCKS.TICKER.asc())
             .fetch { requireNotNull(it.get(STOCKS.TICKER)) }
 }

@@ -9,7 +9,7 @@ import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
 import com.finngraph.theme.adapter.jooq.tables.references.THEME_STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
-import com.finngraph.theme.model.ThemeName
+import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
 import com.finngraph.theme.port.ThemeQueryPort
@@ -25,13 +25,13 @@ import java.math.BigDecimal
 @Component
 class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
 
-    override fun exists(name: ThemeName): Boolean =
-        dsl.fetchExists(dsl.selectOne().from(THEMES).where(THEMES.NAME.eq(name.value)))
+    override fun exists(id: ThemeId): Boolean =
+        dsl.fetchExists(dsl.selectOne().from(THEMES).where(THEMES.ID.eq(id.value)))
 
     override fun findAll(): List<ThemeSummary> = summaries(DSL.noCondition())
 
-    override fun findByName(name: ThemeName): ThemeSummary? =
-        summaries(THEMES.NAME.eq(name.value)).firstOrNull()
+    override fun findById(id: ThemeId): ThemeSummary? =
+        summaries(THEMES.ID.eq(id.value)).firstOrNull()
 
     override fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, String> {
         if (tickers.isEmpty()) return emptyMap()
@@ -57,6 +57,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     private fun summaries(nameFilter: Condition): List<ThemeSummary> {
         val top = topStocks(nameFilter)
         return dsl.select(
+            THEMES.ID,
             THEMES.NAME,
             THEMES.DESCRIPTION,
             BASE_DATE_COLUMN,
@@ -105,6 +106,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     private fun Record.toSummary(top: Map<String, List<ThemeTopStock>>): ThemeSummary {
         val name = requireNotNull(get(THEMES.NAME))
         return ThemeSummary(
+            id = requireNotNull(get(THEMES.ID)),
             name = name,
             description = get(THEMES.DESCRIPTION),
             baseDate = get(BASE_DATE_COLUMN),

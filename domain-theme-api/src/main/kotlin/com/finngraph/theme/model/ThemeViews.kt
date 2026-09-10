@@ -4,6 +4,7 @@ import java.math.BigDecimal
 import java.time.LocalDate
 
 data class ThemeSummary(
+    val id: Long,
     val name: String,
     val description: String?,
     val baseDate: LocalDate?,

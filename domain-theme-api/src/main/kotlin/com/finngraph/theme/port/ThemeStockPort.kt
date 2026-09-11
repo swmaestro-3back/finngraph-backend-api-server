@@ -1,11 +1,11 @@
 package com.finngraph.theme.port
 
-import com.finngraph.theme.model.ThemeName
+import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeStockView
 
 interface ThemeStockPort {
 
-    fun findStocks(name: ThemeName): List<ThemeStockView>
+    fun findStocks(id: ThemeId): List<ThemeStockView>
 
-    fun findTickers(name: ThemeName): List<String>
+    fun findTickers(id: ThemeId): List<String>
 }

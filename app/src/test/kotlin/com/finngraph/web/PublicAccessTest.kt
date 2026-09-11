@@ -115,14 +115,14 @@ class PublicAccessTest {
         )
 
         private val PRIMARY_DETAIL_ENDPOINTS = listOf(
-            "/api/v1/themes/없는테마",
+            "/api/v1/themes/999999",
             "/api/v1/stocks/000000",
             "/api/v1/news/999999",
         )
 
         private val SUB_RESOURCE_ENDPOINTS = listOf(
-            "/api/v1/themes/없는테마/stocks",
-            "/api/v1/themes/없는테마/news",
+            "/api/v1/themes/999999/stocks",
+            "/api/v1/themes/999999/news",
             "/api/v1/stocks/000000/candles",
             "/api/v1/stocks/000000/investor-flows",
             "/api/v1/stocks/000000/financials",

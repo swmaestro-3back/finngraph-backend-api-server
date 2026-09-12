@@ -9,6 +9,7 @@ import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
 import com.finngraph.theme.adapter.jooq.tables.references.THEME_STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
+import com.finngraph.theme.model.PrimaryTheme
 import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
@@ -33,11 +34,11 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     override fun findById(id: ThemeId): ThemeSummary? =
         summaries(THEMES.ID.eq(id.value)).firstOrNull()
 
-    override fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, String> {
+    override fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme> {
         if (tickers.isEmpty()) return emptyMap()
 
         val values = tickers.distinct()
-        return dsl.select(STOCKS.TICKER, THEMES.NAME, THEME_CAP)
+        return dsl.select(STOCKS.TICKER, THEMES.ID, THEMES.NAME, THEME_CAP)
             .from(STOCKS)
             .join(THEME_STOCKS).on(THEME_STOCKS.STOCK_ID.eq(STOCKS.ID))
             .join(THEMES).on(THEMES.ID.eq(THEME_STOCKS.THEME_ID))
@@ -46,12 +47,16 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             .fetch {
                 Membership(
                     ticker = requireNotNull(it.get(STOCKS.TICKER)),
-                    theme = requireNotNull(it.get(THEMES.NAME)),
+                    themeId = requireNotNull(it.get(THEMES.ID)),
+                    themeName = requireNotNull(it.get(THEMES.NAME)),
                     cap = it.get(THEME_CAP),
                 )
             }
             .groupBy { it.ticker }
-            .mapValues { (_, memberships) -> memberships.sortedWith(PRIMARY_ORDER).first().theme }
+            .mapValues { (_, memberships) ->
+                val primary = memberships.sortedWith(PRIMARY_ORDER).first()
+                PrimaryTheme(primary.themeId, primary.themeName)
+            }
     }
 
     private fun summaries(nameFilter: Condition): List<ThemeSummary> {
@@ -121,7 +126,12 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         )
     }
 
-    private data class Membership(val ticker: String, val theme: String, val cap: BigDecimal?)
+    private data class Membership(
+        val ticker: String,
+        val themeId: Long,
+        val themeName: String,
+        val cap: BigDecimal?,
+    )
 
     companion object {
         private const val TOP_STOCK_COUNT = 3
@@ -171,6 +181,6 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         private val PRIMARY_ORDER: Comparator<Membership> =
             compareBy<Membership> { it.cap == null }
                 .thenByDescending { it.cap ?: BigDecimal.ZERO }
-                .thenBy { it.theme }
+                .thenBy { it.themeName }
     }
 }

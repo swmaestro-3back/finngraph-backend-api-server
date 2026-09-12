@@ -100,6 +100,9 @@ CREATE TABLE IF NOT EXISTS stocks (
     preferred_stock      BOOLEAN NOT NULL DEFAULT false,
     etp                  BOOLEAN NOT NULL DEFAULT false,
     spac                 BOOLEAN NOT NULL DEFAULT false,
+    krx100               BOOLEAN NOT NULL DEFAULT false,
+    krx300               BOOLEAN NOT NULL DEFAULT false,
+    kosdaq150            BOOLEAN NOT NULL DEFAULT false,
     inactive_at          TIMESTAMPTZ,
     raw_attributes       JSONB,
     created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -195,12 +198,32 @@ CREATE TABLE IF NOT EXISTS news (
     published_at        TIMESTAMPTZ,
     collected_at        TIMESTAMPTZ DEFAULT now(),
     triple_extracted    BOOLEAN,
-    cluster_rep_news_id BIGINT REFERENCES news (id) ON DELETE SET NULL
+    cluster_terms       JSONB
 );
 
-CREATE INDEX IF NOT EXISTS idx_news_cluster_rep ON news (cluster_rep_news_id);
 CREATE INDEX IF NOT EXISTS idx_news_unprocessed
   ON news (id) WHERE triple_extracted IS NULL;
+
+CREATE TABLE IF NOT EXISTS news_clusters (
+    id                     BIGSERIAL PRIMARY KEY,
+    representative_news_id BIGINT REFERENCES news (id) ON DELETE SET NULL,
+    keywords               TEXT[] NOT NULL DEFAULT '{}',
+    term_weights           JSONB NOT NULL DEFAULT '{}'::jsonb,
+    cohesion               NUMERIC,
+    original_size          INT NOT NULL DEFAULT 0,
+    member_count           INT NOT NULL DEFAULT 0,
+    first_published_at     TIMESTAMPTZ NOT NULL,
+    last_published_at      TIMESTAMPTZ NOT NULL,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_news_clusters_size CHECK (member_count <= original_size)
+);
+
+CREATE INDEX IF NOT EXISTS idx_news_clusters_last_published ON news_clusters (last_published_at);
+
+ALTER TABLE news ADD COLUMN IF NOT EXISTS cluster_id
+    BIGINT REFERENCES news_clusters (id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_news_cluster ON news (cluster_id);
 
 CREATE TABLE IF NOT EXISTS news_companies (
     id         BIGSERIAL PRIMARY KEY,

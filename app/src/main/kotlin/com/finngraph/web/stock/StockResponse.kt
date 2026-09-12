@@ -5,6 +5,7 @@ import com.finngraph.stock.model.Candle
 import com.finngraph.stock.model.InvestorFlow
 import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockListView
+import com.finngraph.theme.model.PrimaryTheme
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -22,10 +23,11 @@ data class StockSummaryResponse(
     val pbr: BigDecimal?,
     val roe: BigDecimal?,
     val dividendYield: BigDecimal?,
+    val themeId: Long?,
     val themeName: String?,
 ) {
     companion object {
-        fun from(view: StockListView, themeName: String? = null) = StockSummaryResponse(
+        fun from(view: StockListView, primaryTheme: PrimaryTheme? = null) = StockSummaryResponse(
             ticker = view.ticker,
             name = view.name,
             market = view.market,
@@ -39,7 +41,8 @@ data class StockSummaryResponse(
             pbr = view.pbr,
             roe = view.roe,
             dividendYield = view.dividendYield,
-            themeName = themeName,
+            themeId = primaryTheme?.id,
+            themeName = primaryTheme?.name,
         )
     }
 }
@@ -50,6 +53,7 @@ data class StockDetailResponse(
     val market: String,
     val price: BigDecimal?,
     val change: BigDecimal?,
+    val themeId: Long?,
     val themeName: String?,
     val marketCap: Long?,
     val per: BigDecimal?,
@@ -61,13 +65,14 @@ data class StockDetailResponse(
     val revenueGrowth: BigDecimal?,
 ) {
     companion object {
-        fun from(view: StockDetailView, themeName: String? = null) = StockDetailResponse(
+        fun from(view: StockDetailView, primaryTheme: PrimaryTheme? = null) = StockDetailResponse(
             ticker = view.ticker,
             name = view.name,
             market = view.market,
             price = view.price,
             change = view.change,
-            themeName = themeName,
+            themeId = primaryTheme?.id,
+            themeName = primaryTheme?.name,
             marketCap = view.marketCap,
             per = view.per,
             pbr = view.pbr,

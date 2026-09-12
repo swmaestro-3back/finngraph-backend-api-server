@@ -4,17 +4,18 @@ import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockQueryPort
+import com.finngraph.theme.model.PrimaryTheme
 import com.finngraph.theme.port.ThemeQueryPort
 import org.springframework.stereotype.Component
 
 data class StockWithTheme(
     val stock: StockListView,
-    val primaryTheme: String?,
+    val primaryTheme: PrimaryTheme?,
 )
 
 data class StockDetailWithTheme(
     val stock: StockDetailView,
-    val primaryTheme: String?,
+    val primaryTheme: PrimaryTheme?,
 )
 
 @Component

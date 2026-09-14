@@ -35,6 +35,7 @@ app:
     unlink-uri: https://kapi.kakao.com/v1/user/unlink
 
 server:
+  forward-headers-strategy: framework
   compression:
     enabled: true
     mime-types: application/json

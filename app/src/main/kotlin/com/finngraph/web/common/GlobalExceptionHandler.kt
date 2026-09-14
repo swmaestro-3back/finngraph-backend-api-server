@@ -55,12 +55,12 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(KakaoAuthFailedException::class)
     fun handleKakaoAuthFailed(e: KakaoAuthFailedException): ResponseEntity<ErrorResponse> =
-        respond(HttpStatus.UNAUTHORIZED, ErrorCode.KAKAO_AUTH_FAILED, e.message ?: "카카오 인증에 실패했습니다.")
+        respond(HttpStatus.UNAUTHORIZED, ErrorCode.KAKAO_AUTH_FAILED, "카카오 인증에 실패했습니다.")
 
     @ExceptionHandler(KakaoUnavailableException::class)
     fun handleKakaoUnavailable(e: KakaoUnavailableException): ResponseEntity<ErrorResponse> {
         log.error("외부 서비스 호출 실패", e)
-        return respond(HttpStatus.BAD_GATEWAY, ErrorCode.KAKAO_UNAVAILABLE, e.message ?: "카카오 서비스를 이용할 수 없습니다.")
+        return respond(HttpStatus.BAD_GATEWAY, ErrorCode.KAKAO_UNAVAILABLE, "카카오 서비스를 이용할 수 없습니다.")
     }
 
     @ExceptionHandler(DataAccessException::class, org.jooq.exception.DataAccessException::class)

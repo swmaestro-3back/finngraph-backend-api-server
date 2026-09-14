@@ -24,6 +24,11 @@ data class ThemeTopStock(
     val marketCap: Long?,
 )
 
+data class PrimaryTheme(
+    val id: Long,
+    val name: String,
+)
+
 data class ThemeStockView(
     val ticker: String,
     val name: String,

@@ -8,7 +8,7 @@ data class JwtProperties(
     val secret: String,
     val accessTtl: Duration,
     val refreshTtl: Duration,
-    val secureCookie: Boolean = false,
+    val secureCookie: Boolean = true,
 )
 
 @ConfigurationProperties("app.kakao")

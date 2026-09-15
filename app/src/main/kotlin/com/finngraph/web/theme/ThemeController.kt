@@ -1,5 +1,6 @@
 package com.finngraph.web.theme
 
+import com.finngraph.composition.HotThemeComposer
 import com.finngraph.composition.ThemeNewsComposer
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
@@ -20,10 +21,16 @@ class ThemeController(
     private val themeQuery: ThemeQueryPort,
     private val themeStock: ThemeStockPort,
     private val themeNewsComposer: ThemeNewsComposer,
+    private val hotThemeComposer: HotThemeComposer,
 ) : ThemeApi {
 
     override fun list(): DataResponse<List<ThemeSummaryResponse>> =
         DataResponse(themeQuery.findAll().map(ThemeSummaryResponse::from))
+
+    override fun hot(count: Int): DataResponse<List<ThemeSummaryResponse>> {
+        validateCount(count)
+        return DataResponse(hotThemeComposer.hot(count).map(ThemeSummaryResponse::from))
+    }
 
     override fun detail(id: Long): DataResponse<ThemeSummaryResponse> {
         val target = toThemeId(id)
@@ -60,6 +67,15 @@ class ThemeController(
     private fun notFound(raw: Long) =
         ResourceNotFoundException(ErrorCode.THEME_NOT_FOUND, "테마를 찾을 수 없습니다: $raw")
 
+    private fun validateCount(count: Int) {
+        if (count !in HOT_COUNTS) {
+            throw InvalidParameterException(
+                "count는 20, 30, 40 중 하나여야 합니다",
+                mapOf("count" to "must be one of 20, 30, 40"),
+            )
+        }
+    }
+
     private fun validatePaging(page: Int, size: Int) {
         val errors = buildMap {
             if (page < 0) put("page", "must be >= 0")
@@ -78,4 +94,8 @@ class ThemeController(
         data = content.map(NewsResponse::from),
         pagination = Pagination(page, size, totalElements, totalPages),
     )
+
+    private companion object {
+        val HOT_COUNTS = setOf(20, 30, 40)
+    }
 }

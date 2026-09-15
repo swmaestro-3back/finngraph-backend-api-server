@@ -3,7 +3,6 @@ package com.finngraph.news.adapter
 import com.finngraph.news.adapter.jooq.tables.references.COMPANIES
 import com.finngraph.news.adapter.jooq.tables.references.NEWS
 import com.finngraph.news.adapter.jooq.tables.references.NEWS_COMPANIES
-import com.finngraph.news.adapter.jooq.tables.references.RELATION_SOURCES
 import com.finngraph.news.model.NewsDetail
 import com.finngraph.news.model.NewsId
 import com.finngraph.news.model.NewsView
@@ -40,11 +39,11 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
     }
 
     override fun findPageByTicker(ticker: String, page: Int, size: Int): PageResult<NewsView> =
-        fetchPage(NEWS.ID.`in`(relatedNewsIds(ticker)).and(VISIBLE), page, size)
+        fetchPage(NEWS.ID.`in`(companyNewsIds(listOf(ticker))).and(PROCESSED), page, size)
 
     override fun findPageByCompanyTickers(tickers: List<String>, page: Int, size: Int): PageResult<NewsView> {
         if (tickers.isEmpty()) return PageResult(emptyList(), page, size, 0)
-        return fetchPage(NEWS.ID.`in`(companyNewsIds(tickers)).and(VISIBLE), page, size)
+        return fetchPage(NEWS.ID.`in`(companyNewsIds(tickers)).and(PROCESSED), page, size)
     }
 
     private fun fetchPage(condition: Condition, page: Int, size: Int): PageResult<NewsView> {
@@ -55,6 +54,7 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             NEWS.LINK,
             NEWS.PUBLISHED_AT,
             NEWS.COLLECTED_AT,
+            NEWS.TRIPLE_EXTRACTED,
         )
             .from(NEWS)
             .where(condition)
@@ -77,16 +77,6 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             .join(COMPANIES).on(COMPANIES.ID.eq(NEWS_COMPANIES.COMPANY_ID))
             .where(COMPANIES.TICKER.`in`(tickers).and(COMPANIES.DELISTED_AT.isNull))
 
-    private fun relatedNewsIds(ticker: String): Select<Record1<Long?>> =
-        dsl.select(RELATION_SOURCES.NEWS_ID)
-            .from(RELATION_SOURCES)
-            .where(RELATION_SOURCES.SUBJECT_CODE.eq(ticker))
-            .union(
-                dsl.select(RELATION_SOURCES.NEWS_ID)
-                    .from(RELATION_SOURCES)
-                    .where(RELATION_SOURCES.OBJECT_CODE.eq(ticker)),
-            )
-
     private fun Record.toNewsView() = NewsView(
         id = requireNotNull(get(NEWS.ID)),
         title = get(NEWS.TITLE),
@@ -94,6 +84,7 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
         url = get(NEWS.LINK),
         publishedAt = get(NEWS.PUBLISHED_AT),
         collectedAt = get(NEWS.COLLECTED_AT),
+        tripleExtracted = get(NEWS.TRIPLE_EXTRACTED),
     )
 
     private fun Record.toNewsDetail() = NewsDetail(
@@ -110,5 +101,8 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
         // isTrue() 가 만드는 IS TRUE 는 부분 인덱스 idx_news_visible 의 술어와 매칭되지 않는다
         // (플래너가 동치를 증명하지 못해 Seq Scan 으로 떨어진다). eq(true) 형태를 써야 한다.
         private val VISIBLE: Condition = NEWS.TRIPLE_EXTRACTED.eq(true)
+
+        // 트리플 추출을 한 번이라도 거친 뉴스 (성공·실패 불문). 미처리(NULL) 건만 제외한다.
+        private val PROCESSED: Condition = NEWS.TRIPLE_EXTRACTED.isNotNull
     }
 }

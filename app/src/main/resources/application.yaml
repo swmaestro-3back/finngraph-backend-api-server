@@ -25,6 +25,9 @@ app:
     access-ttl: 30m
     refresh-ttl: 14d
 
+  hot-themes:
+    cron: "0 40 15 * * *"
+
   kakao:
     client-id: ${KAKAO_CLIENT_ID:}
     client-secret: ${KAKAO_CLIENT_SECRET:}

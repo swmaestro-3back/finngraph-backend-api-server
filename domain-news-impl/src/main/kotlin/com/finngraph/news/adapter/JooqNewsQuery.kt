@@ -33,7 +33,7 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             NEWS.COLLECTED_AT,
         )
             .from(NEWS)
-            .where(NEWS.ID.`in`(ids.map { it.value }).and(VISIBLE))
+            .where(NEWS.ID.`in`(ids.map { it.value }).and(PROCESSED))
             .fetch { it.toNewsDetail() }
             .associateBy { NewsId(it.id) }
     }

@@ -21,6 +21,7 @@ interface NewsApi {
 
     @Operation(
         summary = "뉴스 목록",
+        description = "관계 추출이 완료되어 삼중항이 있는 뉴스 목록",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -43,6 +44,7 @@ interface NewsApi {
 
     @Operation(
         summary = "뉴스 상세",
+        description = "추출 시도가 완료된 뉴스(삼중항 유무 불문) — 미추출 뉴스는 404",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),

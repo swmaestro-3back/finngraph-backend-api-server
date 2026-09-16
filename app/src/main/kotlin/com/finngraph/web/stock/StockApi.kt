@@ -129,6 +129,7 @@ interface StockApi {
 
     @Operation(
         summary = "종목별 뉴스",
+        description = "종목이 언급된 뉴스 전체",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),

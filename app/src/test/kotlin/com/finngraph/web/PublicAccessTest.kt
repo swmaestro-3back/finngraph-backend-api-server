@@ -26,7 +26,7 @@ class PublicAccessTest {
     lateinit var rest: TestRestTemplate
 
     @Test
-    fun `조회 목록 3종은 무토큰으로 200 반환`() {
+    fun `조회 목록 4종은 무토큰으로 200 반환`() {
         LIST_ENDPOINTS.forEach { path ->
             assertEquals(HttpStatus.OK, get(path).statusCode, path)
         }
@@ -110,6 +110,7 @@ class PublicAccessTest {
     companion object {
         private val LIST_ENDPOINTS = listOf(
             "/api/v1/themes",
+            "/api/v1/themes/hot",
             "/api/v1/stocks",
             "/api/v1/news",
         )

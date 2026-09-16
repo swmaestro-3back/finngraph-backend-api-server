@@ -1,4 +1,4 @@
-package com.finngraph.web.common
+package com.finngraph.config
 
 import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer
 import org.springframework.context.annotation.Bean

@@ -96,6 +96,7 @@ interface ThemeApi {
 
     @Operation(
         summary = "테마별 뉴스",
+        description = "테마 편입 종목이 언급된 뉴스",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),

@@ -35,7 +35,7 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
             .leftJoin(STOCK_VALUATIONS_DAILY)
             .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
             .leftJoin(ThemeQuerySupport.priceTable()).on(DSL.trueCondition())
-            .where(THEMES.ID.eq(id.value))
+            .where(THEMES.ID.eq(id.value).and(STOCKS.IS_ACTIVE.eq(true)))
             .orderBy(STOCK_VALUATIONS_DAILY.MARKET_CAP.desc().nullsLast(), STOCKS.TICKER.asc())
             .fetch {
                 ThemeStockView(

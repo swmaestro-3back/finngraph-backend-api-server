@@ -68,6 +68,7 @@ class SecurityConfig {
                 registry.requestMatchers(HttpMethod.POST, *PUBLIC_POST).permitAll()
                 if (environment.acceptsProfiles(Profiles.of("local"))) {
                     registry.requestMatchers(HttpMethod.GET, *LOCAL_DOCS).permitAll()
+                    registry.requestMatchers(HttpMethod.GET, *LOCAL_ACTUATOR).permitAll()
                 }
                 registry.anyRequest().authenticated()
             }
@@ -106,6 +107,9 @@ class SecurityConfig {
             "/actuator/health",
             "/actuator/health/readiness",
             "/actuator/health/liveness",
+        )
+
+        val LOCAL_ACTUATOR = arrayOf(
             "/actuator/metrics",
             "/actuator/metrics/*",
             "/actuator/prometheus",

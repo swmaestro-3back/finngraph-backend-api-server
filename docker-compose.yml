@@ -7,7 +7,7 @@ services:
       dockerfile: docker/app.Dockerfile
     container_name: finngraph-backend
     environment:
-      SPRING_PROFILES_ACTIVE: ${APP_PROFILE:-local}
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILE:-prod}
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/finngraph
       SPRING_DATASOURCE_USERNAME: ${ETL_DB_USER:-threeback}
       SPRING_DATASOURCE_PASSWORD: ${ETL_DB_PASSWORD:-12345678}

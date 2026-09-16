@@ -48,7 +48,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,metrics,prometheus
+        include: health
   endpoint:
     health:
       show-details: never
@@ -74,6 +74,10 @@ app:
     secure-cookie: false
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
   endpoint:
     health:
       show-details: always

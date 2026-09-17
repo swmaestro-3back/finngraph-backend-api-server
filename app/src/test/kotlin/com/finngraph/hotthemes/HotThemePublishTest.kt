@@ -25,7 +25,7 @@ class HotThemePublishTest {
     lateinit var publishService: HotThemePublishService
 
     @Autowired
-    lateinit var scheduler: HotThemeScheduler
+    lateinit var bootstrap: HotThemeBootstrap
 
     @Autowired
     lateinit var redis: StringRedisTemplate
@@ -96,7 +96,7 @@ class HotThemePublishTest {
     }
 
     @Test
-    fun `redis가 죽어도 스케줄 발행 실패는 밖으로 전파되지 않는다`() {
+    fun `redis가 죽어도 부트스트랩 발행 실패는 밖으로 전파되지 않는다`() {
         HotThemeSeed.seed()
         val docker = DockerClientFactory.instance().client()
         val containerId = TestContainers.redis.containerId
@@ -104,7 +104,7 @@ class HotThemePublishTest {
 
         docker.pauseContainerCmd(containerId).exec()
         try {
-            scheduler.publishSafely()
+            bootstrap.publishSafely()
             assertTrue(failureCount() > failuresBefore)
         } finally {
             docker.unpauseContainerCmd(containerId).exec()

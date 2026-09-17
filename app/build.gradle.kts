@@ -12,9 +12,9 @@ tasks.named<BootRun>("bootRun") {
 
 tasks.named<Test>("test") {
     systemProperty("finngraph.app.migrations.dir", rootProject.file("db/migration-app").absolutePath)
-    systemProperty("finngraph.etl.schema.sql", rootProject.file("db/migration/V1__schema.sql").absolutePath)
+    systemProperty("finngraph.etl.migrations.dir", rootProject.file("db/migration").absolutePath)
     inputs.dir(rootProject.file("db/migration-app"))
-    inputs.file(rootProject.file("db/migration/V1__schema.sql"))
+    inputs.dir(rootProject.file("db/migration"))
 }
 
 dependencies {

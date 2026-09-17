@@ -14,15 +14,15 @@ import java.nio.file.Path
 import java.sql.DriverManager
 
 fun main(args: Array<String>) {
-    require(args.size == 2) { "스키마 SQL 경로, 출력 디렉터리 파라미터 필요" }
-    val schemaSql = Path.of(args[0])
+    require(args.size == 2) { "마이그레이션 디렉터리, 출력 디렉터리 파라미터 필요" }
+    val migrationsDir = Path.of(args[0])
     val outputDir = args[1]
-    require(Files.exists(schemaSql)) { "스키마 파일 없음: $schemaSql" }
+    require(Files.isDirectory(migrationsDir)) { "마이그레이션 디렉터리 없음: $migrationsDir" }
 
     val postgres = PostgreSQLContainer(DockerImageName.parse(IMAGE).asCompatibleSubstituteFor("postgres"))
     postgres.start()
     try {
-        applySchema(postgres, Files.readString(schemaSql))
+        applyMigrations(postgres, migrationsDir)
         GenerationTool.generate(configuration(postgres, outputDir))
         println("jOOQ 생성 완료 → $outputDir")
     } finally {
@@ -30,11 +30,25 @@ fun main(args: Array<String>) {
     }
 }
 
-private fun applySchema(postgres: PostgreSQLContainer, sql: String) {
+private val MIGRATION_FILE = Regex("V\\d+__.*\\.sql")
+
+private fun applyMigrations(postgres: PostgreSQLContainer, dir: Path) {
+    val migrations = Files.list(dir).use { files ->
+        files.filter { it.fileName.toString().matches(MIGRATION_FILE) }
+            .sorted(compareBy { versionOf(it.fileName.toString()) })
+            .toList()
+    }
+    require(migrations.isNotEmpty()) { "마이그레이션 파일 없음: $dir" }
+
     DriverManager.getConnection(postgres.jdbcUrl, postgres.username, postgres.password).use { conn ->
-        conn.createStatement().use { it.execute(sql) }
+        conn.createStatement().use { statement ->
+            migrations.forEach { statement.execute(Files.readString(it)) }
+        }
     }
 }
+
+private fun versionOf(fileName: String): Int =
+    fileName.removePrefix("V").substringBefore("__").toInt()
 
 private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Configuration()
     .withJdbc(

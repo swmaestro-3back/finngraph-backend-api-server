@@ -22,7 +22,7 @@ dependencyManagement {
 }
 
 tasks.named<Test>("test") {
-    systemProperty("finngraph.schema.sql", rootProject.file("db/migration/V1__schema.sql").absolutePath)
+    systemProperty("finngraph.etl.migrations.dir", rootProject.file("db/migration").absolutePath)
 }
 
 val jooqCodegen: SourceSet = extensions.getByType<SourceSetContainer>().create("jooqCodegen")
@@ -33,7 +33,7 @@ dependencies {
     "jooqCodegenRuntimeOnly"("org.postgresql:postgresql")
 }
 
-val schemaSqlFile = rootProject.layout.projectDirectory.file("db/migration/V1__schema.sql")
+val migrationsDir = rootProject.layout.projectDirectory.dir("db/migration")
 val jooqOutputDir = layout.buildDirectory.dir("generated/sources/jooq/main/kotlin")
 
 val launcher21 = extensions.getByType<JavaToolchainService>().launcherFor {
@@ -49,9 +49,9 @@ val generateJooq = tasks.register<JavaExec>("generateJooq") {
 
     javaLauncher.set(launcher21)
 
-    args = listOf(schemaSqlFile.asFile.absolutePath, jooqOutputDir.get().asFile.absolutePath)
+    args = listOf(migrationsDir.asFile.absolutePath, jooqOutputDir.get().asFile.absolutePath)
 
-    inputs.file(schemaSqlFile).withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.dir(migrationsDir).withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.dir(jooqOutputDir)
     outputs.cacheIf { true }
 }

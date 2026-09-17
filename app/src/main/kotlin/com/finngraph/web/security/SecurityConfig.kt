@@ -1,12 +1,14 @@
 package com.finngraph.web.security
 
 import com.finngraph.composition.RefreshTokenGenerator
+import com.finngraph.security.InternalApiProperties
 import com.finngraph.security.JwtProperties
 import com.finngraph.security.JwtTokenService
 import com.finngraph.security.KakaoProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.core.env.Environment
 import org.springframework.core.env.Profiles
 import org.springframework.http.HttpMethod
@@ -23,8 +25,27 @@ import tools.jackson.databind.ObjectMapper
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties::class, KakaoProperties::class)
+@EnableConfigurationProperties(JwtProperties::class, KakaoProperties::class, InternalApiProperties::class)
 class SecurityConfig {
+
+    @Bean
+    @Order(0)
+    fun internalSecurityFilterChain(
+        http: HttpSecurity,
+        internalProperties: InternalApiProperties,
+        mapper: ObjectMapper,
+    ): SecurityFilterChain {
+        http
+            .securityMatcher("/internal/**")
+            .csrf { it.disable() }
+            .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
+            .authorizeHttpRequests { it.anyRequest().permitAll() }
+            .addFilterBefore(
+                InternalTokenFilter(internalProperties, mapper),
+                UsernamePasswordAuthenticationFilter::class.java,
+            )
+        return http.build()
+    }
 
     @Bean
     fun passwordEncoder(): PasswordEncoder =
@@ -47,6 +68,7 @@ class SecurityConfig {
         RefreshTokenGenerator(properties.refreshTtl)
 
     @Bean
+    @Order(1)
     fun securityFilterChain(
         http: HttpSecurity,
         tokens: JwtTokenService,

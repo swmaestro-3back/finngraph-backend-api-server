@@ -18,7 +18,7 @@ object TestContainers {
 
     val etlPostgres: PostgreSQLContainer = PostgreSQLContainer("pgvector/pgvector:pg17").apply {
         start()
-        applySchema(this, "finngraph.etl.schema.sql")
+        applyMigrations(this, "finngraph.etl.migrations.dir")
     }
 
     val appPostgres: PostgreSQLContainer = PostgreSQLContainer("postgres:17").apply {
@@ -44,12 +44,6 @@ object TestContainers {
         registry.add("spring.data.redis.port") { redis.getMappedPort(REDIS_PORT) }
         registry.add("spring.data.redis.timeout") { REDIS_TIMEOUT }
         registry.add("app.jwt.secret") { jwtSecret }
-    }
-
-    private fun applySchema(container: PostgreSQLContainer, schemaProperty: String) {
-        val schema = Files.readString(Path.of(System.getProperty(schemaProperty)))
-        DriverManager.getConnection(container.jdbcUrl, container.username, container.password)
-            .use { connection -> connection.createStatement().use { it.execute(schema) } }
     }
 
     private fun applyMigrations(container: PostgreSQLContainer, dirProperty: String) {

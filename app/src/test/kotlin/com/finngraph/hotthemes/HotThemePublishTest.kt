@@ -11,13 +11,18 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.DockerClientFactory
 import tools.jackson.databind.ObjectMapper
+import java.time.LocalDate
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @SpringBootTest
 class HotThemePublishTest {
+
+    @Autowired
+    lateinit var publishService: HotThemePublishService
 
     @Autowired
     lateinit var scheduler: HotThemeScheduler
@@ -35,7 +40,11 @@ class HotThemePublishTest {
     fun `핫테마를 활성 종목 전량과 함께 원자적 SET과 TTL로 발행한다`() {
         HotThemeSeed.seed()
         try {
-            scheduler.publish()
+            val outcome = publishService.publish()
+
+            assertIs<HotThemePublishOutcome.Published>(outcome)
+            assertEquals(3, outcome.themes)
+            assertEquals(LocalDate.parse("2026-07-31"), outcome.tradeDate)
 
             val json = assertNotNull(redis.opsForValue().get(RedisHotThemePublisher.KEY))
             val payload = mapper.readValue(json, Map::class.java)
@@ -66,8 +75,9 @@ class HotThemePublishTest {
     fun `테마가 없으면 발행을 건너뛰고 기존 키를 덮지 않는다`() {
         redis.delete(RedisHotThemePublisher.KEY)
 
-        scheduler.publish()
+        val outcome = publishService.publish()
 
+        assertIs<HotThemePublishOutcome.Skipped>(outcome)
         assertNull(redis.opsForValue().get(RedisHotThemePublisher.KEY))
     }
 
@@ -76,8 +86,9 @@ class HotThemePublishTest {
         HotThemeSeed.seedNullChange()
         redis.delete(RedisHotThemePublisher.KEY)
         try {
-            scheduler.publish()
+            val outcome = publishService.publish()
 
+            assertIs<HotThemePublishOutcome.Skipped>(outcome)
             assertNull(redis.opsForValue().get(RedisHotThemePublisher.KEY))
         } finally {
             HotThemeSeed.cleanup()
@@ -85,7 +96,7 @@ class HotThemePublishTest {
     }
 
     @Test
-    fun `redis가 죽어도 발행 실패는 밖으로 전파되지 않는다`() {
+    fun `redis가 죽어도 스케줄 발행 실패는 밖으로 전파되지 않는다`() {
         HotThemeSeed.seed()
         val docker = DockerClientFactory.instance().client()
         val containerId = TestContainers.redis.containerId
@@ -93,7 +104,7 @@ class HotThemePublishTest {
 
         docker.pauseContainerCmd(containerId).exec()
         try {
-            scheduler.publish()
+            scheduler.publishSafely()
             assertTrue(failureCount() > failuresBefore)
         } finally {
             docker.unpauseContainerCmd(containerId).exec()

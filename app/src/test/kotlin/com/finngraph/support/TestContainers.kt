@@ -5,6 +5,9 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.postgresql.PostgreSQLContainer
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.spec.ECGenParameterSpec
 import java.sql.DriverManager
 import java.util.Base64
 
@@ -31,7 +34,12 @@ object TestContainers {
         start()
     }
 
-    val jwtSecret: String = Base64.getEncoder().encodeToString(ByteArray(32) { (it * 7 + 13).toByte() })
+    private val jwtKeyPair: KeyPair = KeyPairGenerator.getInstance("EC")
+        .apply { initialize(ECGenParameterSpec("secp256r1")) }
+        .generateKeyPair()
+
+    val jwtSigningKey: String = Base64.getEncoder().encodeToString(jwtKeyPair.private.encoded)
+    val jwtPublicKey: String = Base64.getEncoder().encodeToString(jwtKeyPair.public.encoded)
 
     fun register(registry: DynamicPropertyRegistry) {
         registry.add("spring.datasource.url") { etlPostgres.jdbcUrl }
@@ -43,7 +51,8 @@ object TestContainers {
         registry.add("spring.data.redis.host") { redis.host }
         registry.add("spring.data.redis.port") { redis.getMappedPort(REDIS_PORT) }
         registry.add("spring.data.redis.timeout") { REDIS_TIMEOUT }
-        registry.add("app.jwt.secret") { jwtSecret }
+        registry.add("app.jwt.signing-key") { jwtSigningKey }
+        registry.add("app.jwt.public-key") { jwtPublicKey }
     }
 
     private fun applyMigrations(container: PostgreSQLContainer, dirProperty: String) {

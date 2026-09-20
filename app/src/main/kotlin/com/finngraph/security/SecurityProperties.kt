@@ -5,7 +5,8 @@ import java.time.Duration
 
 @ConfigurationProperties("app.jwt")
 data class JwtProperties(
-    val secret: String,
+    val signingKey: String,
+    val publicKey: String,
     val accessTtl: Duration,
     val refreshTtl: Duration,
     val secureCookie: Boolean = true,

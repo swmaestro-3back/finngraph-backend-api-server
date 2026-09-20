@@ -34,7 +34,7 @@ class ThemeHotApiTest {
 
     @Test
     fun `허용된 count 3종은 200`() {
-        listOf(20, 30, 40).forEach { count ->
+        listOf(10, 20, 30).forEach { count ->
             val response = rest.getForEntity("/api/v1/themes/hot?count=$count", String::class.java)
             assertEquals(HttpStatus.OK, response.statusCode, "count=$count")
         }
@@ -57,7 +57,7 @@ class ThemeHotApiTest {
 
     @Test
     fun `허용되지 않은 count는 400`() {
-        listOf(0, 10, 25, 100).forEach { count ->
+        listOf(0, 15, 40, 100).forEach { count ->
             val response = rest.getForEntity("/api/v1/themes/hot?count=$count", String::class.java)
             assertEquals(HttpStatus.BAD_REQUEST, response.statusCode, "count=$count")
             assertTrue(response.body!!.contains("count"), "count=$count")

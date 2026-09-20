@@ -70,8 +70,8 @@ class ThemeController(
     private fun validateCount(count: Int) {
         if (count !in HOT_COUNTS) {
             throw InvalidParameterException(
-                "count는 20, 30, 40 중 하나여야 합니다",
-                mapOf("count" to "must be one of 20, 30, 40"),
+                "count는 10, 20, 30 중 하나여야 합니다",
+                mapOf("count" to "must be one of 10, 20, 30"),
             )
         }
     }
@@ -96,6 +96,7 @@ class ThemeController(
     )
 
     private companion object {
-        val HOT_COUNTS = setOf(20, 30, 40)
+        // 클라이언트 트리맵의 표시 개수 옵션과 1:1 — 바꿀 땐 finngraph-client THEME_COUNTS와 함께 맞춘다
+        val HOT_COUNTS = setOf(10, 20, 30)
     }
 }

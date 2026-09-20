@@ -49,7 +49,7 @@ class HotThemePublishService(
         Counter.builder(METRIC).tag("result", result).register(registry)
 
     companion object {
-        const val COUNT = 40
+        const val COUNT = 30
         private const val METRIC = "hot.themes.publish"
     }
 }

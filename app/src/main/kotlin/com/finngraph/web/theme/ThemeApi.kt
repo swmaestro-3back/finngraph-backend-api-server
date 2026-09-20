@@ -42,13 +42,13 @@ interface ThemeApi {
         ApiResponse(responseCode = "200", description = "조회 성공"),
         ApiResponse(
             responseCode = "400",
-            description = "count 가 20, 30, 40이 아님",
+            description = "count가 10, 20, 30이 아님",
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
     )
     @GetMapping("/hot")
     fun hot(
-        @Parameter(description = "표시 개수 (20, 30, 40)") @RequestParam(required = false, defaultValue = "20") count: Int,
+        @Parameter(description = "표시 개수(10, 20, 30)") @RequestParam(required = false, defaultValue = "20") count: Int,
     ): DataResponse<List<ThemeSummaryResponse>>
 
     @Operation(

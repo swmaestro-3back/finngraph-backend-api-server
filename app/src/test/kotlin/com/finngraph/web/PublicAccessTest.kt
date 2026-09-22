@@ -58,6 +58,20 @@ class PublicAccessTest {
     }
 
     @Test
+    fun `internal 경로는 토큰 미설정이면 전면 거부`() {
+        val headers = HttpHeaders().apply { add("X-Internal-Token", "anything") }
+
+        val response = rest.exchange(
+            "/internal/hot-themes/publish",
+            HttpMethod.POST,
+            HttpEntity<Void>(headers),
+            String::class.java,
+        )
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
+    }
+
+    @Test
     fun `미기재 경로는 익명이면 404가 아니라 401`() {
         assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/me").statusCode)
         assertEquals(HttpStatus.UNAUTHORIZED, get("/api/v1/nothing-here").statusCode)

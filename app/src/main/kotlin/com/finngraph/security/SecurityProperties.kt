@@ -12,6 +12,11 @@ data class JwtProperties(
     val secureCookie: Boolean = true,
 )
 
+@ConfigurationProperties("app.internal")
+data class InternalApiProperties(
+    val token: String = "",
+)
+
 @ConfigurationProperties("app.kakao")
 data class KakaoProperties(
     val clientId: String,

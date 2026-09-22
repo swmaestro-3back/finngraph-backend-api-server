@@ -27,13 +27,29 @@ services:
       - "8081:8080"
     restart: unless-stopped
     depends_on:
-      app-db:
-        condition: service_healthy
+      app-db-migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     networks:
       - etl
       - default
+
+  app-db-migrate:
+    image: flyway/flyway:12.11.0
+    container_name: finngraph-app-db-migrate
+    command: ["migrate"]
+    environment:
+      FLYWAY_URL: jdbc:postgresql://app-db:5432/finngraph_app
+      FLYWAY_USER: ${APP_DB_USER:-finngraph_app}
+      FLYWAY_PASSWORD: ${APP_DB_PASSWORD:-app}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      TZ: Asia/Seoul
+    volumes:
+      - ./db/migration-app:/flyway/sql:ro
+    depends_on:
+      app-db:
+        condition: service_healthy
 
   app-db:
     image: postgres:17

@@ -15,6 +15,7 @@ import com.finngraph.web.common.InvalidParameterException
 import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
+import com.finngraph.web.common.validatePaging
 import com.finngraph.composition.StockThemeComposer
 import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
@@ -114,20 +115,6 @@ class StockController(
             "limit은 1 이상 $MAX_FLOW_LIMIT 이하여야 합니다",
             mapOf("limit" to "must be between 1 and $MAX_FLOW_LIMIT"),
         )
-    }
-
-    private fun validatePaging(page: Int, size: Int) {
-        val errors = buildMap {
-            if (page < 0) put("page", "must be >= 0")
-            if (size < 1) put("size", "must be >= 1")
-            if (size > PageResult.MAX_SIZE) put("size", "must be <= ${PageResult.MAX_SIZE}")
-        }
-        if (errors.isEmpty()) return
-
-        val message =
-            if (size > PageResult.MAX_SIZE) "size는 ${PageResult.MAX_SIZE} 이하여야 합니다"
-            else "페이징 파라미터가 올바르지 않습니다"
-        throw InvalidParameterException(message, errors)
     }
 
     private fun PageResult<NewsView>.toResponse() = PageResponse(

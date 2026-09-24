@@ -9,5 +9,6 @@ interface ThemeQueryPort {
     fun exists(id: ThemeId): Boolean
     fun findAll(): List<ThemeSummary>
     fun findById(id: ThemeId): ThemeSummary?
+    fun findByIds(ids: List<ThemeId>): Map<ThemeId, ThemeSummary>
     fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme>
 }

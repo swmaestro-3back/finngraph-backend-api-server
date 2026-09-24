@@ -34,6 +34,12 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     override fun findById(id: ThemeId): ThemeSummary? =
         summaries(THEMES.ID.eq(id.value)).firstOrNull()
 
+    override fun findByIds(ids: List<ThemeId>): Map<ThemeId, ThemeSummary> {
+        if (ids.isEmpty()) return emptyMap()
+        return summaries(THEMES.ID.`in`(ids.map { it.value }.distinct()))
+            .associateBy { ThemeId(it.id) }
+    }
+
     override fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme> {
         if (tickers.isEmpty()) return emptyMap()
 

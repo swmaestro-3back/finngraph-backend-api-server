@@ -9,4 +9,5 @@ interface UserPort {
     fun findById(id: Long): UserView?
     fun updateNickname(id: Long, nickname: Nickname): UserView?
     fun delete(id: Long): Boolean
+    fun lockForUpdate(id: Long): Boolean
 }

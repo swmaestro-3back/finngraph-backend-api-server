@@ -2,8 +2,10 @@ package com.finngraph.web.common
 
 import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.AuthProvider
+import com.finngraph.composition.FavoriteTargetNotFoundException
 import com.finngraph.composition.port.KakaoAuthFailedException
 import com.finngraph.composition.port.KakaoUnavailableException
+import com.finngraph.web.favorite.FavoriteLimitExceededException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
 import org.springframework.http.HttpStatus
@@ -52,6 +54,19 @@ class GlobalExceptionHandler {
                 respond(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCode.INTERNAL_ERROR, "요청을 처리하지 못 했습니다.")
             }
         }
+
+    @ExceptionHandler(FavoriteTargetNotFoundException::class)
+    fun handleFavoriteTargetNotFound(e: FavoriteTargetNotFoundException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.NOT_FOUND, ErrorCode.FAVORITE_TARGET_NOT_FOUND, "존재하지 않는 종목 또는 테마입니다.")
+
+    @ExceptionHandler(FavoriteLimitExceededException::class)
+    fun handleFavoriteLimitExceeded(e: FavoriteLimitExceededException): ResponseEntity<ErrorResponse> =
+        respond(
+            HttpStatus.CONFLICT,
+            ErrorCode.FAVORITE_LIMIT_EXCEEDED,
+            e.message ?: "관심 목록 상한을 초과했습니다.",
+            mapOf("limit" to e.limit, "count" to e.count),
+        )
 
     @ExceptionHandler(KakaoAuthFailedException::class)
     fun handleKakaoAuthFailed(e: KakaoAuthFailedException): ResponseEntity<ErrorResponse> =

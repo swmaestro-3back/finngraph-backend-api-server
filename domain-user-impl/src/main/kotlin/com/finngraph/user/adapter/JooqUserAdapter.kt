@@ -39,4 +39,11 @@ class JooqUserAdapter(
         dsl.deleteFrom(USERS)
             .where(USERS.ID.eq(id))
             .execute() > 0
+
+    override fun lockForUpdate(id: Long): Boolean =
+        dsl.select(USERS.ID)
+            .from(USERS)
+            .where(USERS.ID.eq(id))
+            .forUpdate()
+            .fetchOne() != null
 }

@@ -25,7 +25,7 @@ class ArchitectureTest {
     val webDoesNotTouchWritePorts = noClasses()
         .that().resideInAPackage("com.finngraph.web..")
         .should().dependOnClassesThat()
-        .resideInAnyPackage("com.finngraph.user.port..", "com.finngraph.auth.port..")
+        .resideInAnyPackage("com.finngraph.user.port..", "com.finngraph.auth.port..", "com.finngraph.favorite.port..")
 
     @ArchTest
     val webDeclaresNoTransactions = methods()

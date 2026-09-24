@@ -32,6 +32,9 @@ dependencies {
     implementation(project(":domain-user-api"))
     runtimeOnly(project(":domain-user-impl"))
 
+    implementation(project(":domain-favorite-api"))
+    runtimeOnly(project(":domain-favorite-impl"))
+
     implementation(project(":domain-auth-api"))
     runtimeOnly(project(":domain-auth-impl"))
 

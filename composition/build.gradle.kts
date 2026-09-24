@@ -8,6 +8,7 @@ dependencies {
     api(project(":domain-stock-api"))
     api(project(":domain-theme-api"))
     api(project(":domain-user-api"))
+    api(project(":domain-favorite-api"))
     api(project(":domain-auth-api"))
 
     implementation("org.springframework:spring-context")

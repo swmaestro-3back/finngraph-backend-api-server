@@ -71,6 +71,16 @@ class JooqCredentialAdapter(
                 EmailCredentialView(it[AUTH_CREDENTIALS.USER_ID]!!, it[AUTH_CREDENTIALS.PASSWORD_HASH]!!)
             }
 
+    override fun existsByEmail(email: Email): Boolean =
+        dsl.fetchExists(
+            dsl.selectOne()
+                .from(AUTH_CREDENTIALS)
+                .where(
+                    AUTH_CREDENTIALS.PROVIDER.eq(AuthProvider.EMAIL.name)
+                        .and(AUTH_CREDENTIALS.EMAIL.eq(email.value)),
+                ),
+        )
+
     override fun findByUserId(userId: Long): CredentialView? =
         dsl.select(AUTH_CREDENTIALS.PROVIDER, AUTH_CREDENTIALS.EMAIL)
             .from(AUTH_CREDENTIALS)

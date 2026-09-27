@@ -1,18 +1,22 @@
 package com.finngraph.web.auth
 
 import com.finngraph.auth.model.Email
+import com.finngraph.auth.model.VerificationCode
+import com.finngraph.auth.model.VerificationResult
 import com.finngraph.composition.AccountComposer
 import com.finngraph.composition.IssuedSession
 import com.finngraph.composition.KakaoSignupResult
 import com.finngraph.composition.SessionComposer
 import com.finngraph.composition.port.KakaoOAuthPort
 import com.finngraph.user.model.Nickname
+import com.finngraph.verification.EmailVerificationService
 import com.finngraph.web.common.AuthenticationFailedException
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException
 import com.finngraph.web.security.RefreshTokenCookies
 import com.finngraph.web.user.MeResponse
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpHeaders
 import org.springframework.web.bind.annotation.RestController
@@ -23,6 +27,8 @@ class AuthController(
     private val sessionComposer: SessionComposer,
     private val refreshTokens: RefreshTokenCookies,
     private val kakaoClient: KakaoOAuthPort,
+    private val verification: EmailVerificationService,
+    private val verificationCookies: VerificationCookies,
 ) : AuthApi {
 
     override fun kakaoLogin(
@@ -40,12 +46,37 @@ class AuthController(
 
     override fun signup(
         request: SignupRequest,
+        grant: String?,
         response: HttpServletResponse,
     ): DataResponse<AuthTokenResponse> {
         val command = validateSignup(request)
-        val userId = accountComposer.signupEmail(command.email, command.password, command.nickname)
+        val userId = accountComposer.signupEmail(command.email, command.password, command.nickname, grant)
+        setCookie(response, verificationCookies.expiredCookie().toString())
 
         return respond(issueSession(userId), isNewUser = true, response)
+    }
+
+    override fun sendVerification(request: SendVerificationRequest) {
+        verification.send(validateEmail(request.email))
+    }
+
+    override fun confirmVerification(
+        request: ConfirmVerificationRequest,
+        httpRequest: HttpServletRequest,
+        response: HttpServletResponse,
+    ) {
+        val command = validateConfirm(request)
+
+        when (val result = verification.confirm(command.email, command.code, httpRequest.remoteAddr)) {
+            is VerificationResult.Verified ->
+                setCookie(response, verificationCookies.cookie(result.grant).toString())
+
+            is VerificationResult.Mismatch ->
+                throw VerificationFailedException(ErrorCode.VERIFICATION_CODE_MISMATCH, result.remainingAttempts)
+
+            VerificationResult.Expired ->
+                throw VerificationFailedException(ErrorCode.VERIFICATION_EXPIRED, null)
+        }
     }
 
     override fun login(
@@ -119,20 +150,40 @@ class AuthController(
         if (errors.isNotEmpty()) throw InvalidParameterException("로그인 정보가 올바르지 않습니다.", errors)
     }
 
+    private fun validateEmail(raw: String?): Email {
+        val errors = mutableMapOf<String, String>()
+        val email = parseEmail(raw, errors)
+        if (errors.isNotEmpty()) throw InvalidParameterException("이메일이 올바르지 않습니다.", errors)
+        return email!!
+    }
+
+    private fun validateConfirm(request: ConfirmVerificationRequest): ConfirmCommand {
+        val errors = mutableMapOf<String, String>()
+        val email = parseEmail(request.email, errors)
+        val code = runCatching { VerificationCode.of(request.code.orEmpty()) }.getOrElse {
+            errors["code"] = "must be ${VerificationCode.LENGTH} digits"
+            null
+        }
+        if (errors.isNotEmpty()) throw InvalidParameterException("인증 정보가 올바르지 않습니다.", errors)
+        return ConfirmCommand(email!!, code!!)
+    }
+
+    private fun parseEmail(raw: String?, errors: MutableMap<String, String>): Email? = when {
+        raw.isNullOrBlank() -> {
+            errors["email"] = "must not be blank"
+            null
+        }
+
+        else -> runCatching { Email.of(raw) }.getOrElse {
+            errors["email"] = "must be a valid email of at most ${Email.MAX_LENGTH} characters"
+            null
+        }
+    }
+
     private fun validateSignup(request: SignupRequest): SignupCommand {
         val errors = mutableMapOf<String, String>()
 
-        val email = when {
-            request.email.isNullOrBlank() -> {
-                errors["email"] = "must not be blank"
-                null
-            }
-
-            else -> runCatching { Email.of(request.email) }.getOrElse {
-                errors["email"] = "must be a valid email of at most ${Email.MAX_LENGTH} characters"
-                null
-            }
-        }
+        val email = parseEmail(request.email, errors)
 
         val password = request.password.orEmpty()
         when {
@@ -162,6 +213,11 @@ class AuthController(
 
     private fun unauthorized() =
         AuthenticationFailedException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.")
+
+    private data class ConfirmCommand(
+        val email: Email,
+        val code: VerificationCode,
+    )
 
     private data class SignupCommand(
         val email: Email,

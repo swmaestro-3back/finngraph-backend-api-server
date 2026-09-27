@@ -2,14 +2,20 @@ package com.finngraph.web.common
 
 import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.AuthProvider
+import com.finngraph.composition.EmailNotVerifiedException
 import com.finngraph.composition.FavoriteTargetNotFoundException
+import com.finngraph.composition.RateLimitedException
 import com.finngraph.composition.port.KakaoAuthFailedException
 import com.finngraph.composition.port.KakaoUnavailableException
+import com.finngraph.composition.port.MailDeliveryFailedException
+import com.finngraph.web.auth.VerificationFailedException
 import com.finngraph.web.favorite.FavoriteLimitExceededException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
@@ -40,6 +46,53 @@ class GlobalExceptionHandler {
             message = "${e.name} 값의 형식이 올바르지 않습니다",
             details = mapOf("fieldErrors" to mapOf(e.name to "type mismatch")),
         )
+
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleUnreadableBody(e: HttpMessageNotReadableException): ResponseEntity<ErrorResponse> =
+        respond(
+            status = HttpStatus.BAD_REQUEST,
+            code = ErrorCode.INVALID_PARAMETER,
+            message = "요청 본문을 읽을 수 없습니다",
+            details = mapOf("fieldErrors" to mapOf("body" to "must be a valid JSON body")),
+        )
+
+    @ExceptionHandler(RateLimitedException::class)
+    fun handleRateLimited(e: RateLimitedException): ResponseEntity<ErrorResponse> {
+        val retryAfterSeconds = maxOf(MIN_RETRY_AFTER_SECONDS, e.retryAfter.seconds)
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header(HttpHeaders.RETRY_AFTER, retryAfterSeconds.toString())
+            .body(
+                ErrorResponse(
+                    ErrorBody(
+                        ErrorCode.RATE_LIMITED,
+                        "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요.",
+                        mapOf("retryAfterSeconds" to retryAfterSeconds),
+                    ),
+                ),
+            )
+    }
+
+    @ExceptionHandler(VerificationFailedException::class)
+    fun handleVerificationFailed(e: VerificationFailedException): ResponseEntity<ErrorResponse> =
+        respond(
+            status = HttpStatus.UNAUTHORIZED,
+            code = e.code,
+            message = when (e.code) {
+                ErrorCode.VERIFICATION_CODE_MISMATCH -> "인증 코드가 일치하지 않습니다."
+                else -> "인증 코드가 만료됐거나 발급되지 않았습니다."
+            },
+            details = e.remainingAttempts?.let { mapOf("remainingAttempts" to it) },
+        )
+
+    @ExceptionHandler(EmailNotVerifiedException::class)
+    fun handleEmailNotVerified(e: EmailNotVerifiedException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.FORBIDDEN, ErrorCode.EMAIL_NOT_VERIFIED, "이메일 인증이 필요합니다.")
+
+    @ExceptionHandler(MailDeliveryFailedException::class)
+    fun handleMailDeliveryFailed(e: MailDeliveryFailedException): ResponseEntity<ErrorResponse> {
+        log.error("인증 메일 발송 실패", e)
+        return respond(HttpStatus.BAD_GATEWAY, ErrorCode.MAIL_DELIVERY_FAILED, "인증 메일을 보내지 못했습니다.")
+    }
 
     @ExceptionHandler(AuthenticationFailedException::class)
     fun handleAuthenticationFailed(e: AuthenticationFailedException): ResponseEntity<ErrorResponse> =
@@ -109,4 +162,8 @@ class GlobalExceptionHandler {
         details: Map<String, Any>? = null,
     ): ResponseEntity<ErrorResponse> =
         ResponseEntity.status(status).body(ErrorResponse(ErrorBody(code, message, details)))
+
+    private companion object {
+        const val MIN_RETRY_AFTER_SECONDS = 1L
+    }
 }

@@ -12,6 +12,7 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2s
 
 app:
   datasource:
@@ -37,6 +38,28 @@ app:
     token-uri: https://kauth.kakao.com/oauth/token
     user-uri: https://kapi.kakao.com/v2/user/me
     unlink-uri: https://kapi.kakao.com/v1/user/unlink
+
+  mail:
+    provider: ${MAIL_PROVIDER:log}
+    from: ${MAIL_FROM:}
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    timeout: 5s
+
+  verification:
+    code-ttl: 5m
+    verified-ttl: 30m
+    max-attempts: 5
+    send:
+      cooldown: 60s
+      email-max: 5
+      global-max: 200
+      window: 1h
+    confirm:
+      ip-max: 60
+      window: 1h
 
 server:
   forward-headers-strategy: framework

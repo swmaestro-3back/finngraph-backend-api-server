@@ -1,5 +1,7 @@
 package com.finngraph.web.user
 
+import com.finngraph.support.AuthFixtures
+import com.finngraph.support.AuthFixturesConfig
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.composition.port.KakaoOAuthPort
@@ -17,6 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -28,7 +31,11 @@ import kotlin.test.assertNull
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
+@Import(AuthFixturesConfig::class)
 class UserApiTest {
+
+    @Autowired
+    lateinit var auth: AuthFixtures
 
     @Autowired
     lateinit var rest: TestRestTemplate
@@ -112,11 +119,7 @@ class UserApiTest {
         val token = signup("u18@finngraph.test")
         delete("/api/v1/me", token)
 
-        val rejoined = rest.postForEntity(
-            "/api/v1/auth/signup",
-            mapOf("email" to "u18@finngraph.test", "password" to PASSWORD, "nickname" to "재가입"),
-            Map::class.java,
-        )
+        val rejoined = auth.verifiedSignup("u18@finngraph.test", nickname = "재가입")
         assertEquals(HttpStatus.CREATED, rejoined.statusCode)
     }
 
@@ -157,11 +160,7 @@ class UserApiTest {
         signupResponse(email, nickname).accessToken()
 
     private fun signupResponse(email: String, nickname: String = "테스터"): ResponseEntity<Map<*, *>> =
-        rest.postForEntity(
-            "/api/v1/auth/signup",
-            mapOf("email" to email, "password" to PASSWORD, "nickname" to nickname),
-            Map::class.java,
-        )
+        auth.verifiedSignup(email, nickname = nickname)
 
     private fun get(path: String, token: String?) =
         rest.exchange(path, HttpMethod.GET, HttpEntity<Void>(bearer(token)), Map::class.java)
@@ -197,7 +196,6 @@ class UserApiTest {
             .substringBefore(";")
 
     companion object {
-        private const val PASSWORD = "password1234"
 
         @DynamicPropertySource
         @JvmStatic

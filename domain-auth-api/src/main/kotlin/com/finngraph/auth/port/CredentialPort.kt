@@ -11,6 +11,7 @@ interface CredentialPort {
     fun findKakaoIdByUserId(userId: Long): String?
     fun registerEmail(userId: Long, email: Email, passwordHash: String)
     fun findByEmail(email: Email): EmailCredentialView?
+    fun existsByEmail(email: Email): Boolean
     fun findByUserId(userId: Long): CredentialView?
     fun deleteAllByUserId(userId: Long): Int
 }

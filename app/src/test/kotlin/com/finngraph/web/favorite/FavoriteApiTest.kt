@@ -1,6 +1,8 @@
 package com.finngraph.web.favorite
 
 import com.finngraph.support.FavoriteSeed
+import com.finngraph.support.AuthFixtures
+import com.finngraph.support.AuthFixturesConfig
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.composition.port.KakaoOAuthPort
@@ -15,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
@@ -32,7 +35,11 @@ import kotlin.test.assertTrue
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Import(AuthFixturesConfig::class)
 class FavoriteApiTest {
+
+    @Autowired
+    lateinit var auth: AuthFixtures
 
     @Autowired
     lateinit var rest: TestRestTemplate
@@ -278,11 +285,7 @@ class FavoriteApiTest {
 
     private fun signup(): String {
         val email = "fav${SEQ.incrementAndGet()}@finngraph.test"
-        val response = rest.postForEntity(
-            "/api/v1/auth/signup",
-            mapOf("email" to email, "password" to PASSWORD, "nickname" to "관심테스터"),
-            Map::class.java,
-        )
+        val response = auth.verifiedSignup(email, nickname = "관심테스터")
         assertEquals(HttpStatus.CREATED, response.statusCode)
         return response.data()["accessToken"] as String
     }
@@ -335,7 +338,6 @@ class FavoriteApiTest {
     }
 
     companion object {
-        private const val PASSWORD = "password1234"
         private val SEQ = AtomicInteger()
 
         @DynamicPropertySource

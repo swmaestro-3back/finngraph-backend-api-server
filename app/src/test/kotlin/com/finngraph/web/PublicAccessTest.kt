@@ -1,5 +1,7 @@
 package com.finngraph.web
 
+import com.finngraph.support.AuthFixtures
+import com.finngraph.support.AuthFixturesConfig
 import com.finngraph.support.TestContainers
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -9,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -20,7 +23,11 @@ import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
+@Import(AuthFixturesConfig::class)
 class PublicAccessTest {
+
+    @Autowired
+    lateinit var auth: AuthFixtures
 
     @Autowired
     lateinit var rest: TestRestTemplate
@@ -58,6 +65,14 @@ class PublicAccessTest {
     }
 
     @Test
+    fun `이메일 인증 발송·확인은 무토큰 공개 경로다`() {
+        VERIFICATION_ENDPOINTS.forEach { path ->
+            val response = rest.postForEntity(path, mapOf("email" to "not-an-email", "code" to "x"), String::class.java)
+            assertEquals(HttpStatus.BAD_REQUEST, response.statusCode, path)
+        }
+    }
+
+    @Test
     fun `internal 경로는 토큰 미설정이면 전면 거부`() {
         val headers = HttpHeaders().apply { add("X-Internal-Token", "anything") }
 
@@ -79,15 +94,7 @@ class PublicAccessTest {
 
     @Test
     fun `redis가 죽어도 조회 영향을 받지 않음`() {
-        rest.postForEntity(
-            "/api/v1/auth/signup",
-            mapOf(
-                "email" to "u20b@finngraph.test",
-                "password" to "password1234",
-                "nickname" to "레디스",
-            ),
-            Map::class.java,
-        )
+        auth.verifiedSignup("u20b@finngraph.test", nickname = "레디스")
 
         val docker = DockerClientFactory.instance().client()
         val containerId = TestContainers.redis.containerId
@@ -122,6 +129,11 @@ class PublicAccessTest {
         this == HttpStatus.UNAUTHORIZED || this == HttpStatus.FORBIDDEN
 
     companion object {
+        private val VERIFICATION_ENDPOINTS = listOf(
+            "/api/v1/auth/email/verification",
+            "/api/v1/auth/email/verification/confirm",
+        )
+
         private val LIST_ENDPOINTS = listOf(
             "/api/v1/themes",
             "/api/v1/themes/hot",

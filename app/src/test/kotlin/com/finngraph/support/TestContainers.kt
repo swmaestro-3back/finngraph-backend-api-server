@@ -18,13 +18,16 @@ object TestContainers {
     const val REDIS_PORT = 6379
 
     private val MIGRATION_FILE = Regex("V\\d+__.*\\.sql")
+    private val POSTGRES_COMMAND = arrayOf("postgres", "-c", "fsync=off", "-c", "max_connections=300")
 
     val etlPostgres: PostgreSQLContainer = PostgreSQLContainer("pgvector/pgvector:pg17").apply {
+        withCommand(*POSTGRES_COMMAND)
         start()
         applyMigrations(this, "finngraph.etl.migrations.dir")
     }
 
     val appPostgres: PostgreSQLContainer = PostgreSQLContainer("postgres:17").apply {
+        withCommand(*POSTGRES_COMMAND)
         start()
         applyMigrations(this, "finngraph.app.migrations.dir")
     }

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema
 import io.swagger.v3.oas.annotations.responses.ApiResponse
 import io.swagger.v3.oas.annotations.responses.ApiResponses
 import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.CookieValue
@@ -55,6 +56,11 @@ interface AuthApi {
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
         ApiResponse(
+            responseCode = "403",
+            description = "이메일 미인증, grant 쿠키 부재·불일치·만료·이미 소모",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
             responseCode = "409",
             description = "이미 가입된 이메일",
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
@@ -64,8 +70,66 @@ interface AuthApi {
     @ResponseStatus(HttpStatus.CREATED)
     fun signup(
         @RequestBody request: SignupRequest,
+        @Parameter(hidden = true)
+        @CookieValue(name = VerificationCookies.COOKIE_NAME, required = false)
+        grant: String?,
         @Parameter(hidden = true) response: HttpServletResponse,
     ): DataResponse<AuthTokenResponse>
+
+    @Operation(summary = "이메일 인증 코드 발송")
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "발송 완료"),
+        ApiResponse(
+            responseCode = "400",
+            description = "이메일 형식 오류 및 누락",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "409",
+            description = "이미 가입된 이메일",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "429",
+            description = "쿨다운·이메일·전역 상한, details.retryAfterSeconds",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "502",
+            description = "메일 발송 실패(코드 폐기)",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @PostMapping("/email/verification")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun sendVerification(@RequestBody request: SendVerificationRequest)
+
+    @Operation(summary = "이메일 인증 코드 확인(성공 시 grant 쿠키 발급)")
+    @ApiResponses(
+        ApiResponse(responseCode = "204", description = "확인 완료 + Set-Cookie verification_grant"),
+        ApiResponse(
+            responseCode = "400",
+            description = "이메일 코드 형식 오류 및 누락",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "401",
+            description = "VERIFICATION_CODE_MISMATCH(details.remainingAttempts) 또는 VERIFICATION_EXPIRED",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "429",
+            description = "IP당 확인 상한, details.retryAfterSeconds",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @PostMapping("/email/verification/confirm")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun confirmVerification(
+        @RequestBody request: ConfirmVerificationRequest,
+        @Parameter(hidden = true) httpRequest: HttpServletRequest,
+        @Parameter(hidden = true) response: HttpServletResponse,
+    )
 
     @Operation(summary = "이메일 로그인")
     @ApiResponses(

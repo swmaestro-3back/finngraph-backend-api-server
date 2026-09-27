@@ -12,3 +12,10 @@ data class LoginRequest(
     val email: String?,
     val password: String?,
 )
+
+data class SendVerificationRequest(val email: String?)
+
+data class ConfirmVerificationRequest(
+    val email: String?,
+    val code: String?,
+)

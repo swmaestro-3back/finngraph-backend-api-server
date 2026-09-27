@@ -139,6 +139,8 @@ class SecurityConfig {
 
         val PUBLIC_POST = arrayOf(
             "/api/v1/auth/kakao",
+            "/api/v1/auth/email/verification",
+            "/api/v1/auth/email/verification/confirm",
             "/api/v1/auth/signup",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",

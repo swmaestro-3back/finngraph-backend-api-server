@@ -67,7 +67,7 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                     .withInputSchema("public")
                     .withIncludes(
                         "stocks|stock_candles_daily|stock_candles_period|stock_investor_flows|" +
-                            "stock_valuations_daily|stock_dividends|company_financials|companies",
+                            "stock_valuations_daily|stock_dividends|company_financials|companies|disclosures",
                     )
                     .withOutputSchemaToDefault(true),
             )

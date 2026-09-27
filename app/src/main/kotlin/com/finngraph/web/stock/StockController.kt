@@ -16,6 +16,7 @@ import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
 import com.finngraph.web.common.validatePaging
+import com.finngraph.composition.ContractComposer
 import com.finngraph.composition.StockThemeComposer
 import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
@@ -27,6 +28,7 @@ class StockController(
     private val stockFlow: StockFlowPort,
     private val stockFinancials: StockFinancialsPort,
     private val stockThemeComposer: StockThemeComposer,
+    private val contractComposer: ContractComposer,
     private val newsQuery: NewsQueryPort,
 ) : StockApi {
 
@@ -52,7 +54,7 @@ class StockController(
 
     override fun investorFlows(ticker: String, limit: Int): DataResponse<List<InvestorFlowResponse>> {
         val target = toTicker(ticker)
-        validateFlowLimit(limit)
+        validateLimit(limit, MAX_FLOW_LIMIT)
         requireStock(target, ticker)
         return DataResponse(stockFlow.findFlows(target, limit).map(InvestorFlowResponse::from))
     }
@@ -68,6 +70,12 @@ class StockController(
         validatePaging(page, size)
         requireStock(target, ticker)
         return newsQuery.findPageByTicker(target.value, page, size).toResponse()
+    }
+
+    override fun contracts(ticker: String, limit: Int): DataResponse<List<StockContractResponse>> {
+        val target = toTicker(ticker)
+        validateLimit(limit, MAX_CONTRACT_LIMIT)
+        return DataResponse(contractComposer.forStock(target, limit).map(StockContractResponse::from))
     }
 
     private fun toTicker(raw: String): Ticker {
@@ -109,11 +117,11 @@ class StockController(
         CandlePeriod.M -> DEFAULT_MONTHLY_LIMIT
     }
 
-    private fun validateFlowLimit(limit: Int) {
-        if (limit in 1..MAX_FLOW_LIMIT) return
+    private fun validateLimit(limit: Int, max: Int) {
+        if (limit in 1..max) return
         throw InvalidParameterException(
-            "limit은 1 이상 $MAX_FLOW_LIMIT 이하여야 합니다",
-            mapOf("limit" to "must be between 1 and $MAX_FLOW_LIMIT"),
+            "limit은 1 이상 $max 이하여야 합니다",
+            mapOf("limit" to "must be between 1 and $max"),
         )
     }
 
@@ -128,6 +136,7 @@ class StockController(
         const val MAX_TICKER_LENGTH = 20
         const val MAX_CANDLE_LIMIT = 500
         const val MAX_FLOW_LIMIT = 250
+        const val MAX_CONTRACT_LIMIT = 200
         const val DEFAULT_DAILY_LIMIT = 65
         const val DEFAULT_WEEKLY_LIMIT = 52
         const val DEFAULT_MONTHLY_LIMIT = 36

@@ -33,7 +33,7 @@ class PublicAccessTest {
     lateinit var rest: TestRestTemplate
 
     @Test
-    fun `조회 목록 4종은 무토큰으로 200 반환`() {
+    fun `조회 목록은 무토큰으로 200 반환`() {
         LIST_ENDPOINTS.forEach { path ->
             assertEquals(HttpStatus.OK, get(path).statusCode, path)
         }
@@ -139,6 +139,7 @@ class PublicAccessTest {
             "/api/v1/themes/hot",
             "/api/v1/stocks",
             "/api/v1/news",
+            "/api/v1/contracts/recent",
         )
 
         private val PRIMARY_DETAIL_ENDPOINTS = listOf(
@@ -154,6 +155,7 @@ class PublicAccessTest {
             "/api/v1/stocks/000000/investor-flows",
             "/api/v1/stocks/000000/financials",
             "/api/v1/stocks/000000/news",
+            "/api/v1/stocks/000000/contracts",
             "/api/v1/news/999999/companies",
         )
 

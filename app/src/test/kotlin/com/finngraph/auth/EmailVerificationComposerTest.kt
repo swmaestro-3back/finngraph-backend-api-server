@@ -4,7 +4,7 @@ import com.finngraph.auth.model.Email
 import com.finngraph.auth.model.ThrottleScope
 import com.finngraph.auth.model.VerificationCode
 import com.finngraph.auth.model.VerificationResult
-import com.finngraph.composition.AccountComposer
+import com.finngraph.composition.AccountWriter
 import com.finngraph.composition.EmailVerificationComposer
 import com.finngraph.composition.RateLimitedException
 import com.finngraph.composition.VerificationPolicies
@@ -33,7 +33,7 @@ class EmailVerificationComposerTest {
     lateinit var composer: EmailVerificationComposer
 
     @Autowired
-    lateinit var accounts: AccountComposer
+    lateinit var accounts: AccountWriter
 
     @Autowired
     lateinit var mail: CapturingMailSender
@@ -44,7 +44,7 @@ class EmailVerificationComposerTest {
     private val counter = AtomicInteger()
 
     @Test
-    fun `V-16 발송하면 메일 본문의 코드로 확인이 성공한다`() {
+    fun `발송하면 메일 본문의 코드로 확인이 성공한다`() {
         val email = uniqueEmail()
 
         composer.send(email)
@@ -54,7 +54,7 @@ class EmailVerificationComposerTest {
     }
 
     @Test
-    fun `V-17 메일은 정본 제목과 코드 유효시간을 담는다`() {
+    fun `메일은 정본 제목과 코드 유효시간을 담는다`() {
         val email = uniqueEmail()
 
         composer.send(email)
@@ -65,16 +65,16 @@ class EmailVerificationComposerTest {
     }
 
     @Test
-    fun `V-18 이미 가입된 이메일은 발송하지 않는다`() {
+    fun `이미 가입된 이메일은 발송하지 않는다`() {
         val email = uniqueEmail()
-        accounts.signupEmail(email, "Password!234", Nickname.of("기존"))
+        accounts.createEmailAccount(email, "hash", Nickname.of("기존"))
 
         assertThrows(DuplicateCredentialException::class.java) { composer.send(email) }
         assertTrue(mail.sent.none { it.to == email.value })
     }
 
     @Test
-    fun `V-19 쿨다운 안의 재발송을 거부한다`() {
+    fun `쿨다운 안의 재발송을 거부한다`() {
         val email = uniqueEmail()
         composer.send(email)
 
@@ -85,7 +85,7 @@ class EmailVerificationComposerTest {
     }
 
     @Test
-    fun `V-20 서브어드레스가 달라도 같은 버킷으로 제한한다`() {
+    fun `서브어드레스가 달라도 같은 버킷으로 제한한다`() {
         val stem = "sub-${counter.incrementAndGet()}-${System.nanoTime()}"
         composer.send(Email.of("$stem+1@test.com"))
 
@@ -95,7 +95,7 @@ class EmailVerificationComposerTest {
     }
 
     @Test
-    fun `V-21 발송 실패는 코드를 폐기하고 예외를 올린다`() {
+    fun `발송 실패는 코드를 폐기하고 예외를 올린다`() {
         val email = uniqueEmail()
         mail.failNext = true
 
@@ -105,7 +105,7 @@ class EmailVerificationComposerTest {
     }
 
     @Test
-    fun `V-22 확인은 IP 상한을 넘으면 거부한다`() {
+    fun `확인은 IP 상한을 넘으면 거부한다`() {
         val ip = uniqueIp()
         val email = uniqueEmail()
         repeat(policies.confirm.ipLimit) {

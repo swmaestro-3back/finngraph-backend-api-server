@@ -1,5 +1,8 @@
 package com.finngraph.web.stock
 
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.finngraph.composition.ContractRole
+import com.finngraph.composition.StockContract
 import com.finngraph.stock.model.AnnualFinancials
 import com.finngraph.stock.model.Candle
 import com.finngraph.stock.model.InvestorFlow
@@ -160,5 +163,44 @@ data class AnnualFinancialsResponse(
             dps = financials.dps,
             payoutRatio = financials.payoutRatio,
         )
+    }
+}
+
+data class StockContractResponse(
+    val rceptNo: String,
+    val rceptDate: LocalDate,
+    val reportName: String,
+    val role: ContractRole,
+    val contractType: String?,
+    val contractName: String?,
+    val counterpartyName: String?,
+    val counterpartyTicker: String?,
+    val contractAmount: Long?,
+    val salesRatio: BigDecimal?,
+    val startDate: LocalDate?,
+    val endDate: LocalDate?,
+    val link: String,
+    @get:JsonProperty("isCorrection") val isCorrection: Boolean,
+) {
+    companion object {
+        fun from(stockContract: StockContract): StockContractResponse {
+            val contract = stockContract.item.contract
+            return StockContractResponse(
+                rceptNo = contract.rceptNo,
+                rceptDate = contract.rceptDate,
+                reportName = contract.reportName,
+                role = stockContract.role,
+                contractType = contract.contractType,
+                contractName = contract.contractName,
+                counterpartyName = stockContract.counterpartyName,
+                counterpartyTicker = stockContract.counterpartyTicker,
+                contractAmount = stockContract.item.contractAmount,
+                salesRatio = stockContract.item.salesRatio,
+                startDate = contract.startDate,
+                endDate = contract.endDate,
+                link = contract.link,
+                isCorrection = contract.isCorrection,
+            )
+        }
     }
 }

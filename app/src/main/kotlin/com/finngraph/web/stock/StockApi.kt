@@ -150,4 +150,24 @@ interface StockApi {
         @Parameter(description = "0-기반 페이지 번호") @RequestParam(required = false, defaultValue = "0") page: Int,
         @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(required = false, defaultValue = "20") size: Int,
     ): PageResponse<NewsResponse>
+
+    @Operation(
+        summary = "종목별 공급계약 공시",
+        description = "제출사 또는 계약상대로 참여한 단일판매/공급계약 공시, 접수일 내림차순.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 검증 실패, limit 이 1~200 범위 밖",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{ticker}/contracts")
+    fun contracts(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+        @Parameter(description = "개수 (1~200)")
+        @RequestParam(required = false, defaultValue = "50")
+        limit: Int,
+    ): DataResponse<List<StockContractResponse>>
 }

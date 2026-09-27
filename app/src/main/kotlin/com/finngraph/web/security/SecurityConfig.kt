@@ -123,6 +123,8 @@ class SecurityConfig {
             "/api/v1/stocks/{ticker}/investor-flows",
             "/api/v1/stocks/{ticker}/financials",
             "/api/v1/stocks/{ticker}/news",
+            "/api/v1/stocks/{ticker}/contracts",
+            "/api/v1/contracts/recent",
             "/api/v1/news",
             "/api/v1/news/{id}",
             "/api/v1/news/{id}/companies",

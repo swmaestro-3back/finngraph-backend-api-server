@@ -47,6 +47,7 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("org.bouncycastle:bcprov-jdk18on:1.81")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 

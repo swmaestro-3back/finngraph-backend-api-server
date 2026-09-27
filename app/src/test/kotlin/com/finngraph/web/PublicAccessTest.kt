@@ -65,6 +65,14 @@ class PublicAccessTest {
     }
 
     @Test
+    fun `이메일 인증 발송·확인은 무토큰 공개 경로다`() {
+        VERIFICATION_ENDPOINTS.forEach { path ->
+            val response = rest.postForEntity(path, mapOf("email" to "not-an-email", "code" to "x"), String::class.java)
+            assertEquals(HttpStatus.BAD_REQUEST, response.statusCode, path)
+        }
+    }
+
+    @Test
     fun `internal 경로는 토큰 미설정이면 전면 거부`() {
         val headers = HttpHeaders().apply { add("X-Internal-Token", "anything") }
 
@@ -121,6 +129,11 @@ class PublicAccessTest {
         this == HttpStatus.UNAUTHORIZED || this == HttpStatus.FORBIDDEN
 
     companion object {
+        private val VERIFICATION_ENDPOINTS = listOf(
+            "/api/v1/auth/email/verification",
+            "/api/v1/auth/email/verification/confirm",
+        )
+
         private val LIST_ENDPOINTS = listOf(
             "/api/v1/themes",
             "/api/v1/themes/hot",

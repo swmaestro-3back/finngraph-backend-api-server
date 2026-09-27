@@ -5,6 +5,7 @@ import com.finngraph.auth.model.VerificationCode
 import com.finngraph.auth.model.VerificationResult
 import com.finngraph.auth.port.VerificationCodePort
 import com.finngraph.composition.VerificationPolicies
+import com.finngraph.web.auth.VerificationCookies
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
@@ -52,7 +53,7 @@ class AuthFixtures(
 
     companion object {
         const val DEFAULT_PASSWORD = "password1234"
-        const val GRANT_COOKIE = "verification_grant"
+        const val GRANT_COOKIE = VerificationCookies.COOKIE_NAME
     }
 }
 

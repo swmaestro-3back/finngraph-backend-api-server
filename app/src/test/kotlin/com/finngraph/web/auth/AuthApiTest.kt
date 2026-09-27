@@ -1,5 +1,7 @@
 package com.finngraph.web.auth
 
+import com.finngraph.support.AuthFixtures
+import com.finngraph.support.AuthFixturesConfig
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.composition.port.KakaoOAuthPort
@@ -14,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -30,7 +33,11 @@ import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
+@Import(AuthFixturesConfig::class)
 class AuthApiTest {
+
+    @Autowired
+    lateinit var auth: AuthFixtures
 
     @Autowired
     lateinit var rest: TestRestTemplate
@@ -229,13 +236,9 @@ class AuthApiTest {
         email: String,
         password: String = DEFAULT_PASSWORD,
         nickname: String = "테스터",
-    ) = post(
-        "/api/v1/auth/signup",
-        mapOf("email" to email, "password" to password, "nickname" to nickname),
-    )
+    ) = auth.verifiedSignup(email, password, nickname)
 
-    private fun login(email: String, password: String = DEFAULT_PASSWORD) =
-        post("/api/v1/auth/login", mapOf("email" to email, "password" to password))
+    private fun login(email: String, password: String = DEFAULT_PASSWORD) = auth.login(email, password)
 
     private fun post(path: String, body: Map<String, Any?>): ResponseEntity<Map<*, *>> =
         rest.postForEntity(path, body, Map::class.java)
@@ -262,7 +265,7 @@ class AuthApiTest {
             .substringBefore(";")
 
     companion object {
-        private const val DEFAULT_PASSWORD = "password1234"
+        private const val DEFAULT_PASSWORD = AuthFixtures.DEFAULT_PASSWORD
         private const val COOKIE_NAME = "refresh_token="
         private const val ARGON2ID_PREFIX = "{argon2}\$argon2id\$v=19\$m=19456,t=2,p=1\$"
 

@@ -34,6 +34,13 @@ data class StockDetailView(
     val foreignRatio: BigDecimal?,
     val revenueYoY: BigDecimal?,
     val baseDate: LocalDate?,
+    val description: CompanyDescription?,
+)
+
+data class CompanyDescription(
+    val text: String,
+    val source: String?,
+    val rceptNo: String?,
 )
 
 data class StockPriceView(

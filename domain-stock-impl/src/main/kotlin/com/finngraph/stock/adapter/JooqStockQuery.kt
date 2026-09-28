@@ -208,6 +208,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val DERIVED_SCALE = 4
 
         private const val BASE_CANDLES = "base_candles"
+        private const val BASE_VALUATIONS = "base_valuations"
         private const val LATEST_CANDLES = "lc"
         private const val PREV_CANDLES = "pc"
         private const val PREV = "prev"
@@ -221,9 +222,15 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
         private val ACTIVE: (Stocks) -> Condition = { s -> s.IS_ACTIVE.eq(true) }
 
-        private val BASE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
+        private val LATEST_CANDLE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
             DSL.field(DSL.select(DSL.max(dc.TRADE_DATE)).from(dc))
         }
+
+        private val LATEST_VALUATION_DATE: Field<LocalDate?> = STOCK_VALUATIONS_DAILY.`as`(BASE_VALUATIONS).let { dv ->
+            DSL.field(DSL.select(DSL.max(dv.TRADE_DATE)).from(dv))
+        }
+
+        private val BASE_DATE: Field<LocalDate?> = DSL.least(LATEST_CANDLE_DATE, LATEST_VALUATION_DATE)
 
         private val BASE_DATE_COLUMN: Field<LocalDate?> = BASE_DATE.`as`("base_date")
 

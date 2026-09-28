@@ -2,6 +2,7 @@ package com.finngraph.theme.adapter
 
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
+import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import org.jooq.Field
 import org.jooq.Table
 import org.jooq.impl.DSL
@@ -15,6 +16,7 @@ internal object ThemeQuerySupport {
     val HUNDRED: BigDecimal = BigDecimal("100")
 
     private const val BASE_CANDLES = "base_candles"
+    private const val BASE_VALUATIONS = "base_valuations"
     private const val LATEST_CANDLES = "lc"
     private const val PREV_CANDLES = "pc"
     private const val PREV = "prev"
@@ -24,9 +26,15 @@ internal object ThemeQuerySupport {
     private const val CHANGE = "change"
     private const val TRADE_VALUE = "trade_value"
 
-    val BASE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
+    private val LATEST_CANDLE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
         DSL.field(DSL.select(DSL.max(dc.TRADE_DATE)).from(dc))
     }
+
+    private val LATEST_VALUATION_DATE: Field<LocalDate?> = STOCK_VALUATIONS_DAILY.`as`(BASE_VALUATIONS).let { dv ->
+        DSL.field(DSL.select(DSL.max(dv.TRADE_DATE)).from(dv))
+    }
+
+    val BASE_DATE: Field<LocalDate?> = DSL.least(LATEST_CANDLE_DATE, LATEST_VALUATION_DATE)
 
     val BASE_DATE_COLUMN: Field<LocalDate?> = BASE_DATE.`as`("base_date")
 

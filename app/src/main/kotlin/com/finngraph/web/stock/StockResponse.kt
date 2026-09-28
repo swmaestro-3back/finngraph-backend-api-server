@@ -66,6 +66,9 @@ data class StockDetailResponse(
     val dividendYield: BigDecimal?,
     val foreignRatio: BigDecimal?,
     val revenueGrowth: BigDecimal?,
+    val description: String?,
+    val descriptionSource: String?,
+    val descriptionRceptNo: String?,
 ) {
     companion object {
         fun from(view: StockDetailView, primaryTheme: PrimaryTheme? = null) = StockDetailResponse(
@@ -84,6 +87,9 @@ data class StockDetailResponse(
             dividendYield = view.dividendYield,
             foreignRatio = view.foreignRatio,
             revenueGrowth = view.revenueYoY,
+            description = view.description?.text,
+            descriptionSource = view.description?.source,
+            descriptionRceptNo = view.description?.rceptNo,
         )
     }
 }

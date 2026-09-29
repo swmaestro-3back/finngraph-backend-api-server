@@ -44,25 +44,25 @@ class HotThemePublishTest {
 
             assertIs<HotThemePublishOutcome.Published>(outcome)
             assertEquals(3, outcome.themes)
-            assertEquals(LocalDate.parse("2026-07-31"), outcome.tradeDate)
+            assertEquals(LocalDate.parse(HotThemeSeed.BASE_DATE), outcome.tradeDate)
 
             val json = assertNotNull(redis.opsForValue().get(RedisHotThemePublisher.KEY))
             val payload = mapper.readValue(json, Map::class.java)
 
-            assertEquals("2026-07-31", payload["tradeDate"])
+            assertEquals(HotThemeSeed.BASE_DATE, payload["tradeDate"])
             assertNotNull(payload["generatedAt"])
             assertEquals(3, payload["count"])
 
             val themes = payload["themes"] as List<*>
             val names = themes.map { (it as Map<*, *>)["name"] }
-            assertEquals(listOf("시드급등테마", "시드상승테마", "시드하락테마"), names)
+            assertEquals(listOf("시드급등테마", "시드경계테마", "시드하락테마"), names)
 
             val first = themes.first() as Map<*, *>
             assertEquals(9201, (first["id"] as Number).toInt())
             assertEquals(5.0, (first["change"] as Number).toDouble())
             val stocks = (first["stocks"] as List<*>).map { it as Map<*, *> }
-            assertEquals(listOf("900001", "900002"), stocks.map { it["ticker"] })
-            assertEquals(listOf("시드대장", "시드동료"), stocks.map { it["name"] })
+            assertEquals(listOf("909101", "909102", "909103", "909104", "909105", "909107", "909108"), stocks.map { it["ticker"] })
+            assertEquals(listOf("시드급등1", "시드급등2", "시드급등3", "시드급등4", "시드급등5", "시드급등6", "시드정지"), stocks.map { it["name"] })
 
             val ttl: Long = redis.getExpire(RedisHotThemePublisher.KEY)
             assertTrue(ttl in (47 * 3600L)..(48 * 3600L), "TTL이 48h 근방이 아님: $ttl")

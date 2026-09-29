@@ -35,8 +35,8 @@ interface ThemeApi {
     fun list(): DataResponse<List<ThemeSummaryResponse>>
 
     @Operation(
-        summary = "핫테마 등락률 상위",
-        description = "상승 상위 절반 및 하락 상위 절반, 대시보드 트리맵과 동일 선정",
+        summary = "핫테마 상위",
+        description = "상승 ⌈N/2⌉ + 하락 ⌊N/2⌋, 신뢰구간 하한·상한이 시장 중앙값을 넘는 정도로 순위. 적재율 0.8 미만이면 빈 목록",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -50,6 +50,21 @@ interface ThemeApi {
     fun hot(
         @Parameter(description = "표시 개수(10, 20, 30)") @RequestParam(required = false, defaultValue = "20") count: Int,
     ): DataResponse<List<ThemeSummaryResponse>>
+
+    @Operation(
+        summary = "시장 전체 등락 통계",
+        description = "기준일·집계 종목 수·상승/하락/보합 수·등락률 중앙값·적재율, 핫테마 판정과 같은 유니버스",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "503",
+            description = "DB 접속 실패",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/market")
+    fun market(): DataResponse<ThemeMarketResponse>
 
     @Operation(
         summary = "테마 단건",

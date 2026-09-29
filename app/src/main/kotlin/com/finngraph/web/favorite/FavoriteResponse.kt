@@ -1,7 +1,7 @@
 package com.finngraph.web.favorite
 
-import com.finngraph.composition.FavoriteItem
-import com.finngraph.composition.FavoriteList
+import com.finngraph.composition.favorite.FavoriteItem
+import com.finngraph.composition.favorite.FavoriteList
 import com.finngraph.favorite.model.FavoriteView
 import com.finngraph.stock.model.StockPriceView
 import com.finngraph.theme.model.ThemeSummary
@@ -70,9 +70,16 @@ data class FavoriteThemeResponse(
     val change: BigDecimal?,
     val baseDate: LocalDate?,
     val stockCount: Int,
+    val pricedCount: Int,
 ) {
     companion object {
-        fun from(summary: ThemeSummary) =
-            FavoriteThemeResponse(summary.id, summary.name, summary.change, summary.baseDate, summary.stockCount)
+        fun from(summary: ThemeSummary) = FavoriteThemeResponse(
+            id = summary.id,
+            name = summary.name,
+            change = summary.change,
+            baseDate = summary.baseDate,
+            stockCount = summary.stockCount,
+            pricedCount = summary.pricedCount,
+        )
     }
 }

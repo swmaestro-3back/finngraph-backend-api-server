@@ -1,7 +1,7 @@
 package com.finngraph.web.theme
 
-import com.finngraph.composition.HotThemeComposer
 import com.finngraph.composition.ThemeNewsComposer
+import com.finngraph.composition.hottheme.HotThemeComposer
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
 import com.finngraph.theme.model.ThemeId
@@ -26,16 +26,19 @@ class ThemeController(
 ) : ThemeApi {
 
     override fun list(): DataResponse<List<ThemeSummaryResponse>> =
-        DataResponse(themeQuery.findAll().map(ThemeSummaryResponse::from))
+        DataResponse(hotThemeComposer.all().map(ThemeSummaryResponse::from))
 
     override fun hot(count: Int): DataResponse<List<ThemeSummaryResponse>> {
         validateCount(count)
         return DataResponse(hotThemeComposer.hot(count).map(ThemeSummaryResponse::from))
     }
 
+    override fun market(): DataResponse<ThemeMarketResponse> =
+        DataResponse(ThemeMarketResponse.from(themeQuery.marketStats()))
+
     override fun detail(id: Long): DataResponse<ThemeSummaryResponse> {
         val target = toThemeId(id)
-        val found = themeQuery.findById(target) ?: throw notFound(id)
+        val found = hotThemeComposer.detail(target) ?: throw notFound(id)
         return DataResponse(ThemeSummaryResponse.from(found))
     }
 

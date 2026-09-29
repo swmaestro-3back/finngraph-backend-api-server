@@ -60,7 +60,8 @@ class InternalHotThemeApiTest {
 
             assertEquals(HttpStatus.OK, response.statusCode)
             assertTrue(response.body!!.contains("\"published\""))
-            assertTrue(response.body!!.contains("\"2026-07-31\""))
+            assertTrue(response.body!!.contains("\"${HotThemeSeed.BASE_DATE}\""))
+            assertTrue(response.body!!.contains("\"themes\":3"))
             assertNotNull(redis.opsForValue().get(RedisHotThemePublisher.KEY))
         } finally {
             redis.delete(RedisHotThemePublisher.KEY)

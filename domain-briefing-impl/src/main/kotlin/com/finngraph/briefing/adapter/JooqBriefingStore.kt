@@ -24,6 +24,7 @@ import tools.jackson.databind.ObjectMapper
 import tools.jackson.databind.cfg.DateTimeFeature
 import tools.jackson.databind.json.JsonMapper
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 @Component
 class JooqBriefingStore(
@@ -62,7 +63,7 @@ class JooqBriefingStore(
                 BriefingSummary(
                     baseDate = requireNotNull(it[DAILY_BRIEFINGS.BASE_DATE]),
                     status = BriefingStatus.valueOf(requireNotNull(it[DAILY_BRIEFINGS.STATUS])),
-                    generatedAt = requireNotNull(it[DAILY_BRIEFINGS.GENERATED_AT]),
+                    generatedAt = requireNotNull(it[DAILY_BRIEFINGS.GENERATED_AT]).withOffsetSameInstant(KST),
                     headline = it[DAILY_BRIEFINGS.HEADLINE]?.let { json -> read<BriefingHeadline>(json).text },
                 )
             }
@@ -98,7 +99,7 @@ class JooqBriefingStore(
         baseDate = requireNotNull(get(DAILY_BRIEFINGS.BASE_DATE)),
         previousTradingDate = get(DAILY_BRIEFINGS.PREVIOUS_TRADING_DATE),
         status = BriefingStatus.valueOf(requireNotNull(get(DAILY_BRIEFINGS.STATUS))),
-        generatedAt = requireNotNull(get(DAILY_BRIEFINGS.GENERATED_AT)),
+        generatedAt = requireNotNull(get(DAILY_BRIEFINGS.GENERATED_AT)).withOffsetSameInstant(KST),
         market = read<MarketSnapshot>(requireNotNull(get(DAILY_BRIEFINGS.MARKET))),
         headline = get(DAILY_BRIEFINGS.HEADLINE)?.let { read<BriefingHeadline>(it) },
         issues = readList(requireNotNull(get(DAILY_BRIEFINGS.ISSUES)), ISSUES),
@@ -117,6 +118,7 @@ class JooqBriefingStore(
     private fun <T> readList(json: JSONB, type: TypeReference<List<T>>): List<T> = mapper.readValue(json.data(), type)
 
     private companion object {
+        private val KST: ZoneOffset = ZoneOffset.ofHours(9)
         val ISSUES = object : TypeReference<List<BriefingIssue>>() {}
         val THEMES = object : TypeReference<List<BriefingTheme>>() {}
         val WATCH_POINTS = object : TypeReference<List<WatchPoint>>() {}

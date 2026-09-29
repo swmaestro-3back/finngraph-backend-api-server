@@ -1,6 +1,6 @@
 package com.finngraph.web.security
 
-import com.finngraph.composition.RefreshTokenGenerator
+import com.finngraph.composition.account.RefreshTokenGenerator
 import com.finngraph.security.InternalApiProperties
 import com.finngraph.security.JwtProperties
 import com.finngraph.security.JwtTokenService

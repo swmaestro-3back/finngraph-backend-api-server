@@ -1,14 +1,16 @@
 package com.finngraph.web.stock
 
+import com.finngraph.composition.ContractComposer
+import com.finngraph.composition.StockThemeComposer
+import com.finngraph.news.model.NewsView
+import com.finngraph.news.model.PageResult
+import com.finngraph.news.port.NewsQueryPort
 import com.finngraph.stock.model.CandlePeriod
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockCandlePort
 import com.finngraph.stock.port.StockFinancialsPort
 import com.finngraph.stock.port.StockFlowPort
 import com.finngraph.stock.port.StockQueryPort
-import com.finngraph.news.model.NewsView
-import com.finngraph.news.model.PageResult
-import com.finngraph.news.port.NewsQueryPort
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException
@@ -16,8 +18,6 @@ import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
 import com.finngraph.web.common.validatePaging
-import com.finngraph.composition.ContractComposer
-import com.finngraph.composition.StockThemeComposer
 import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
 

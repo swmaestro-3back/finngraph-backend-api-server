@@ -1,6 +1,6 @@
 package com.finngraph.web.security
 
-import com.finngraph.composition.RefreshTokenGenerator
+import com.finngraph.composition.account.RefreshTokenGenerator
 import com.finngraph.security.InternalApiProperties
 import com.finngraph.security.JwtProperties
 import com.finngraph.security.JwtTokenService
@@ -114,6 +114,7 @@ class SecurityConfig {
         val PUBLIC_GET = arrayOf(
             "/api/v1/themes",
             "/api/v1/themes/hot",
+            "/api/v1/themes/market",
             "/api/v1/themes/{id}",
             "/api/v1/themes/{id}/stocks",
             "/api/v1/themes/{id}/news",

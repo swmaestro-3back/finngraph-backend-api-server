@@ -1,11 +1,11 @@
 package com.finngraph.web.auth
 
+import com.finngraph.composition.port.KakaoOAuthPort
+import com.finngraph.composition.port.KakaoUser
 import com.finngraph.support.AuthFixtures
 import com.finngraph.support.AuthFixturesConfig
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
-import com.finngraph.composition.port.KakaoOAuthPort
-import com.finngraph.composition.port.KakaoUser
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.BDDMockito.given
@@ -13,10 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.crypto.password.PasswordEncoder

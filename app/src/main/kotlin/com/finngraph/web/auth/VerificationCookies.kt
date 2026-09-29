@@ -1,6 +1,6 @@
 package com.finngraph.web.auth
 
-import com.finngraph.composition.VerificationPolicies
+import com.finngraph.composition.account.VerificationPolicies
 import com.finngraph.security.JwtProperties
 import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Component

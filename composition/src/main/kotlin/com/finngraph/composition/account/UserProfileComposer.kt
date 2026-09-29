@@ -1,4 +1,4 @@
-package com.finngraph.composition
+package com.finngraph.composition.account
 
 import com.finngraph.auth.model.AuthProvider
 import com.finngraph.auth.port.CredentialPort

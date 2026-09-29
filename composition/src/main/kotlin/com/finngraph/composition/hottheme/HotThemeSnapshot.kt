@@ -1,4 +1,4 @@
-package com.finngraph.composition
+package com.finngraph.composition.hottheme
 
 import java.math.BigDecimal
 import java.time.LocalDate

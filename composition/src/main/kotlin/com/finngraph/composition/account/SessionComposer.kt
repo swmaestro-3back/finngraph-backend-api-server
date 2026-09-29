@@ -1,4 +1,4 @@
-package com.finngraph.composition
+package com.finngraph.composition.account
 
 import com.finngraph.auth.model.RotationResult
 import com.finngraph.auth.port.TokenPort

@@ -1,12 +1,15 @@
 package com.finngraph.stock.adapter
 
 import com.finngraph.stock.adapter.jooq.tables.Stocks
+import com.finngraph.stock.adapter.jooq.tables.references.COMPANIES
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANY_FINANCIALS
+import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
-import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
+import com.finngraph.stock.model.CompanyDescription
 import com.finngraph.stock.model.StockDetailView
+import com.finngraph.stock.model.StockFlags
 import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.StockPriceView
 import com.finngraph.stock.model.Ticker
@@ -43,7 +46,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
     override fun findByTicker(ticker: Ticker): StockDetailView? {
         val filter: (Stocks) -> Condition = { s -> s.TICKER.eq(ticker.value).and(s.IS_ACTIVE.eq(true)) }
         val row = fetchStocks(filter).firstOrNull() ?: return null
-        return row.toDetailView(revenueYoY(filter))
+        return row.toDetailView(revenueYoY(filter), companyDescription(filter))
     }
 
     override fun findByTickers(tickers: List<Ticker>): Map<Ticker, StockPriceView> {
@@ -70,6 +73,35 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
     override fun findLatestTradeDate(): LocalDate? =
         dsl.select(BASE_DATE).fetchOne()?.value1()
+
+    override fun findFlagged(): List<StockFlags> =
+        dsl.select(
+            STOCKS.TICKER,
+            STOCKS.NAME,
+            STOCKS.MARKET,
+            STOCKS.UNDER_ADMINISTRATION,
+            STOCKS.TRADING_SUSPENDED,
+            STOCKS.DELISTING_TRADE,
+        )
+            .from(STOCKS)
+            .where(
+                STOCKS.IS_ACTIVE.eq(true).and(
+                    STOCKS.UNDER_ADMINISTRATION.eq(true)
+                        .or(STOCKS.TRADING_SUSPENDED.eq(true))
+                        .or(STOCKS.DELISTING_TRADE.eq(true)),
+                ),
+            )
+            .orderBy(STOCKS.TICKER.asc())
+            .fetch {
+                StockFlags(
+                    ticker = requireNotNull(it.get(STOCKS.TICKER)),
+                    name = requireNotNull(it.get(STOCKS.NAME)),
+                    market = requireNotNull(it.get(STOCKS.MARKET)),
+                    underAdministration = it.get(STOCKS.UNDER_ADMINISTRATION) ?: false,
+                    tradingSuspended = it.get(STOCKS.TRADING_SUSPENDED) ?: false,
+                    delistingTrade = it.get(STOCKS.DELISTING_TRADE) ?: false,
+                )
+            }
 
     private fun fetchStocks(filter: (Stocks) -> Condition): List<Record> =
         dsl.select(
@@ -130,6 +162,14 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         return DSL.select(s.COMPANY_ID).from(s).where(filter(s))
     }
 
+    private fun companyDescription(filter: (Stocks) -> Condition): CompanyDescription? =
+        dsl.select(COMPANIES.DESCRIPTION, COMPANIES.DESCRIPTION_SOURCE, COMPANIES.DESCRIPTION_RCEPT_NO)
+            .from(COMPANIES)
+            .where(COMPANIES.ID.`in`(companyIds(filter)).and(COMPANIES.DESCRIPTION.isNotNull()))
+            .limit(1)
+            .fetchOne()
+            ?.let { CompanyDescription(requireNotNull(it.value1()), it.value2(), it.value3()) }
+
     private fun revenueYoY(filter: (Stocks) -> Condition): BigDecimal? {
         val chosenPerYear = LinkedHashMap<String, Long?>()
         dsl.select(FISCAL_YEAR, COMPANY_FINANCIALS.REVENUE)
@@ -176,7 +216,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         dividendYield = get(STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD),
     )
 
-    private fun Record.toDetailView(revenueYoY: BigDecimal?) = StockDetailView(
+    private fun Record.toDetailView(revenueYoY: BigDecimal?, description: CompanyDescription?) = StockDetailView(
         ticker = requireNotNull(get(STOCKS.TICKER)),
         name = requireNotNull(get(STOCKS.NAME)),
         market = requireNotNull(get(STOCKS.MARKET)),
@@ -191,6 +231,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         foreignRatio = get(FOREIGN_RATIO),
         revenueYoY = revenueYoY,
         baseDate = get(BASE_DATE_COLUMN),
+        description = description,
     )
 
     private fun Record.toPriceView() = StockPriceView(

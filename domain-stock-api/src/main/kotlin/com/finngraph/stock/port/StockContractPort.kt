@@ -9,4 +9,5 @@ interface StockContractPort {
     fun findByParty(ticker: Ticker, limit: Int): List<SupplyContract>
     fun findLatestReceiptDate(): LocalDate?
     fun findReceivedSince(from: LocalDate): List<SupplyContract>
+    fun findEndingBetween(from: LocalDate, to: LocalDate): List<SupplyContract>
 }

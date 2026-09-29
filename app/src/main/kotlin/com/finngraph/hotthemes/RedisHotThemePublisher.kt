@@ -1,6 +1,6 @@
 package com.finngraph.hotthemes
 
-import com.finngraph.composition.HotThemeSnapshot
+import com.finngraph.composition.hottheme.HotThemeSnapshot
 import com.finngraph.composition.port.HotThemePublisherPort
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component

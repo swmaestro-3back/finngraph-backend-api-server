@@ -1,11 +1,11 @@
 package com.finngraph.web.favorite
 
-import com.finngraph.support.FavoriteSeed
+import com.finngraph.composition.port.KakaoOAuthPort
 import com.finngraph.support.AuthFixtures
 import com.finngraph.support.AuthFixturesConfig
+import com.finngraph.support.FavoriteSeed
 import com.finngraph.support.TestContainers
 import com.finngraph.web.common.ErrorCode
-import com.finngraph.composition.port.KakaoOAuthPort
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
@@ -14,10 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
-import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
 import org.springframework.http.ResponseEntity
@@ -102,6 +102,7 @@ class FavoriteApiTest {
         assertEquals(FavoriteSeed.THEME_ID.toInt(), theme["id"])
         assertEquals("관심시드테마", theme["name"])
         assertEquals(1, theme["stockCount"])
+        assertEquals(1, theme["pricedCount"])
         assertNull(item["stock"])
     }
 

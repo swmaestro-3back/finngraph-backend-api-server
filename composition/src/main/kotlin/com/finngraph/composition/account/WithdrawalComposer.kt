@@ -1,4 +1,4 @@
-package com.finngraph.composition
+package com.finngraph.composition.account
 
 import com.finngraph.auth.port.TokenPort
 import com.finngraph.composition.port.KakaoOAuthPort

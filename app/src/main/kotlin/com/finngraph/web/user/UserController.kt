@@ -1,8 +1,8 @@
 package com.finngraph.web.user
 
-import com.finngraph.composition.UserProfile
-import com.finngraph.composition.UserProfileComposer
-import com.finngraph.composition.WithdrawalComposer
+import com.finngraph.composition.account.UserProfile
+import com.finngraph.composition.account.UserProfileComposer
+import com.finngraph.composition.account.WithdrawalComposer
 import com.finngraph.user.model.Nickname
 import com.finngraph.web.common.AuthenticationFailedException
 import com.finngraph.web.common.DataResponse

@@ -1,6 +1,6 @@
 package com.finngraph.hotthemes
 
-import com.finngraph.composition.HotThemeComposer
+import com.finngraph.composition.hottheme.HotThemeComposer
 import com.finngraph.composition.port.HotThemePublisherPort
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry

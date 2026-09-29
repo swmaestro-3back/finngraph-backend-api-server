@@ -1,4 +1,4 @@
-package com.finngraph.composition
+package com.finngraph.composition.favorite
 
 import com.finngraph.favorite.model.AddFavoriteResult
 import com.finngraph.favorite.model.FavoriteTarget

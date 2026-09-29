@@ -1,8 +1,8 @@
 package com.finngraph.web.user
 
 import com.fasterxml.jackson.annotation.JsonInclude
-import com.finngraph.composition.UserProfile
 import com.finngraph.auth.model.AuthProvider
+import com.finngraph.composition.account.UserProfile
 import java.time.OffsetDateTime
 
 @JsonInclude(JsonInclude.Include.ALWAYS)

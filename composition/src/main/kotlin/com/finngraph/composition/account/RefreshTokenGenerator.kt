@@ -1,4 +1,4 @@
-package com.finngraph.composition
+package com.finngraph.composition.account
 
 import java.security.MessageDigest
 import java.security.SecureRandom

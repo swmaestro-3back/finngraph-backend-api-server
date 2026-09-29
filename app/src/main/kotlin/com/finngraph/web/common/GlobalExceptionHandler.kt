@@ -2,9 +2,9 @@ package com.finngraph.web.common
 
 import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.AuthProvider
-import com.finngraph.composition.EmailNotVerifiedException
-import com.finngraph.composition.FavoriteTargetNotFoundException
-import com.finngraph.composition.RateLimitedException
+import com.finngraph.composition.account.EmailNotVerifiedException
+import com.finngraph.composition.account.RateLimitedException
+import com.finngraph.composition.favorite.FavoriteTargetNotFoundException
 import com.finngraph.composition.port.KakaoAuthFailedException
 import com.finngraph.composition.port.KakaoUnavailableException
 import com.finngraph.composition.port.MailDeliveryFailedException

@@ -4,7 +4,7 @@ import com.finngraph.auth.model.Email
 import com.finngraph.auth.model.VerificationCode
 import com.finngraph.auth.model.VerificationResult
 import com.finngraph.auth.port.VerificationCodePort
-import com.finngraph.composition.VerificationPolicies
+import com.finngraph.composition.account.VerificationPolicies
 import com.finngraph.web.auth.VerificationCookies
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.boot.test.context.TestConfiguration

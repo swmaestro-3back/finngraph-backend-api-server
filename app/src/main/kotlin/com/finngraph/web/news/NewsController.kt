@@ -1,5 +1,6 @@
 package com.finngraph.web.news
 
+import com.finngraph.composition.NewsStockComposer
 import com.finngraph.news.model.NewsId
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
@@ -11,7 +12,6 @@ import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
 import com.finngraph.web.common.validatePaging
-import com.finngraph.composition.NewsStockComposer
 import org.springframework.web.bind.annotation.RestController
 
 @RestController

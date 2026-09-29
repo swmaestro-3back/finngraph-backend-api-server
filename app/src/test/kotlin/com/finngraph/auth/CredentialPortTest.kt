@@ -2,7 +2,7 @@ package com.finngraph.auth
 
 import com.finngraph.auth.model.Email
 import com.finngraph.auth.port.CredentialPort
-import com.finngraph.composition.AccountWriter
+import com.finngraph.composition.account.AccountWriter
 import com.finngraph.support.TestContainers
 import com.finngraph.user.model.Nickname
 import org.junit.jupiter.api.Test

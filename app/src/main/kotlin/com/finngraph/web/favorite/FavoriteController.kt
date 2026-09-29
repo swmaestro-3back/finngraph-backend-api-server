@@ -1,7 +1,7 @@
 package com.finngraph.web.favorite
 
-import com.finngraph.composition.FavoriteComposer
-import com.finngraph.composition.FavoriteFeedComposer
+import com.finngraph.composition.favorite.FavoriteComposer
+import com.finngraph.composition.favorite.FavoriteFeedComposer
 import com.finngraph.favorite.model.AddFavoriteResult
 import com.finngraph.favorite.model.FavoriteTarget
 import com.finngraph.favorite.model.FavoriteType

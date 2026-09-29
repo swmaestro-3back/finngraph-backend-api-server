@@ -4,8 +4,8 @@ import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.Email
 import com.finngraph.auth.model.VerificationCode
 import com.finngraph.auth.model.VerificationResult
-import com.finngraph.composition.EmailVerificationComposer
-import com.finngraph.composition.RateLimitedException
+import com.finngraph.composition.account.EmailVerificationComposer
+import com.finngraph.composition.account.RateLimitedException
 import com.finngraph.composition.port.MailDeliveryFailedException
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry

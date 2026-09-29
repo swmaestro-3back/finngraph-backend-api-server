@@ -3,7 +3,7 @@ package com.finngraph.config
 import com.finngraph.auth.model.CodePolicy
 import com.finngraph.auth.model.ConfirmRatePolicy
 import com.finngraph.auth.model.SendRatePolicy
-import com.finngraph.composition.VerificationPolicies
+import com.finngraph.composition.account.VerificationPolicies
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean

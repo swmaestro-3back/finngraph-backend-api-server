@@ -3,10 +3,10 @@ package com.finngraph.web.auth
 import com.finngraph.auth.model.Email
 import com.finngraph.auth.model.VerificationCode
 import com.finngraph.auth.model.VerificationResult
-import com.finngraph.composition.AccountComposer
-import com.finngraph.composition.IssuedSession
-import com.finngraph.composition.KakaoSignupResult
-import com.finngraph.composition.SessionComposer
+import com.finngraph.composition.account.AccountComposer
+import com.finngraph.composition.account.IssuedSession
+import com.finngraph.composition.account.KakaoSignupResult
+import com.finngraph.composition.account.SessionComposer
 import com.finngraph.composition.port.KakaoOAuthPort
 import com.finngraph.user.model.Nickname
 import com.finngraph.verification.EmailVerificationService

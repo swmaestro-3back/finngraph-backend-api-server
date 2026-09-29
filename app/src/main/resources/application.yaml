@@ -30,6 +30,14 @@ app:
   internal:
     token: ${INTERNAL_API_TOKEN:}
 
+  briefing:
+    bedrock:
+      region: ${BEDROCK_REGION:}
+      model-id: ${BEDROCK_CHAT_MODEL:}
+      bearer-token: ${AWS_BEARER_TOKEN_BEDROCK:}
+      timeout: 60s
+      max-retries: 2
+
   kakao:
     client-id: ${KAKAO_CLIENT_ID:}
     client-secret: ${KAKAO_CLIENT_SECRET:}

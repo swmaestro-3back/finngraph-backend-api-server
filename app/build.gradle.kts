@@ -2,9 +2,12 @@ import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     kotlin("plugin.spring")
+    kotlin("plugin.serialization")
     id("org.springframework.boot")
     id("io.spring.dependency-management")
 }
+
+val koogVersion = "1.3.0"
 
 tasks.named<BootRun>("bootRun") {
     systemProperty("spring.profiles.active", System.getProperty("spring.profiles.active") ?: "local")
@@ -38,6 +41,9 @@ dependencies {
     implementation(project(":domain-auth-api"))
     runtimeOnly(project(":domain-auth-impl"))
 
+    implementation(project(":domain-briefing-api"))
+    runtimeOnly(project(":domain-briefing-impl"))
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
@@ -50,6 +56,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-mail")
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
+
+    implementation("ai.koog:prompt-executor-bedrock-client:$koogVersion")
+    implementation("ai.koog:prompt-executor-model:$koogVersion")
+    implementation("ai.koog:prompt-structure:$koogVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
 
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("io.micrometer:micrometer-registry-prometheus")

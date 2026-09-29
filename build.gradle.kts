@@ -4,6 +4,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "2.3.21" apply false
     kotlin("plugin.spring") version "2.3.21" apply false
+    kotlin("plugin.serialization") version "2.3.21" apply false
     id("org.springframework.boot") version "4.1.0" apply false
     id("io.spring.dependency-management") version "1.1.7" apply false
     id("org.flywaydb.flyway") version "12.11.0"
@@ -38,7 +39,7 @@ subprojects {
 
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions {
-            freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
+            freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property", "-java-parameters")
             jvmTarget.set(JvmTarget.JVM_21)
         }
     }

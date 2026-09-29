@@ -34,6 +34,13 @@ class JooqStockContract(private val dsl: DSLContext) : StockContractPort {
             .orderBy(RECENT_FIRST)
             .fetch { it.toContract() }
 
+    override fun findEndingBetween(from: LocalDate, to: LocalDate): List<SupplyContract> =
+        selectContracts()
+            .where(DISCLOSURES.END_DATE.between(from, to))
+            .and(LATEST_IN_CHAIN)
+            .orderBy(DISCLOSURES.END_DATE.asc(), DISCLOSURES.RCEPT_NO.desc())
+            .fetch { it.toContract() }
+
     private fun selectContracts() =
         dsl.select(
             DISCLOSURES.RCEPT_NO,
@@ -54,6 +61,7 @@ class JooqStockContract(private val dsl: DSLContext) : StockContractPort {
             DISCLOSURES.END_DATE,
             DISCLOSURES.LINK,
             DISCLOSURES.IS_CORRECTION,
+            DISCLOSURES.CORRECTION_REASON,
         )
             .from(DISCLOSURES)
 
@@ -76,6 +84,7 @@ class JooqStockContract(private val dsl: DSLContext) : StockContractPort {
         endDate = get(DISCLOSURES.END_DATE),
         link = requireNotNull(get(DISCLOSURES.LINK)),
         isCorrection = get(DISCLOSURES.IS_CORRECTION) ?: false,
+        correctionReason = get(DISCLOSURES.CORRECTION_REASON),
     )
 
     companion object {

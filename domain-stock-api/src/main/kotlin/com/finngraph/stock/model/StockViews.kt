@@ -43,6 +43,15 @@ data class CompanyDescription(
     val rceptNo: String?,
 )
 
+data class StockFlags(
+    val ticker: String,
+    val name: String,
+    val market: String,
+    val underAdministration: Boolean,
+    val tradingSuspended: Boolean,
+    val delistingTrade: Boolean,
+)
+
 data class StockPriceView(
     val ticker: String,
     val name: String,

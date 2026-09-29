@@ -21,4 +21,5 @@ data class SupplyContract(
     val endDate: LocalDate?,
     val link: String,
     val isCorrection: Boolean,
+    val correctionReason: String?,
 )

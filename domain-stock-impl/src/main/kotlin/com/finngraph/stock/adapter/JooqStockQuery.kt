@@ -3,12 +3,13 @@ package com.finngraph.stock.adapter
 import com.finngraph.stock.adapter.jooq.tables.Stocks
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANIES
 import com.finngraph.stock.adapter.jooq.tables.references.COMPANY_FINANCIALS
+import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
-import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.CompanyDescription
 import com.finngraph.stock.model.StockDetailView
+import com.finngraph.stock.model.StockFlags
 import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.StockPriceView
 import com.finngraph.stock.model.Ticker
@@ -72,6 +73,35 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
     override fun findLatestTradeDate(): LocalDate? =
         dsl.select(BASE_DATE).fetchOne()?.value1()
+
+    override fun findFlagged(): List<StockFlags> =
+        dsl.select(
+            STOCKS.TICKER,
+            STOCKS.NAME,
+            STOCKS.MARKET,
+            STOCKS.UNDER_ADMINISTRATION,
+            STOCKS.TRADING_SUSPENDED,
+            STOCKS.DELISTING_TRADE,
+        )
+            .from(STOCKS)
+            .where(
+                STOCKS.IS_ACTIVE.eq(true).and(
+                    STOCKS.UNDER_ADMINISTRATION.eq(true)
+                        .or(STOCKS.TRADING_SUSPENDED.eq(true))
+                        .or(STOCKS.DELISTING_TRADE.eq(true)),
+                ),
+            )
+            .orderBy(STOCKS.TICKER.asc())
+            .fetch {
+                StockFlags(
+                    ticker = requireNotNull(it.get(STOCKS.TICKER)),
+                    name = requireNotNull(it.get(STOCKS.NAME)),
+                    market = requireNotNull(it.get(STOCKS.MARKET)),
+                    underAdministration = it.get(STOCKS.UNDER_ADMINISTRATION) ?: false,
+                    tradingSuspended = it.get(STOCKS.TRADING_SUSPENDED) ?: false,
+                    delistingTrade = it.get(STOCKS.DELISTING_TRADE) ?: false,
+                )
+            }
 
     private fun fetchStocks(filter: (Stocks) -> Condition): List<Record> =
         dsl.select(

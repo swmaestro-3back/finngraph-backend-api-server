@@ -7,6 +7,7 @@ import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 data class ThemeSummaryResponse(
     val id: Long,
@@ -22,6 +23,7 @@ data class ThemeSummaryResponse(
     val marketCap: Long?,
     val stockCount: Int,
     val baseDate: LocalDate?,
+    val valuationDate: LocalDate?,
     val pricedCount: Int,
     val upCount: Int,
     val downCount: Int,
@@ -55,6 +57,7 @@ data class ThemeSummaryResponse(
             marketCap = summary.marketCap,
             stockCount = summary.stockCount,
             baseDate = summary.baseDate,
+            valuationDate = summary.valuationDate,
             pricedCount = summary.pricedCount,
             upCount = summary.upCount,
             downCount = summary.downCount,
@@ -137,6 +140,8 @@ data class ThemeMarketResponse(
     val upRatio: BigDecimal?,
     val downRatio: BigDecimal?,
     val coverage: BigDecimal?,
+    val valuationDate: LocalDate?,
+    val updatedAt: OffsetDateTime?,
 ) {
     companion object {
         fun from(stats: MarketStats) = ThemeMarketResponse(
@@ -149,6 +154,8 @@ data class ThemeMarketResponse(
             upRatio = stats.upRatio,
             downRatio = stats.downRatio,
             coverage = stats.coverage,
+            valuationDate = stats.valuationDate,
+            updatedAt = stats.updatedAt,
         )
     }
 }

@@ -1,23 +1,52 @@
 package com.finngraph.theme.model
 
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 data class CandleDayCount(
     val date: LocalDate,
     val candles: Int,
+    val lastUpdatedAt: OffsetDateTime? = null,
 )
 
 data class PricingBasis(
     val baseDate: LocalDate?,
     val prevTradingDate: LocalDate?,
     val candleCounts: List<CandleDayCount> = emptyList(),
-)
+    val valuationDate: LocalDate? = baseDate,
+    val priceUpdatedAt: OffsetDateTime? = null,
+) {
+    val isSettled: Boolean
+        get() = baseDate != null && baseDate == valuationDate
+
+    fun settled(): PricingBasis {
+        if (isSettled) return this
+        val date = valuationDate ?: return PricingBasis(null, null, candleCounts, null)
+        return PricingBasis(
+            baseDate = date,
+            prevTradingDate = TradingCalendar.previousTradingDate(date, candleCounts),
+            candleCounts = candleCounts,
+            valuationDate = date,
+            priceUpdatedAt = candleCounts.firstOrNull { it.date == date }?.lastUpdatedAt,
+        )
+    }
+}
 
 object TradingCalendar {
 
     const val RECENT_DAYS = 20
+    const val PRICE_READY_RATIO = 0.9
 
     private const val MIN_RATIO_TO_MEDIAN = 0.5
+
+    fun priceDate(recent: List<CandleDayCount>): LocalDate? {
+        val ordered = recent.sortedByDescending { it.date }
+        val window = ordered.take(RECENT_DAYS)
+        if (window.isEmpty()) return null
+
+        val threshold = median(window.map { it.candles }) * PRICE_READY_RATIO
+        return ordered.firstOrNull { it.candles >= threshold }?.date
+    }
 
     fun previousTradingDate(baseDate: LocalDate, recent: List<CandleDayCount>): LocalDate? {
         val window = recentWindow(baseDate, recent)

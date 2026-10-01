@@ -3,6 +3,7 @@ package com.finngraph.theme.model
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 data class StockObservation(
     val id: Long,
@@ -74,6 +75,7 @@ object ThemeAggregation {
         baseDate: LocalDate?,
         prevTradingDate: LocalDate?,
         averages: Map<Long, TradeValueAverage> = emptyMap(),
+        valuationDate: LocalDate? = baseDate,
     ): ThemeSummary {
         val evaluation = evaluate(members, prevTradingDate)
         val universe = evaluation.universe
@@ -93,7 +95,7 @@ object ThemeAggregation {
             change = metrics.value,
             tradingValue = priced.mapNotNull { it.member.stock.tradeValue }.sumOrNull(),
             avgTradingValue = ratio?.average,
-            tradingValueRatio = ratio?.ratio,
+            tradingValueRatio = ratio?.ratio?.takeIf { baseDate != null && baseDate == valuationDate },
             marketCap = universe.mapNotNull { it.member.stock.marketCap }.sumOrNull(),
             w1 = w1.value,
             m1 = m1.value,
@@ -120,6 +122,7 @@ object ThemeAggregation {
                 .sortedWith(TOP_STOCK_ORDER)
                 .take(TOP_STOCK_COUNT)
                 .map { ThemeTopStock(it.ticker, it.name, it.marketCap) },
+            valuationDate = valuationDate,
         )
     }
 
@@ -133,7 +136,13 @@ object ThemeAggregation {
             .map { it.toView() }
     }
 
-    fun marketStats(baseDate: LocalDate?, stocks: List<StockObservation>, prevTradingDate: LocalDate?): MarketStats {
+    fun marketStats(
+        baseDate: LocalDate?,
+        stocks: List<StockObservation>,
+        prevTradingDate: LocalDate?,
+        valuationDate: LocalDate? = baseDate,
+        updatedAt: OffsetDateTime? = null,
+    ): MarketStats {
         val active = stocks.filter { it.isActive }
         val changes = active
             .filter { it.inUniverse }
@@ -143,6 +152,8 @@ object ThemeAggregation {
             changes = changes,
             candleCount = active.count { it.close != null },
             activeCount = active.size,
+            valuationDate = valuationDate,
+            updatedAt = updatedAt,
         )
     }
 

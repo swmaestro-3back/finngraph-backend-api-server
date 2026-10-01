@@ -38,6 +38,7 @@ data class ThemeSummary(
     val sources: List<String>,
     val hotSide: HotSide?,
     val topStocks: List<ThemeTopStock>,
+    val valuationDate: LocalDate? = baseDate,
 )
 
 data class ThemeBoard(

@@ -210,6 +210,20 @@ class ThemeAggregationTest {
         assertEquals(BigDecimal("0.8000"), stats.coverage)
     }
 
+    @Test
+    fun `시장 커버리지는 국내 시장 종목만으로 계산한다`() {
+        val stocks = listOf(
+            member(1, "103").stock,
+            member(2, "97").stock.copy(market = "KOSDAQ"),
+            member(3, null).stock.copy(market = "NYSE"),
+            member(4, null).stock.copy(market = "NASDAQ"),
+        )
+
+        val stats = ThemeAggregation.marketStats(base, stocks, prev)
+
+        assertEquals(BigDecimal("1.0000"), stats.coverage)
+    }
+
     private fun member(
         id: Long,
         close: String?,

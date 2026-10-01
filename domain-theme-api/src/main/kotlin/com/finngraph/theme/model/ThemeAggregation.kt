@@ -30,6 +30,9 @@ data class StockObservation(
     val inUniverse: Boolean
         get() = isActive && !delistingTrade && !preferredStock && !etp && !spac
 
+    val isDomestic: Boolean
+        get() = market in DOMESTIC_MARKETS
+
     fun dailyChange(prevTradingDate: LocalDate?): DailyChange {
         if (close == null) return DailyChange(ChangeStatus.NO_CANDLE, null)
         if (tradingSuspended || volume == null || volume <= 0) return DailyChange(ChangeStatus.SUSPENDED, null)
@@ -43,6 +46,7 @@ data class StockObservation(
 
     private companion object {
         val HUNDRED = BigDecimal(100)
+        val DOMESTIC_MARKETS = setOf("KOSPI", "KOSDAQ")
     }
 }
 
@@ -147,11 +151,12 @@ object ThemeAggregation {
         val changes = active
             .filter { it.inUniverse }
             .mapNotNull { it.dailyChange(prevTradingDate).change }
+        val domestic = active.filter { it.isDomestic }
         return MarketStats.of(
             baseDate = baseDate,
             changes = changes,
-            candleCount = active.count { it.close != null },
-            activeCount = active.size,
+            candleCount = domestic.count { it.close != null },
+            activeCount = domestic.size,
             valuationDate = valuationDate,
             updatedAt = updatedAt,
         )

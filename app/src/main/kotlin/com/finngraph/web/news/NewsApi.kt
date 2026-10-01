@@ -80,4 +80,34 @@ interface NewsApi {
     )
     @GetMapping("/{id}/companies")
     fun companies(@Parameter(description = "뉴스 id") @PathVariable id: Long): DataResponse<List<NewsRelatedStockResponse>>
+
+    @Operation(
+        summary = "이슈 타임라인",
+        description = "요청 이슈(뉴스 클러스터)에서 바로 앞 이슈(부모)를 따라 거슬러 올라간 사슬을 요청 이슈부터 준다. " +
+            "같은 이야기에서 갈라진 다른 갈래는 넣지 않고, 제목 없는 앞 이슈는 건너뛴다. " +
+            "요청 이슈는 current=true 로 맨 앞에 온다. 아직 연결 전이면 요청 이슈 하나만, 제목이 없는 이슈면 빈 목록이다.",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "clusterId 가 양수가 아니거나 숫자가 아님, limit 이 1~20 범위 밖",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 이슈",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "503",
+            description = "DB 접속 실패",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/clusters/{clusterId}/timeline")
+    fun timeline(
+        @Parameter(description = "이슈(뉴스 클러스터) id") @PathVariable clusterId: Long,
+        @Parameter(description = "노드 수 (최대 20)") @RequestParam(required = false, defaultValue = "10") limit: Int,
+    ): DataResponse<IssueTimelineResponse>
 }

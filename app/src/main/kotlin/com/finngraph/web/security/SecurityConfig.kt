@@ -134,6 +134,7 @@ class SecurityConfig {
             "/api/v1/news",
             "/api/v1/news/{id}",
             "/api/v1/news/{id}/companies",
+            "/api/v1/news/clusters/{clusterId}/timeline",
             "/actuator/health",
             "/actuator/health/readiness",
             "/actuator/health/liveness",

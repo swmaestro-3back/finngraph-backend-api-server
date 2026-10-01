@@ -1,11 +1,15 @@
 package com.finngraph.web.news
 
 import com.finngraph.composition.RelatedStock
+import com.finngraph.news.model.IssueTimeline
+import com.finngraph.news.model.IssueTimelineNode
 import com.finngraph.news.model.NewsDetail
 import com.finngraph.news.model.NewsView
 import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
+import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 data class NewsResponse(
     val id: Long,
@@ -66,6 +70,46 @@ data class NewsRelatedStockResponse(
             market = related.market,
             price = related.price,
             change = related.change,
+        )
+    }
+}
+
+data class IssueTimelineResponse(
+    val clusterId: Long,
+    @Schema(description = "요청 이슈부터 부모를 따라 과거로")
+    val nodes: List<IssueTimelineNodeResponse>,
+) {
+    companion object {
+        fun from(timeline: IssueTimeline) = IssueTimelineResponse(
+            clusterId = timeline.clusterId,
+            nodes = timeline.nodes.map(IssueTimelineNodeResponse::from),
+        )
+    }
+}
+
+data class IssueTimelineNodeResponse(
+    val clusterId: Long,
+    val title: String,
+    @Schema(description = "1~2문장 요약. 생성 전이거나 실패했으면 null")
+    val summary: String?,
+    @Schema(description = "firstPublishedAt 의 KST 날짜", example = "2026-09-29")
+    val date: LocalDate,
+    val firstPublishedAt: OffsetDateTime,
+    val lastPublishedAt: OffsetDateTime,
+    @Schema(description = "요청한 이슈 여부")
+    val current: Boolean,
+) {
+    companion object {
+        private val KST: ZoneOffset = ZoneOffset.ofHours(9)
+
+        fun from(node: IssueTimelineNode) = IssueTimelineNodeResponse(
+            clusterId = node.clusterId,
+            title = node.title,
+            summary = node.summary,
+            date = node.firstPublishedAt.withOffsetSameInstant(KST).toLocalDate(),
+            firstPublishedAt = node.firstPublishedAt,
+            lastPublishedAt = node.lastPublishedAt,
+            current = node.current,
         )
     }
 }

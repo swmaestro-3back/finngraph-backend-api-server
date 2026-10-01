@@ -1,9 +1,12 @@
 package com.finngraph.theme.model
 
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TradingCalendarTest {
 
@@ -84,5 +87,72 @@ class TradingCalendarTest {
             CandleDayCount(base.plusDays(1), 5000)
 
         assertEquals(base.minusDays(1), TradingCalendar.previousTradingDate(base, recent))
+    }
+
+    @Test
+    fun `가격 기준일은 최근 중앙값의 90퍼센트 이상 적재된 가장 최근 날이다`() {
+        val recent = listOf(
+            CandleDayCount(base, 1200),
+            CandleDayCount(base.minusDays(1), 2348),
+            CandleDayCount(base.minusDays(2), 2347),
+            CandleDayCount(base.minusDays(3), 2346),
+        )
+
+        assertEquals(base.minusDays(1), TradingCalendar.priceDate(recent))
+    }
+
+    @Test
+    fun `장중 수집이 끝나 문턱을 넘으면 오늘이 가격 기준일이다`() {
+        val recent = listOf(
+            CandleDayCount(base, 2340),
+            CandleDayCount(base.minusDays(1), 2348),
+            CandleDayCount(base.minusDays(2), 2347),
+        )
+
+        assertEquals(base, TradingCalendar.priceDate(recent))
+    }
+
+    @Test
+    fun `가격 기준일 문턱은 중앙값의 90퍼센트이고 경계값은 통과한다`() {
+        val atThreshold = listOf(CandleDayCount(base, 90), CandleDayCount(base.minusDays(1), 100), CandleDayCount(base.minusDays(2), 100))
+        val belowThreshold = listOf(CandleDayCount(base, 89), CandleDayCount(base.minusDays(1), 100), CandleDayCount(base.minusDays(2), 100))
+
+        assertEquals(base, TradingCalendar.priceDate(atThreshold))
+        assertEquals(base.minusDays(1), TradingCalendar.priceDate(belowThreshold))
+    }
+
+    @Test
+    fun `캔들이 없으면 가격 기준일도 없다`() {
+        assertNull(TradingCalendar.priceDate(emptyList()))
+    }
+
+    @Test
+    fun `밸류에이션이 가격 기준일보다 늦으면 확정 기준은 밸류에이션 기준일로 다시 잡는다`() {
+        val closedAt = OffsetDateTime.parse("2026-09-17T18:40:00+09:00")
+        val counts = listOf(
+            CandleDayCount(base, 2340, OffsetDateTime.parse("2026-09-18T11:00:00+09:00")),
+            CandleDayCount(base.minusDays(1), 2348, closedAt),
+            CandleDayCount(base.minusDays(2), 2347),
+        )
+        val live = PricingBasis(base, base.minusDays(1), counts, valuationDate = base.minusDays(1))
+
+        assertFalse(live.isSettled)
+        val settled = live.settled()
+        assertTrue(settled.isSettled)
+        assertEquals(base.minusDays(1), settled.baseDate)
+        assertEquals(base.minusDays(2), settled.prevTradingDate)
+        assertEquals(base.minusDays(1), settled.valuationDate)
+        assertEquals(closedAt, settled.priceUpdatedAt)
+    }
+
+    @Test
+    fun `이미 확정된 기준은 그대로이고 밸류에이션이 없으면 빈 기준이다`() {
+        val settled = PricingBasis(base, base.minusDays(1))
+
+        assertTrue(settled.isSettled)
+        assertEquals(settled, settled.settled())
+        val empty = PricingBasis(base, base.minusDays(1), valuationDate = null).settled()
+        assertNull(empty.baseDate)
+        assertNull(empty.valuationDate)
     }
 }

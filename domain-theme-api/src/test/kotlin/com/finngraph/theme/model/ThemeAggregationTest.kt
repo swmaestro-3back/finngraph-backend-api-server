@@ -2,6 +2,7 @@ package com.finngraph.theme.model
 
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -249,4 +250,31 @@ class ThemeAggregationTest {
 
     private fun averages(vararg entries: Pair<Int, String>): Map<Long, TradeValueAverage> =
         entries.associate { (id, average) -> id.toLong() to TradeValueAverage(id.toLong(), BigDecimal(average), 20) }
+
+    @Test
+    fun `가격 기준일이 확정되기 전에는 거래대금 배율을 내지 않는다`() {
+        val members = listOf(
+            member(1, "103", tradeValue = 300),
+            member(2, "104", tradeValue = 500),
+        )
+        val averages = averages(1 to "100", 2 to "200")
+
+        val summary = ThemeAggregation.summary(theme, members, base, prev, averages, valuationDate = prev)
+
+        assertEquals(800L, summary.tradingValue)
+        assertEquals(300L, summary.avgTradingValue)
+        assertNull(summary.tradingValueRatio)
+        assertEquals(prev, summary.valuationDate)
+    }
+
+    @Test
+    fun `시장 통계는 밸류에이션 기준일과 가격 갱신 시각을 함께 싣는다`() {
+        val updatedAt = OffsetDateTime.parse("2026-09-18T11:00:00+09:00")
+
+        val stats = ThemeAggregation.marketStats(base, listOf(member(1, "103").stock), prev, prev, updatedAt)
+
+        assertEquals(base, stats.baseDate)
+        assertEquals(prev, stats.valuationDate)
+        assertEquals(updatedAt, stats.updatedAt)
+    }
 }

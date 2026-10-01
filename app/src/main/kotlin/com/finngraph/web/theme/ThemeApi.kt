@@ -132,4 +132,56 @@ interface ThemeApi {
         @Parameter(description = "0-기반 페이지 번호") @RequestParam(required = false, defaultValue = "0") page: Int,
         @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(required = false, defaultValue = "20") size: Int,
     ): PageResponse<NewsResponse>
+
+    @Operation(
+        summary = "테마 지수 캔들",
+        description = "구성 종목 시가총액 가중 체인 지수(종목당 25% 상한, 1000 기준). 테마 기준일까지의 봉만 내려주고, " +
+            "주·월봉은 일봉을 주 월요일·월 1일 단위로 묶는다. 응답 모양은 종목 캔들과 같고 tradeValue가 더 있다",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공. 지수가 없는 테마는 빈 배열"),
+        ApiResponse(
+            responseCode = "400",
+            description = "id 가 양수가 아님, period 가 D/W/M 이 아님, limit 이 1~500 범위 밖",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 테마",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{id}/candles")
+    fun candles(
+        @Parameter(description = "테마 id") @PathVariable id: Long,
+        @Parameter(description = "캔들 주기 (D | W | M)")
+        @RequestParam(required = false, defaultValue = "D")
+        period: String,
+        @Parameter(description = "개수 (1~500). 미지정 시 D=65, W=52, M=36")
+        @RequestParam(required = false)
+        limit: Int?,
+    ): DataResponse<List<ThemeIndexCandleResponse>>
+
+    @Operation(
+        summary = "테마 지수 성과",
+        description = "기준일 지수 종가와 일간 등락률, 기간 수익률(종목 r_1w와 같은 달력 규칙), 52주 종가 고저와 고점 대비, " +
+            "연속 등락일(상승 +n, 하락 -n). 구성종목 절사평균인 테마 change·w1·m1·m3와는 다른 지표다. 기준일 지수 행이 없으면 data 는 null",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "id 가 양수가 아님",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 테마",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{id}/index")
+    fun index(
+        @Parameter(description = "테마 id") @PathVariable id: Long,
+    ): DataResponse<ThemeIndexResponse?>
 }

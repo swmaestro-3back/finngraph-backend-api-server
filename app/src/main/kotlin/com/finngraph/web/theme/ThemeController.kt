@@ -4,15 +4,19 @@ import com.finngraph.composition.ThemeNewsComposer
 import com.finngraph.composition.hottheme.HotThemeComposer
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
+import com.finngraph.theme.model.IndexPeriod
 import com.finngraph.theme.model.ThemeId
+import com.finngraph.theme.port.ThemeIndexPort
 import com.finngraph.theme.port.ThemeQueryPort
 import com.finngraph.theme.port.ThemeStockPort
+import com.finngraph.web.common.CandleInterval
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
 import com.finngraph.web.common.InvalidParameterException
 import com.finngraph.web.common.PageResponse
 import com.finngraph.web.common.Pagination
 import com.finngraph.web.common.ResourceNotFoundException
+import com.finngraph.web.common.validateCandleQuery
 import com.finngraph.web.common.validatePaging
 import com.finngraph.web.news.NewsResponse
 import org.springframework.web.bind.annotation.RestController
@@ -21,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController
 class ThemeController(
     private val themeQuery: ThemeQueryPort,
     private val themeStock: ThemeStockPort,
+    private val themeIndex: ThemeIndexPort,
     private val themeNewsComposer: ThemeNewsComposer,
     private val hotThemeComposer: HotThemeComposer,
 ) : ThemeApi {
@@ -55,6 +60,21 @@ class ThemeController(
         return themeNewsComposer.newsPage(target, page, size).toResponse()
     }
 
+    override fun candles(id: Long, period: String, limit: Int?): DataResponse<List<ThemeIndexCandleResponse>> {
+        val target = toThemeId(id)
+        val query = validateCandleQuery(period, limit)
+        requireTheme(target, id)
+        return DataResponse(
+            themeIndex.findCandles(target, query.interval.toIndexPeriod(), query.limit).map(ThemeIndexCandleResponse::from),
+        )
+    }
+
+    override fun index(id: Long): DataResponse<ThemeIndexResponse?> {
+        val target = toThemeId(id)
+        requireTheme(target, id)
+        return DataResponse(themeIndex.findSummary(target)?.let(ThemeIndexResponse::from))
+    }
+
     private fun toThemeId(raw: Long): ThemeId = try {
         ThemeId(raw)
     } catch (e: IllegalArgumentException) {
@@ -80,13 +100,18 @@ class ThemeController(
         }
     }
 
+    private fun CandleInterval.toIndexPeriod(): IndexPeriod = when (this) {
+        CandleInterval.D -> IndexPeriod.D
+        CandleInterval.W -> IndexPeriod.W
+        CandleInterval.M -> IndexPeriod.M
+    }
+
     private fun PageResult<NewsView>.toResponse() = PageResponse(
         data = content.map(NewsResponse::from),
         pagination = Pagination(page, size, totalElements, totalPages),
     )
 
     private companion object {
-        // 클라이언트 트리맵의 표시 개수 옵션과 1:1 — 바꿀 땐 finngraph-client THEME_COUNTS와 함께 맞춘다
         val HOT_COUNTS = setOf(10, 20, 30)
     }
 }

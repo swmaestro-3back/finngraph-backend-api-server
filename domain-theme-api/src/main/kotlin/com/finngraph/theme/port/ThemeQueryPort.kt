@@ -12,6 +12,7 @@ interface ThemeQueryPort {
     fun exists(id: ThemeId): Boolean
     fun board(): ThemeBoard
     fun board(ids: List<ThemeId>): ThemeBoard
+    fun board(basis: PricingBasis): ThemeBoard
     fun findAll(): List<ThemeSummary>
     fun findById(id: ThemeId): ThemeSummary?
     fun findByIds(ids: List<ThemeId>): Map<ThemeId, ThemeSummary>

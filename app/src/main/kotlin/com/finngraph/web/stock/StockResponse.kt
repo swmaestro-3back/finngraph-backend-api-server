@@ -69,6 +69,8 @@ data class StockDetailResponse(
     val description: String?,
     val descriptionSource: String?,
     val descriptionRceptNo: String?,
+    val baseDate: LocalDate?,
+    val valuationDate: LocalDate?,
 ) {
     companion object {
         fun from(view: StockDetailView, primaryTheme: PrimaryTheme? = null) = StockDetailResponse(
@@ -90,6 +92,8 @@ data class StockDetailResponse(
             description = view.description?.text,
             descriptionSource = view.description?.source,
             descriptionRceptNo = view.description?.rceptNo,
+            baseDate = view.baseDate,
+            valuationDate = view.valuationDate,
         )
     }
 }

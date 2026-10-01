@@ -118,6 +118,8 @@ class SecurityConfig {
             "/api/v1/themes/{id}",
             "/api/v1/themes/{id}/stocks",
             "/api/v1/themes/{id}/news",
+            "/api/v1/themes/{id}/candles",
+            "/api/v1/themes/{id}/index",
             "/api/v1/stocks",
             "/api/v1/stocks/{ticker}",
             "/api/v1/stocks/{ticker}/candles",

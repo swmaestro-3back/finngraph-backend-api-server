@@ -26,7 +26,6 @@ import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockContractPort
 import com.finngraph.stock.port.StockQueryPort
 import com.finngraph.theme.model.MarketStats
-import com.finngraph.theme.port.ThemeQueryPort
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -56,7 +55,6 @@ sealed interface BriefingAssembly {
 
 @Component
 class BriefingComposer(
-    private val themeQuery: ThemeQueryPort,
     private val hotThemes: HotThemeComposer,
     private val clusters: NewsClusterPort,
     private val relationSources: RelationSourcePort,
@@ -68,11 +66,12 @@ class BriefingComposer(
 ) {
 
     fun assemble(requestedDate: LocalDate?): BriefingAssembly {
-        val basis = themeQuery.pricingBasis()
+        val board = hotThemes.settledBoard()
+        val basis = board.basis
         val baseDate = basis.baseDate ?: return BriefingAssembly.NoBaseDate
         if (requestedDate != null && requestedDate != baseDate) return BriefingAssembly.DateMismatch(requestedDate, baseDate)
 
-        val market = themeQuery.marketStats().toSnapshot()
+        val market = board.market.toSnapshot()
         val coverage = market.coverage
         if (coverage == null || coverage < MIN_COVERAGE) return BriefingAssembly.LowCoverage(baseDate, coverage)
 
@@ -103,7 +102,7 @@ class BriefingComposer(
                 contract.counterpartyTicker?.let(::add)
             }
         }
-        val prices = stockQuery.findByTickers(tickers.map(::Ticker))
+        val prices = stockQuery.findByTickers(tickers.map(::Ticker), baseDate)
 
         val citations = LinkedHashMap<String, Citation>()
         fun register(citation: Citation): Citation = citations.getOrPut(citation.key()) { citation }
@@ -169,7 +168,7 @@ class BriefingComposer(
                 baseDate = baseDate,
                 previousTradingDate = previous,
                 market = market,
-                themes = BriefingRules.themeRadar(hotThemes.hot(HOT_THEME_COUNT)),
+                themes = BriefingRules.themeRadar(hotThemes.select(board, HOT_THEME_COUNT)),
                 issues = issues,
                 analyzedNews = analyzedNews,
                 relationGraph = BriefingRules.foldGraph(relations, prices, sourceOf),

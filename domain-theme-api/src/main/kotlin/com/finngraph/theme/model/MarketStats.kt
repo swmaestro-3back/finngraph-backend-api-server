@@ -3,6 +3,7 @@ package com.finngraph.theme.model
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 data class MarketStats(
     val baseDate: LocalDate?,
@@ -14,13 +15,22 @@ data class MarketStats(
     val upRatio: BigDecimal?,
     val downRatio: BigDecimal?,
     val coverage: BigDecimal?,
+    val valuationDate: LocalDate? = baseDate,
+    val updatedAt: OffsetDateTime? = null,
 ) {
     companion object {
         const val SCALE = 4
 
         val EMPTY = MarketStats(null, 0, 0, 0, 0, null, null, null, null)
 
-        fun of(baseDate: LocalDate?, changes: List<BigDecimal>, candleCount: Int, activeCount: Int): MarketStats {
+        fun of(
+            baseDate: LocalDate?,
+            changes: List<BigDecimal>,
+            candleCount: Int,
+            activeCount: Int,
+            valuationDate: LocalDate? = baseDate,
+            updatedAt: OffsetDateTime? = null,
+        ): MarketStats {
             val priced = changes.size
             val up = changes.count { it.signum() > 0 }
             val down = changes.count { it.signum() < 0 }
@@ -34,6 +44,8 @@ data class MarketStats(
                 upRatio = ratio(up, priced),
                 downRatio = ratio(down, priced),
                 coverage = ratio(candleCount, activeCount),
+                valuationDate = valuationDate,
+                updatedAt = updatedAt,
             )
         }
 

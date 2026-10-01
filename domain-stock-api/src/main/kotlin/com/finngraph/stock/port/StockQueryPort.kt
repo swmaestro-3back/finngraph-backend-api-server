@@ -12,7 +12,7 @@ interface StockQueryPort {
     fun exists(ticker: Ticker): Boolean
     fun findAll(): List<StockListView>
     fun findByTicker(ticker: Ticker): StockDetailView?
-    fun findByTickers(tickers: List<Ticker>): Map<Ticker, StockPriceView>
+    fun findByTickers(tickers: List<Ticker>, asOf: LocalDate? = null): Map<Ticker, StockPriceView>
     fun findLatestTradeDate(): LocalDate?
     fun findFlagged(): List<StockFlags>
 }

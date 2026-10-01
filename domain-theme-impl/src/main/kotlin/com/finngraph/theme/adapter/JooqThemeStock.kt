@@ -23,7 +23,7 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
         if (ids.isEmpty()) return emptyMap()
         val values = ids.map { it.value }.distinct()
         val memberStocks = DSL.select(THEME_STOCKS.STOCK_ID).from(THEME_STOCKS).where(THEME_STOCKS.THEME_ID.`in`(values))
-        val stocks = ThemeQuerySupport.activeStocks(dsl, basis.baseDate, STOCKS.ID.`in`(memberStocks)).associateBy { it.id }
+        val stocks = ThemeQuerySupport.activeStocks(dsl, basis, STOCKS.ID.`in`(memberStocks)).associateBy { it.id }
 
         val members = LinkedHashMap<Long, MutableList<ThemeMember>>()
         dsl.select(THEME_STOCKS.THEME_ID, THEME_STOCKS.STOCK_ID, THEME_STOCKS.REASON)

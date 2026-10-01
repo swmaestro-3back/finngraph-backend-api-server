@@ -1,12 +1,15 @@
 package com.finngraph.web.theme
 
 import com.finngraph.theme.model.MarketStats
+import com.finngraph.theme.model.ThemeIndexCandle
+import com.finngraph.theme.model.ThemeIndexSummary
 import com.finngraph.theme.model.ThemeLeader
 import com.finngraph.theme.model.ThemeStockView
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.OffsetDateTime
 
 data class ThemeSummaryResponse(
     val id: Long,
@@ -22,6 +25,7 @@ data class ThemeSummaryResponse(
     val marketCap: Long?,
     val stockCount: Int,
     val baseDate: LocalDate?,
+    val valuationDate: LocalDate?,
     val pricedCount: Int,
     val upCount: Int,
     val downCount: Int,
@@ -55,6 +59,7 @@ data class ThemeSummaryResponse(
             marketCap = summary.marketCap,
             stockCount = summary.stockCount,
             baseDate = summary.baseDate,
+            valuationDate = summary.valuationDate,
             pricedCount = summary.pricedCount,
             upCount = summary.upCount,
             downCount = summary.downCount,
@@ -137,6 +142,8 @@ data class ThemeMarketResponse(
     val upRatio: BigDecimal?,
     val downRatio: BigDecimal?,
     val coverage: BigDecimal?,
+    val valuationDate: LocalDate?,
+    val updatedAt: OffsetDateTime?,
 ) {
     companion object {
         fun from(stats: MarketStats) = ThemeMarketResponse(
@@ -149,6 +156,62 @@ data class ThemeMarketResponse(
             upRatio = stats.upRatio,
             downRatio = stats.downRatio,
             coverage = stats.coverage,
+            valuationDate = stats.valuationDate,
+            updatedAt = stats.updatedAt,
+        )
+    }
+}
+
+data class ThemeIndexCandleResponse(
+    val date: LocalDate,
+    val open: BigDecimal,
+    val high: BigDecimal,
+    val low: BigDecimal,
+    val close: BigDecimal,
+    val volume: Long,
+    val tradeValue: Long?,
+) {
+    companion object {
+        fun from(candle: ThemeIndexCandle) = ThemeIndexCandleResponse(
+            date = candle.date,
+            open = candle.open,
+            high = candle.high,
+            low = candle.low,
+            close = candle.close,
+            volume = candle.volume,
+            tradeValue = candle.tradeValue,
+        )
+    }
+}
+
+data class ThemeIndexResponse(
+    val date: LocalDate,
+    val close: BigDecimal,
+    val change: BigDecimal?,
+    val r1w: BigDecimal?,
+    val r1m: BigDecimal?,
+    val r3m: BigDecimal?,
+    val r1y: BigDecimal?,
+    val ytd: BigDecimal?,
+    val high52w: BigDecimal,
+    val low52w: BigDecimal,
+    val fromHigh52w: BigDecimal?,
+    val streak: Int,
+) {
+    companion object {
+        fun from(summary: ThemeIndexSummary) = ThemeIndexResponse(
+            date = summary.date,
+            close = summary.close,
+            change = summary.change,
+            r1w = summary.r1w,
+            r1m = summary.r1m,
+            r3m = summary.r3m,
+            r1y = summary.r1y,
+            ytd = summary.ytd,
+            high52w = summary.high52w,
+            low52w = summary.low52w,
+            fromHigh52w = summary.fromHigh52w,
+            streak = summary.streak,
         )
     }
 }

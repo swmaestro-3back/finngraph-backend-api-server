@@ -154,6 +154,8 @@ class PublicAccessTest {
         private val SUB_RESOURCE_ENDPOINTS = listOf(
             "/api/v1/themes/999999/stocks",
             "/api/v1/themes/999999/news",
+            "/api/v1/themes/999999/candles",
+            "/api/v1/themes/999999/index",
             "/api/v1/stocks/000000/candles",
             "/api/v1/stocks/000000/investor-flows",
             "/api/v1/stocks/000000/financials",

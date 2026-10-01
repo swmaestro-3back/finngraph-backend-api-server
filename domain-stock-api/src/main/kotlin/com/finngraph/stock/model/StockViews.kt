@@ -35,6 +35,7 @@ data class StockDetailView(
     val revenueYoY: BigDecimal?,
     val baseDate: LocalDate?,
     val description: CompanyDescription?,
+    val valuationDate: LocalDate? = baseDate,
 )
 
 data class CompanyDescription(

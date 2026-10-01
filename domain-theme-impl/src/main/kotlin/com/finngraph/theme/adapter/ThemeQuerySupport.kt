@@ -15,6 +15,7 @@ import org.jooq.impl.DSL
 import org.jooq.impl.SQLDataType
 import java.math.BigDecimal
 import java.time.LocalDate
+import java.time.ZoneOffset
 
 internal object ThemeQuerySupport {
 
@@ -27,27 +28,41 @@ internal object ThemeQuerySupport {
     private const val PREV_CLOSE = "prev_close"
     private const val CANDLE_WINDOW_DAYS = 60L
 
+    private val KST: ZoneOffset = ZoneOffset.ofHours(9)
+
     private val LATEST_CANDLE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
         DSL.field(DSL.select(DSL.max(dc.TRADE_DATE)).from(dc))
     }
 
-    private val LATEST_VALUATION_DATE: Field<LocalDate?> = STOCK_VALUATIONS_DAILY.`as`(BASE_VALUATIONS).let { dv ->
+    val LATEST_VALUATION_DATE: Field<LocalDate?> = STOCK_VALUATIONS_DAILY.`as`(BASE_VALUATIONS).let { dv ->
         DSL.field(DSL.select(DSL.max(dv.TRADE_DATE)).from(dv))
     }
-
-    val BASE_DATE: Field<LocalDate?> = DSL.least(LATEST_CANDLE_DATE, LATEST_VALUATION_DATE)
 
     private val PREV_DATE_FIELD: Field<LocalDate?> = DSL.field(DSL.name(PREV, PREV_DATE), SQLDataType.LOCALDATE)
     private val PREV_CLOSE_FIELD: Field<BigDecimal?> = DSL.field(DSL.name(PREV, PREV_CLOSE), SQLDataType.NUMERIC)
 
     fun pricingBasis(dsl: DSLContext): PricingBasis {
-        val baseDate = dsl.select(BASE_DATE).fetchOne()?.value1() ?: return PricingBasis(null, null)
-        val counts = candleCounts(dsl, baseDate)
-        return PricingBasis(baseDate, TradingCalendar.previousTradingDate(baseDate, counts), counts)
+        val counts = recentCandleCounts(dsl)
+        val priceDate = TradingCalendar.priceDate(counts) ?: return PricingBasis(null, null, counts, null)
+        val valuationDate = dsl.select(DSL.max(STOCK_VALUATIONS_DAILY.TRADE_DATE))
+            .from(STOCK_VALUATIONS_DAILY)
+            .where(STOCK_VALUATIONS_DAILY.TRADE_DATE.le(priceDate))
+            .fetchOne()
+            ?.value1()
+        return PricingBasis(
+            baseDate = priceDate,
+            prevTradingDate = TradingCalendar.previousTradingDate(priceDate, counts),
+            candleCounts = counts,
+            valuationDate = valuationDate,
+            priceUpdatedAt = counts.firstOrNull { it.date == priceDate }?.lastUpdatedAt,
+        )
     }
 
-    fun activeStocks(dsl: DSLContext, baseDate: LocalDate?, filter: Condition = DSL.noCondition()): List<StockObservation> {
-        val base = DSL.`val`(baseDate, SQLDataType.LOCALDATE)
+    fun priceDate(dsl: DSLContext): LocalDate? = TradingCalendar.priceDate(recentCandleCounts(dsl))
+
+    fun activeStocks(dsl: DSLContext, basis: PricingBasis, filter: Condition = DSL.noCondition()): List<StockObservation> {
+        val base = DSL.`val`(basis.baseDate, SQLDataType.LOCALDATE)
+        val valuation = DSL.`val`(basis.valuationDate, SQLDataType.LOCALDATE)
         val lc = STOCK_CANDLES_DAILY.`as`(LATEST_CANDLES)
         val pc = STOCK_CANDLES_DAILY.`as`(PREV_CANDLES)
         val prev = DSL.lateral(
@@ -85,7 +100,7 @@ internal object ThemeQuerySupport {
             .leftJoin(lc).on(lc.STOCK_ID.eq(STOCKS.ID).and(lc.TRADE_DATE.eq(base)))
             .leftJoin(prev).on(DSL.trueCondition())
             .leftJoin(STOCK_VALUATIONS_DAILY)
-            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(base)))
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(valuation)))
             .where(STOCKS.IS_ACTIVE.eq(true).and(filter))
             .orderBy(STOCKS.ID.asc())
             .fetch {
@@ -141,11 +156,19 @@ internal object ThemeQuerySupport {
             .associateBy { it.stockId }
     }
 
-    private fun candleCounts(dsl: DSLContext, baseDate: LocalDate): List<CandleDayCount> =
-        dsl.select(STOCK_CANDLES_DAILY.TRADE_DATE, DSL.count())
+    private fun recentCandleCounts(dsl: DSLContext): List<CandleDayCount> {
+        val latest = dsl.select(LATEST_CANDLE_DATE).fetchOne()?.value1() ?: return emptyList()
+        return dsl.select(STOCK_CANDLES_DAILY.TRADE_DATE, DSL.count(), DSL.max(STOCK_CANDLES_DAILY.UPDATED_AT))
             .from(STOCK_CANDLES_DAILY)
-            .where(STOCK_CANDLES_DAILY.TRADE_DATE.between(baseDate.minusDays(CANDLE_WINDOW_DAYS), baseDate))
+            .where(STOCK_CANDLES_DAILY.TRADE_DATE.between(latest.minusDays(CANDLE_WINDOW_DAYS), latest))
             .groupBy(STOCK_CANDLES_DAILY.TRADE_DATE)
             .orderBy(STOCK_CANDLES_DAILY.TRADE_DATE.desc())
-            .fetch { CandleDayCount(requireNotNull(it.value1()), it.value2()) }
+            .fetch {
+                CandleDayCount(
+                    date = requireNotNull(it.value1()),
+                    candles = it.value2(),
+                    lastUpdatedAt = it.value3()?.withOffsetSameInstant(KST),
+                )
+            }
+    }
 }

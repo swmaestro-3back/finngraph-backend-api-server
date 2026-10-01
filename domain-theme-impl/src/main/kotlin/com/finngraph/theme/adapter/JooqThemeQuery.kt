@@ -1,6 +1,6 @@
 package com.finngraph.theme.adapter
 
-import com.finngraph.theme.adapter.ThemeQuerySupport.BASE_DATE
+import com.finngraph.theme.adapter.ThemeQuerySupport.LATEST_VALUATION_DATE
 import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
@@ -32,9 +32,12 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     override fun exists(id: ThemeId): Boolean =
         dsl.fetchExists(dsl.selectOne().from(THEMES).where(THEMES.ID.eq(id.value)))
 
-    override fun board(): ThemeBoard = board(DSL.noCondition())
+    override fun board(): ThemeBoard = board(DSL.noCondition(), ThemeQuerySupport.pricingBasis(dsl))
 
-    override fun board(ids: List<ThemeId>): ThemeBoard = board(THEMES.ID.`in`(ids.map { it.value }.distinct()))
+    override fun board(ids: List<ThemeId>): ThemeBoard =
+        board(THEMES.ID.`in`(ids.map { it.value }.distinct()), ThemeQuerySupport.pricingBasis(dsl))
+
+    override fun board(basis: PricingBasis): ThemeBoard = board(DSL.noCondition(), basis)
 
     override fun findAll(): List<ThemeSummary> = board().themes
 
@@ -45,7 +48,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         val values = ids.map { it.value }.distinct()
         val memberStocks = DSL.select(THEME_STOCKS.STOCK_ID).from(THEME_STOCKS).where(THEME_STOCKS.THEME_ID.`in`(values))
         val basis = ThemeQuerySupport.pricingBasis(dsl)
-        val stocks = ThemeQuerySupport.activeStocks(dsl, basis.baseDate, STOCKS.ID.`in`(memberStocks))
+        val stocks = ThemeQuerySupport.activeStocks(dsl, basis, STOCKS.ID.`in`(memberStocks))
         val averages = ThemeQuerySupport.averageTradeValues(dsl, basis, STOCK_CANDLES_DAILY.STOCK_ID.`in`(memberStocks))
         return summaries(THEMES.ID.`in`(values), stocks, basis, averages)
             .associateBy { ThemeId(it.id) }
@@ -55,8 +58,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
 
     override fun marketStats(): MarketStats {
         val basis = ThemeQuerySupport.pricingBasis(dsl)
-        val stocks = ThemeQuerySupport.activeStocks(dsl, basis.baseDate)
-        return ThemeAggregation.marketStats(basis.baseDate, stocks, basis.prevTradingDate)
+        return marketStats(basis, ThemeQuerySupport.activeStocks(dsl, basis))
     }
 
     override fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme> {
@@ -84,16 +86,18 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             }
     }
 
-    private fun board(themeFilter: Condition): ThemeBoard {
-        val basis = ThemeQuerySupport.pricingBasis(dsl)
-        val stocks = ThemeQuerySupport.activeStocks(dsl, basis.baseDate)
+    private fun board(themeFilter: Condition, basis: PricingBasis): ThemeBoard {
+        val stocks = ThemeQuerySupport.activeStocks(dsl, basis)
         val averages = ThemeQuerySupport.averageTradeValues(dsl, basis)
         return ThemeBoard(
             basis = basis,
-            market = ThemeAggregation.marketStats(basis.baseDate, stocks, basis.prevTradingDate),
+            market = marketStats(basis, stocks),
             themes = summaries(themeFilter, stocks, basis, averages),
         )
     }
+
+    private fun marketStats(basis: PricingBasis, stocks: List<StockObservation>): MarketStats =
+        ThemeAggregation.marketStats(basis.baseDate, stocks, basis.prevTradingDate, basis.valuationDate, basis.priceUpdatedAt)
 
     private fun summaries(
         themeFilter: Condition,
@@ -127,7 +131,14 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             }
 
         return themes.values.map { theme ->
-            ThemeAggregation.summary(theme, members[theme.id].orEmpty(), basis.baseDate, basis.prevTradingDate, averages)
+            ThemeAggregation.summary(
+                theme,
+                members[theme.id].orEmpty(),
+                basis.baseDate,
+                basis.prevTradingDate,
+                averages,
+                basis.valuationDate,
+            )
         }
     }
 
@@ -148,7 +159,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
             val vd = STOCK_VALUATIONS_DAILY.`as`("cap_vd")
             DSL.select(ts.THEME_ID.`as`(CAP_THEME_ID_NAME), DSL.sum(vd.MARKET_CAP).`as`(THEME_CAP_NAME))
                 .from(ts)
-                .join(vd).on(vd.LISTING_ID.eq(ts.STOCK_ID).and(vd.TRADE_DATE.eq(BASE_DATE)))
+                .join(vd).on(vd.LISTING_ID.eq(ts.STOCK_ID).and(vd.TRADE_DATE.eq(LATEST_VALUATION_DATE)))
                 .groupBy(ts.THEME_ID)
                 .asTable(THEME_CAPS_ALIAS)
         }

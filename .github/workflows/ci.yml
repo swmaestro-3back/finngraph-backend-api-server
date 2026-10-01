@@ -46,6 +46,16 @@ jobs:
           path: '**/build/reports/tests/test'
           retention-days: 7
 
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        with:
+          name: app-jar
+          path: |
+            app/build/libs/*.jar
+            !app/build/libs/*-plain.jar
+          if-no-files-found: error
+          retention-days: 1
+
   flyway-migrate:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -97,3 +107,36 @@ jobs:
           java-version: 21
 
       - uses: gradle/actions/dependency-submission@v4
+
+  deliver:
+    needs: [build, flyway-migrate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      id-token: write
+    uses: swmaestro-3back/github-actions/.github/workflows/docker.delivery.yaml@main
+    with:
+      image_name: finngraph/backend-api
+      dockerfile: docker/app.Dockerfile
+      build_artifact: app-jar
+      build_artifact_path: app/build/libs
+    secrets:
+      oidc_role_arn: ${{ secrets.OIDC_ROLE_ARN }}
+
+  deploy:
+    needs: deliver
+    permissions:
+      contents: read
+      id-token: write
+    uses: swmaestro-3back/github-actions/.github/workflows/ssm.deploy.yaml@main
+    with:
+      compose_dir: /home/ubuntu/finngraph
+      compose_file: docker-compose.yml
+      service: app
+      image_env_var: BACKEND_IMAGE
+      image_name: finngraph/backend-api
+      image_digest: ${{ needs.deliver.outputs.image_digest }}
+      health_url: http://127.0.0.1:8080/actuator/health
+    secrets:
+      oidc_role_arn: ${{ secrets.OIDC_ROLE_ARN }}
+      instance_id: ${{ secrets.DEPLOY_INSTANCE_ID }}

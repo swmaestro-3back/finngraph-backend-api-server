@@ -41,19 +41,21 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         )
 
     override fun findAll(): List<StockListView> =
-        fetchStocks(ACTIVE).map { it.toListView() }
+        fetchStocks(ACTIVE, StockPricing.dates(dsl)).map { it.toListView() }
 
     override fun findByTicker(ticker: Ticker): StockDetailView? {
         val filter: (Stocks) -> Condition = { s -> s.TICKER.eq(ticker.value).and(s.IS_ACTIVE.eq(true)) }
-        val row = fetchStocks(filter).firstOrNull() ?: return null
-        return row.toDetailView(revenueYoY(filter), companyDescription(filter))
+        val dates = StockPricing.dates(dsl)
+        val row = fetchStocks(filter, dates).firstOrNull() ?: return null
+        return row.toDetailView(revenueYoY(filter), companyDescription(filter), dates)
     }
 
-    override fun findByTickers(tickers: List<Ticker>): Map<Ticker, StockPriceView> {
+    override fun findByTickers(tickers: List<Ticker>, asOf: LocalDate?): Map<Ticker, StockPriceView> {
         if (tickers.isEmpty()) return emptyMap()
 
         val values = tickers.map { it.value }.distinct()
         val filter: (Stocks) -> Condition = { s -> s.TICKER.`in`(values).and(s.IS_ACTIVE.eq(true)) }
+        val dates = StockPricing.dates(dsl, asOf)
         return dsl.select(
             STOCKS.TICKER,
             STOCKS.NAME,
@@ -63,16 +65,15 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             STOCK_VALUATIONS_DAILY.MARKET_CAP,
         )
             .from(STOCKS)
-            .leftJoin(priceTable()).on(DSL.trueCondition())
+            .leftJoin(priceTable(dates.price)).on(DSL.trueCondition())
             .leftJoin(STOCK_VALUATIONS_DAILY)
-            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(dateValue(dates.valuation))))
             .where(filter(STOCKS))
             .fetch { it.toPriceView() }
             .associateBy { Ticker(it.ticker) }
     }
 
-    override fun findLatestTradeDate(): LocalDate? =
-        dsl.select(BASE_DATE).fetchOne()?.value1()
+    override fun findLatestTradeDate(): LocalDate? = StockPricing.priceDate(dsl)
 
     override fun findFlagged(): List<StockFlags> =
         dsl.select(
@@ -103,7 +104,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
                 )
             }
 
-    private fun fetchStocks(filter: (Stocks) -> Condition): List<Record> =
+    private fun fetchStocks(filter: (Stocks) -> Condition, dates: PriceDates): List<Record> =
         dsl.select(
             STOCKS.TICKER,
             STOCKS.NAME,
@@ -119,18 +120,17 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             STOCK_VALUATIONS_DAILY.R_1M,
             STOCK_VALUATIONS_DAILY.R_3M,
             ROE,
-            FOREIGN_RATIO,
-            BASE_DATE_COLUMN,
+            foreignRatio(dates.price),
         )
             .from(STOCKS)
-            .leftJoin(priceTable()).on(DSL.trueCondition())
+            .leftJoin(priceTable(dates.price)).on(DSL.trueCondition())
             .leftJoin(STOCK_VALUATIONS_DAILY)
-            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(BASE_DATE)))
+            .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(dateValue(dates.valuation))))
             .where(filter(STOCKS))
             .orderBy(STOCKS.TICKER.asc())
             .fetch()
 
-    private fun priceTable(): Table<*> {
+    private fun priceTable(priceDate: LocalDate?): Table<*> {
         val lc = STOCK_CANDLES_DAILY.`as`(LATEST_CANDLES)
         val pc = STOCK_CANDLES_DAILY.`as`(PREV_CANDLES)
         val prev = DSL.lateral(
@@ -152,10 +152,23 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             )
                 .from(lc)
                 .leftJoin(prev).on(DSL.trueCondition())
-                .where(lc.STOCK_ID.eq(STOCKS.ID).and(lc.TRADE_DATE.eq(BASE_DATE)))
+                .where(lc.STOCK_ID.eq(STOCKS.ID).and(lc.TRADE_DATE.eq(dateValue(priceDate))))
                 .asTable(PX),
         )
     }
+
+    private fun foreignRatio(priceDate: LocalDate?): Field<BigDecimal?> = DSL.field(
+        DSL.select(STOCK_INVESTOR_FLOWS.FOREIGN_HOLD_RATIO)
+            .from(STOCK_INVESTOR_FLOWS)
+            .where(
+                STOCK_INVESTOR_FLOWS.STOCK_ID.eq(STOCKS.ID)
+                    .and(STOCK_INVESTOR_FLOWS.TRADE_DATE.le(dateValue(priceDate))),
+            )
+            .orderBy(STOCK_INVESTOR_FLOWS.TRADE_DATE.desc())
+            .limit(1),
+    ).`as`(FOREIGN_RATIO)
+
+    private fun dateValue(date: LocalDate?): Field<LocalDate?> = DSL.`val`(date, SQLDataType.LOCALDATE)
 
     private fun companyIds(filter: (Stocks) -> Condition): Select<Record1<Long?>> {
         val s = STOCKS.`as`(COMPANY_ID_SOURCE)
@@ -216,7 +229,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         dividendYield = get(STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD),
     )
 
-    private fun Record.toDetailView(revenueYoY: BigDecimal?, description: CompanyDescription?) = StockDetailView(
+    private fun Record.toDetailView(revenueYoY: BigDecimal?, description: CompanyDescription?, dates: PriceDates) = StockDetailView(
         ticker = requireNotNull(get(STOCKS.TICKER)),
         name = requireNotNull(get(STOCKS.NAME)),
         market = requireNotNull(get(STOCKS.MARKET)),
@@ -228,10 +241,11 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         roe = get(ROE),
         eps = get(STOCK_VALUATIONS_DAILY.EPS),
         dividendYield = get(STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD),
-        foreignRatio = get(FOREIGN_RATIO),
+        foreignRatio = get(FOREIGN_RATIO_FIELD),
         revenueYoY = revenueYoY,
-        baseDate = get(BASE_DATE_COLUMN),
+        baseDate = dates.price,
         description = description,
+        valuationDate = dates.valuation,
     )
 
     private fun Record.toPriceView() = StockPriceView(
@@ -248,8 +262,6 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val CONSOLIDATED = "CFS"
         private const val DERIVED_SCALE = 4
 
-        private const val BASE_CANDLES = "base_candles"
-        private const val BASE_VALUATIONS = "base_valuations"
         private const val LATEST_CANDLES = "lc"
         private const val PREV_CANDLES = "pc"
         private const val PREV = "prev"
@@ -258,22 +270,13 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val CHANGE = "change"
         private const val PREV_CLOSE = "prev_close"
         private const val COMPANY_ID_SOURCE = "cid"
+        private const val FOREIGN_RATIO = "foreign_ratio"
 
         private val HUNDRED: BigDecimal = BigDecimal("100")
 
         private val ACTIVE: (Stocks) -> Condition = { s -> s.IS_ACTIVE.eq(true) }
 
-        private val LATEST_CANDLE_DATE: Field<LocalDate?> = STOCK_CANDLES_DAILY.`as`(BASE_CANDLES).let { dc ->
-            DSL.field(DSL.select(DSL.max(dc.TRADE_DATE)).from(dc))
-        }
-
-        private val LATEST_VALUATION_DATE: Field<LocalDate?> = STOCK_VALUATIONS_DAILY.`as`(BASE_VALUATIONS).let { dv ->
-            DSL.field(DSL.select(DSL.max(dv.TRADE_DATE)).from(dv))
-        }
-
-        private val BASE_DATE: Field<LocalDate?> = DSL.least(LATEST_CANDLE_DATE, LATEST_VALUATION_DATE)
-
-        private val BASE_DATE_COLUMN: Field<LocalDate?> = BASE_DATE.`as`("base_date")
+        private val FOREIGN_RATIO_FIELD: Field<BigDecimal?> = DSL.field(DSL.name(FOREIGN_RATIO), SQLDataType.NUMERIC)
 
         private val PREV_CLOSE_FIELD: Field<BigDecimal?> = DSL.field(DSL.name(PREV, PREV_CLOSE), SQLDataType.NUMERIC)
 
@@ -299,16 +302,5 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
                 .orderBy(ANNUAL_ORDER)
                 .limit(1),
         ).`as`("roe")
-
-        private val FOREIGN_RATIO: Field<BigDecimal?> = DSL.field(
-            DSL.select(STOCK_INVESTOR_FLOWS.FOREIGN_HOLD_RATIO)
-                .from(STOCK_INVESTOR_FLOWS)
-                .where(
-                    STOCK_INVESTOR_FLOWS.STOCK_ID.eq(STOCKS.ID)
-                        .and(STOCK_INVESTOR_FLOWS.TRADE_DATE.le(BASE_DATE)),
-                )
-                .orderBy(STOCK_INVESTOR_FLOWS.TRADE_DATE.desc())
-                .limit(1),
-        ).`as`("foreign_ratio")
     }
 }

@@ -17,6 +17,7 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
 
     override fun findCandles(ticker: Ticker, period: CandlePeriod, limit: Int): List<Candle> {
         val stockId = activeStockId(ticker)
+        val priceDate = StockPricing.priceDate(dsl) ?: return emptyList()
 
         val rows = when (period) {
             CandlePeriod.D -> dsl.select(
@@ -29,7 +30,7 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
                 STOCK_CANDLES_DAILY.TRADE_VALUE,
             )
                 .from(STOCK_CANDLES_DAILY)
-                .where(STOCK_CANDLES_DAILY.STOCK_ID.eq(stockId))
+                .where(STOCK_CANDLES_DAILY.STOCK_ID.eq(stockId).and(STOCK_CANDLES_DAILY.TRADE_DATE.le(priceDate)))
                 .orderBy(STOCK_CANDLES_DAILY.TRADE_DATE.desc())
                 .limit(limit)
                 .fetch { record ->
@@ -56,7 +57,8 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
                 .from(STOCK_CANDLES_PERIOD)
                 .where(
                     STOCK_CANDLES_PERIOD.STOCK_ID.eq(stockId)
-                        .and(STOCK_CANDLES_PERIOD.PERIOD.eq(period.name)),
+                        .and(STOCK_CANDLES_PERIOD.PERIOD.eq(period.name))
+                        .and(STOCK_CANDLES_PERIOD.BASE_DATE.le(priceDate)),
                 )
                 .orderBy(STOCK_CANDLES_PERIOD.BASE_DATE.desc())
                 .limit(limit)

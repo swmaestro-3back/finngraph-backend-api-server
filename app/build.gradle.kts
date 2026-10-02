@@ -8,6 +8,7 @@ plugins {
 }
 
 val koogVersion = "1.3.0"
+val awsSdkVersion = "2.55.10"
 
 tasks.named<BootRun>("bootRun") {
     systemProperty("spring.profiles.active", System.getProperty("spring.profiles.active") ?: "local")
@@ -53,7 +54,10 @@ dependencies {
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("org.bouncycastle:bcprov-jdk18on:1.81")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("org.springframework.boot:spring-boot-starter-mail")
+    implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))
+    implementation("software.amazon.awssdk:sesv2") {
+        exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+    }
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 

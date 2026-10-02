@@ -43,6 +43,7 @@ data class IpoOffering(
 )
 
 enum class IpoStatus {
+    FILED,
     UPCOMING,
     SUBSCRIBING,
     LISTING_PENDING,

@@ -65,7 +65,7 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                 Database()
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
-                    .withIncludes("market_days|stock_calendar_events|ipo_offerings")
+                    .withIncludes("market_days|stock_calendar_events|ipo_offerings|ipo_filings|companies")
                     .withOutputSchemaToDefault(true),
             )
             .withGenerate(

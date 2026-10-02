@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(project(":domain-calendar-api"))
     implementation("org.springframework.boot:spring-boot-starter-jooq")
+    implementation("tools.jackson.core:jackson-databind")
 }
 
 dependencyManagement {

@@ -1,0 +1,86 @@
+package com.finngraph.calendar.adapter
+
+import com.finngraph.calendar.adapter.jooq.tables.references.STOCK_CALENDAR_EVENTS
+import com.finngraph.calendar.model.CalendarEvent
+import com.finngraph.calendar.model.EventKind
+import com.finngraph.calendar.port.CalendarEventPort
+import org.jooq.DSLContext
+import org.jooq.impl.DSL
+import org.jooq.impl.SQLDataType
+import org.springframework.stereotype.Component
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
+
+@Component
+class JooqCalendarEventQuery(private val dsl: DSLContext) : CalendarEventPort {
+
+    override fun findByTickers(tickers: Collection<String>, from: LocalDate, to: LocalDate): List<CalendarEvent> {
+        if (tickers.isEmpty()) return emptyList()
+        val e = STOCK_CALENDAR_EVENTS
+        return dsl.select(
+            e.EVENT_DATE,
+            e.KIND,
+            e.TICKER,
+            e.STOCK_NAME,
+            e.END_DATE,
+            e.AMOUNT,
+            e.RATIO,
+            e.LABEL,
+            AGENDA,
+            AGENDA_TRUNCATED,
+            ESTIMATED,
+        )
+            .from(e)
+            .where(e.TICKER.`in`(tickers.distinct()))
+            .and(e.EVENT_DATE.between(from, to))
+            .and(e.KIND.`in`(KNOWN_KINDS))
+            .orderBy(e.EVENT_DATE, e.TICKER, e.KIND)
+            .fetch {
+                CalendarEvent(
+                    date = requireNotNull(it[e.EVENT_DATE]),
+                    kind = EventKind.valueOf(requireNotNull(it[e.KIND])),
+                    ticker = requireNotNull(it[e.TICKER]),
+                    stockName = requireNotNull(it[e.STOCK_NAME]),
+                    endDate = it[e.END_DATE],
+                    amount = it[e.AMOUNT],
+                    ratio = it[e.RATIO],
+                    label = it[e.LABEL],
+                    agenda = it[AGENDA]?.filterNotNull() ?: emptyList(),
+                    agendaTruncated = it[AGENDA_TRUNCATED] == true,
+                    estimated = it[ESTIMATED] == true,
+                )
+            }
+    }
+
+    override fun findLatestUpdatedAt(): OffsetDateTime? =
+        dsl.select(DSL.max(STOCK_CALENDAR_EVENTS.UPDATED_AT))
+            .from(STOCK_CALENDAR_EVENTS)
+            .fetchOne()
+            ?.value1()
+            ?.withOffsetSameInstant(KST)
+
+    private companion object {
+        val KST: ZoneOffset = ZoneOffset.ofHours(9)
+
+        val KNOWN_KINDS: List<String> = EventKind.entries.map { it.name }
+
+        val AGENDA = DSL.field(
+            "array(select jsonb_array_elements_text(coalesce({0} -> 'agenda', '[]'::jsonb)))",
+            SQLDataType.VARCHAR.array(),
+            STOCK_CALENDAR_EVENTS.DETAIL,
+        )
+
+        val AGENDA_TRUNCATED = DSL.field(
+            "coalesce(({0} ->> 'agenda_truncated')::boolean, false)",
+            SQLDataType.BOOLEAN,
+            STOCK_CALENDAR_EVENTS.DETAIL,
+        )
+
+        val ESTIMATED = DSL.field(
+            "coalesce(({0} ->> 'estimated')::boolean, false)",
+            SQLDataType.BOOLEAN,
+            STOCK_CALENDAR_EVENTS.DETAIL,
+        )
+    }
+}

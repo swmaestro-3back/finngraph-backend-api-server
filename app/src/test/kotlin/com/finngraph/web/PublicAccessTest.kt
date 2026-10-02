@@ -163,6 +163,8 @@ class PublicAccessTest {
             "/api/v1/stocks/000000/financials",
             "/api/v1/stocks/000000/news",
             "/api/v1/stocks/000000/contracts",
+            "/api/v1/stocks/000000/dividends",
+            "/api/v1/stocks/000000/calendar?from=2026-10-01&to=2026-10-31",
             "/api/v1/news/999999/companies",
         )
 

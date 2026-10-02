@@ -77,8 +77,34 @@ interface CalendarApi {
         @RequestParam(required = false) to: String?,
     ): DataResponse<StockCalendarResponse>
 
-    @Operation(summary = "공모주", description = "오늘(KST)기준 14일 전 ~ 30일 후와 겹치는 공모. 상태는 UPCOMING·SUBSCRIBING·LISTING_PENDING·LISTED")
+    @Operation(
+        summary = "공모주",
+        description = "오늘(KST) 기준 14일 전 ~ 30일 후와 겹치는 예탁원 공모와 청약 시작이 오늘 ~ 60일 후인 DART 신고서 공모. 신고서가 예탁원 공모와 연결되면 예탁원 카드 하나로 합친다. 상태는 FILED·UPCOMING·SUBSCRIBING·LISTING_PENDING·LISTED, FILED 카드는 ticker가 없을 수 있다",
+    )
     @ApiResponses(ApiResponse(responseCode = "200", description = "조회 성공"))
     @GetMapping("/api/v1/ipos")
     fun ipos(): DataResponse<IpoListResponse>
+
+    @Operation(
+        summary = "공모주 상세",
+        description = "corpCode(DART 고유번호)나 ticker 중 정확히 하나로 공모 하나를 조회한다. 공모 일정, 공모 구조(DART 증권신고서), 기업 개요, 상장 종목이면 공모가 대비 성과를 준다",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "corpCode와 ticker가 둘 다 없거나 둘 다 있음, 20자 초과",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "해당 공모 없음(철회된 신고서 포함)",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/api/v1/ipos/detail")
+    fun ipoDetail(
+        @Parameter(description = "DART 고유번호") @RequestParam(required = false) corpCode: String?,
+        @Parameter(description = "종목코드") @RequestParam(required = false) ticker: String?,
+    ): DataResponse<IpoDetailResponse>
 }

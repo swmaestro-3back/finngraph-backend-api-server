@@ -157,7 +157,7 @@ class CalendarApiTest {
         val data = response.data()
         assertNotNull(data["asOf"])
         val offerings = (data["offerings"] as List<*>).map { it as Map<*, *> }
-            .filter { (it["ticker"] as String).startsWith("9601") }
+            .filter { (it["ticker"] as String?)?.startsWith("9601") == true }
 
         assertEquals(
             mapOf(

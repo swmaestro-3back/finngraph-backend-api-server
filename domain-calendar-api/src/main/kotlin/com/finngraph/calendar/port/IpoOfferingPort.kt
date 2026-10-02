@@ -7,5 +7,6 @@ import java.time.OffsetDateTime
 interface IpoOfferingPort {
 
     fun findOverlapping(from: LocalDate, to: LocalDate): List<IpoOffering>
+    fun findLatestByTickers(tickers: Collection<String>): Map<String, IpoOffering>
     fun findLatestUpdatedAt(): OffsetDateTime?
 }

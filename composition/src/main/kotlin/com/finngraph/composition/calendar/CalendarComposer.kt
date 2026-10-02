@@ -1,9 +1,10 @@
 package com.finngraph.composition.calendar
 
 import com.finngraph.calendar.model.CalendarEvent
-import com.finngraph.calendar.model.IpoOffering
-import com.finngraph.calendar.model.IpoStatus
+import com.finngraph.calendar.model.IpoListing
+import com.finngraph.calendar.model.IpoListings
 import com.finngraph.calendar.port.CalendarEventPort
+import com.finngraph.calendar.port.IpoFilingPort
 import com.finngraph.calendar.port.IpoOfferingPort
 import com.finngraph.calendar.port.MarketDayPort
 import com.finngraph.favorite.port.FavoritePort
@@ -25,15 +26,14 @@ data class CalendarView(
     val entries: List<CalendarEntry>,
 )
 
-data class IpoCard(val offering: IpoOffering, val status: IpoStatus)
-
-data class IpoBoardView(val asOf: OffsetDateTime?, val offerings: List<IpoCard>)
+data class IpoBoardView(val asOf: OffsetDateTime?, val listings: List<IpoListing>)
 
 @Component
 class CalendarComposer(
     private val events: CalendarEventPort,
     private val marketDays: MarketDayPort,
     private val ipos: IpoOfferingPort,
+    private val filings: IpoFilingPort,
     private val stockQuery: StockQueryPort,
     private val favorites: FavoritePort,
     private val clock: Clock = Clock.system(KST),
@@ -46,9 +46,14 @@ class CalendarComposer(
 
     fun ipoBoard(): IpoBoardView {
         val today = LocalDate.now(clock)
-        val cards = ipos.findOverlapping(today.minusDays(IPO_LOOKBACK_DAYS), today.plusDays(IPO_LOOKAHEAD_DAYS))
-            .map { IpoCard(it, IpoStatus.of(it, today)) }
-        return IpoBoardView(ipos.findLatestUpdatedAt(), cards)
+        val window = ipos.findOverlapping(today.minusDays(IPO_LOOKBACK_DAYS), today.plusDays(IPO_LOOKAHEAD_DAYS))
+        val upcoming = filings.findBySubscrStartBetween(today, today.plusDays(IpoListings.FILED_LOOKAHEAD_DAYS))
+        val windowTickers = window.map { it.ticker }.toSet()
+        val linkedBeyond = ipos.findLatestByTickers(upcoming.mapNotNull { it.ticker }.filterNot { it in windowTickers })
+        val offerings = window + linkedBeyond.values
+        val listings = IpoListings.board(today, offerings, filings.findByTickers(offerings.map { it.ticker }), upcoming)
+        val asOf = listOfNotNull(ipos.findLatestUpdatedAt(), filings.findLatestUpdatedAt()).maxOrNull()
+        return IpoBoardView(asOf, listings)
     }
 
     private fun view(from: LocalDate, to: LocalDate, favoriteTickers: Set<String>): CalendarView {

@@ -3,6 +3,7 @@ package com.finngraph.calendar.adapter
 import com.finngraph.calendar.adapter.jooq.tables.references.IPO_OFFERINGS
 import com.finngraph.calendar.model.IpoOffering
 import com.finngraph.calendar.port.IpoOfferingPort
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Component
@@ -14,6 +15,25 @@ import java.time.ZoneOffset
 class JooqIpoOfferingQuery(private val dsl: DSLContext) : IpoOfferingPort {
 
     override fun findOverlapping(from: LocalDate, to: LocalDate): List<IpoOffering> {
+        val o = IPO_OFFERINGS
+        return select(o.SUBSCR_START.le(to).and(DSL.coalesce(o.LISTING_DATE, o.SUBSCR_END).ge(from)))
+    }
+
+    override fun findLatestByTickers(tickers: Collection<String>): Map<String, IpoOffering> {
+        if (tickers.isEmpty()) return emptyMap()
+        return select(IPO_OFFERINGS.TICKER.`in`(tickers.distinct()))
+            .groupBy { it.ticker }
+            .mapValues { (_, rows) -> rows.maxBy { it.subscrStart } }
+    }
+
+    override fun findLatestUpdatedAt(): OffsetDateTime? =
+        dsl.select(DSL.max(IPO_OFFERINGS.UPDATED_AT))
+            .from(IPO_OFFERINGS)
+            .fetchOne()
+            ?.value1()
+            ?.withOffsetSameInstant(KST)
+
+    private fun select(condition: Condition): List<IpoOffering> {
         val o = IPO_OFFERINGS
         return dsl.select(
             o.TICKER,
@@ -27,8 +47,7 @@ class JooqIpoOfferingQuery(private val dsl: DSLContext) : IpoOfferingPort {
             o.LEAD_MANAGERS,
         )
             .from(o)
-            .where(o.SUBSCR_START.le(to))
-            .and(DSL.coalesce(o.LISTING_DATE, o.SUBSCR_END).ge(from))
+            .where(condition)
             .orderBy(o.SUBSCR_START.desc(), o.TICKER)
             .fetch {
                 IpoOffering(
@@ -44,13 +63,6 @@ class JooqIpoOfferingQuery(private val dsl: DSLContext) : IpoOfferingPort {
                 )
             }
     }
-
-    override fun findLatestUpdatedAt(): OffsetDateTime? =
-        dsl.select(DSL.max(IPO_OFFERINGS.UPDATED_AT))
-            .from(IPO_OFFERINGS)
-            .fetchOne()
-            ?.value1()
-            ?.withOffsetSameInstant(KST)
 
     private companion object {
         val KST: ZoneOffset = ZoneOffset.ofHours(9)

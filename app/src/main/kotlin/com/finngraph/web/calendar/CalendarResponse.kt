@@ -1,9 +1,9 @@
 package com.finngraph.web.calendar
 
+import com.finngraph.calendar.model.IpoListing
 import com.finngraph.composition.calendar.CalendarEntry
 import com.finngraph.composition.calendar.CalendarView
 import com.finngraph.composition.calendar.IpoBoardView
-import com.finngraph.composition.calendar.IpoCard
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -62,12 +62,12 @@ data class CalendarEventResponse(
 
 data class IpoListResponse(val asOf: OffsetDateTime?, val offerings: List<IpoResponse>) {
     companion object {
-        fun from(view: IpoBoardView) = IpoListResponse(view.asOf, view.offerings.map(IpoResponse::from))
+        fun from(view: IpoBoardView) = IpoListResponse(view.asOf, view.listings.map(IpoResponse::from))
     }
 }
 
 data class IpoResponse(
-    val ticker: String,
+    val ticker: String?,
     val name: String,
     val status: String,
     val subscrStart: LocalDate,
@@ -77,21 +77,25 @@ data class IpoResponse(
     val payDate: LocalDate?,
     val refundDate: LocalDate?,
     val listingDate: LocalDate?,
+    val corpCode: String?,
+    val spac: Boolean,
+    val priceBasis: String,
 ) {
     companion object {
-        fun from(card: IpoCard) = with(card.offering) {
-            IpoResponse(
-                ticker = ticker,
-                name = name,
-                status = card.status.name,
-                subscrStart = subscrStart,
-                subscrEnd = subscrEnd,
-                offerPrice = offerPrice,
-                leadManagers = leadManagers,
-                payDate = payDate,
-                refundDate = refundDate,
-                listingDate = listingDate,
-            )
-        }
+        fun from(listing: IpoListing) = IpoResponse(
+            ticker = listing.ticker,
+            name = listing.name,
+            status = listing.status.name,
+            subscrStart = requireNotNull(listing.schedule.subscrStart),
+            subscrEnd = requireNotNull(listing.schedule.subscrEnd),
+            offerPrice = listing.price,
+            leadManagers = listing.leadManagers,
+            payDate = listing.schedule.payDate,
+            refundDate = listing.schedule.refundDate,
+            listingDate = listing.schedule.listingDate,
+            corpCode = listing.corpCode,
+            spac = listing.spac,
+            priceBasis = listing.priceBasis.name,
+        )
     }
 }

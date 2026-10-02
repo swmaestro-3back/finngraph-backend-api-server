@@ -1,6 +1,7 @@
 package com.finngraph.web.calendar
 
 import com.finngraph.composition.calendar.CalendarComposer
+import com.finngraph.composition.calendar.IpoDetailComposer
 import com.finngraph.composition.calendar.StockCalendarComposer
 import com.finngraph.stock.model.Ticker
 import com.finngraph.web.common.DataResponse
@@ -16,6 +17,7 @@ import java.time.temporal.ChronoUnit
 class CalendarController(
     private val composer: CalendarComposer,
     private val stockComposer: StockCalendarComposer,
+    private val ipoComposer: IpoDetailComposer,
 ) : CalendarApi {
 
     override fun calendar(from: String?, to: String?): DataResponse<CalendarResponse> {
@@ -38,6 +40,20 @@ class CalendarController(
 
     override fun ipos(): DataResponse<IpoListResponse> = DataResponse(IpoListResponse.from(composer.ipoBoard()))
 
+    override fun ipoDetail(corpCode: String?, ticker: String?): DataResponse<IpoDetailResponse> {
+        val corp = corpCode?.takeIf { it.isNotBlank() }
+        val code = ticker?.takeIf { it.isNotBlank() }
+        val view = when {
+            corp != null && code == null -> ipoComposer.byCorpCode(bounded("corpCode", corp))
+            code != null && corp == null -> ipoComposer.byTicker(toTicker(code))
+            else -> throw InvalidParameterException(
+                "corpCode와 ticker 중 하나만 지정해야 합니다",
+                mapOf("corpCode" to ONE_KEY, "ticker" to ONE_KEY),
+            )
+        } ?: throw ResourceNotFoundException(ErrorCode.IPO_NOT_FOUND, "공모를 찾을 수 없습니다")
+        return DataResponse(IpoDetailResponse.from(view))
+    }
+
     private fun toTicker(raw: String): Ticker {
         val errors = buildMap {
             if (raw.isBlank()) put("ticker", "must not be blank")
@@ -47,6 +63,16 @@ class CalendarController(
             throw InvalidParameterException("ticker가 올바르지 않습니다", errors)
         }
         return Ticker(raw)
+    }
+
+    private fun bounded(name: String, raw: String): String {
+        if (raw.length > MAX_CORP_CODE_LENGTH) {
+            throw InvalidParameterException(
+                "${name}가 올바르지 않습니다",
+                mapOf(name to "must be <= $MAX_CORP_CODE_LENGTH characters"),
+            )
+        }
+        return raw
     }
 
     private fun range(from: String?, to: String?, maxDays: Long): Pair<LocalDate, LocalDate> {
@@ -77,5 +103,7 @@ class CalendarController(
         const val MAX_RANGE_DAYS = 62L
         const val MAX_STOCK_RANGE_DAYS = 366L
         const val MAX_TICKER_LENGTH = 20
+        const val MAX_CORP_CODE_LENGTH = 20
+        const val ONE_KEY = "exactly one of corpCode, ticker"
     }
 }

@@ -44,6 +44,9 @@ dependencies {
     implementation(project(":domain-briefing-api"))
     runtimeOnly(project(":domain-briefing-impl"))
 
+    implementation(project(":domain-calendar-api"))
+    runtimeOnly(project(":domain-calendar-impl"))
+
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jooq")
     implementation("org.jetbrains.kotlin:kotlin-reflect")

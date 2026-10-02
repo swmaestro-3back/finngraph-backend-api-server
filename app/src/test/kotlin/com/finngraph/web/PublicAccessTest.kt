@@ -142,6 +142,8 @@ class PublicAccessTest {
             "/api/v1/news",
             "/api/v1/contracts/recent",
             "/api/v1/briefings",
+            "/api/v1/calendar?from=2026-10-01&to=2026-10-31",
+            "/api/v1/ipos",
         )
 
         private val PRIMARY_DETAIL_ENDPOINTS = listOf(

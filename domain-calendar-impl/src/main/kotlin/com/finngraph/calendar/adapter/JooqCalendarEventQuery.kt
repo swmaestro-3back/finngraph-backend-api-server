@@ -4,6 +4,7 @@ import com.finngraph.calendar.adapter.jooq.tables.references.STOCK_CALENDAR_EVEN
 import com.finngraph.calendar.model.CalendarEvent
 import com.finngraph.calendar.model.EventKind
 import com.finngraph.calendar.port.CalendarEventPort
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.jooq.impl.SQLDataType
@@ -18,11 +19,29 @@ class JooqCalendarEventQuery(private val dsl: DSLContext) : CalendarEventPort {
     override fun findByTickers(tickers: Collection<String>, from: LocalDate, to: LocalDate): List<CalendarEvent> {
         if (tickers.isEmpty()) return emptyList()
         val e = STOCK_CALENDAR_EVENTS
+        return select(e.TICKER.`in`(tickers.distinct()).and(e.EVENT_DATE.between(from, to)))
+    }
+
+    override fun findByTicker(ticker: String, basisFrom: LocalDate, basisTo: LocalDate): List<CalendarEvent> {
+        val e = STOCK_CALENDAR_EVENTS
+        return select(e.TICKER.eq(ticker).and(e.BASIS_DATE.between(basisFrom, basisTo)))
+    }
+
+    override fun findLatestUpdatedAt(): OffsetDateTime? =
+        dsl.select(DSL.max(STOCK_CALENDAR_EVENTS.UPDATED_AT))
+            .from(STOCK_CALENDAR_EVENTS)
+            .fetchOne()
+            ?.value1()
+            ?.withOffsetSameInstant(KST)
+
+    private fun select(condition: Condition): List<CalendarEvent> {
+        val e = STOCK_CALENDAR_EVENTS
         return dsl.select(
             e.EVENT_DATE,
             e.KIND,
             e.TICKER,
             e.STOCK_NAME,
+            e.BASIS_DATE,
             e.END_DATE,
             e.AMOUNT,
             e.RATIO,
@@ -32,8 +51,7 @@ class JooqCalendarEventQuery(private val dsl: DSLContext) : CalendarEventPort {
             ESTIMATED,
         )
             .from(e)
-            .where(e.TICKER.`in`(tickers.distinct()))
-            .and(e.EVENT_DATE.between(from, to))
+            .where(condition)
             .and(e.KIND.`in`(KNOWN_KINDS))
             .orderBy(e.EVENT_DATE, e.TICKER, e.KIND)
             .fetch {
@@ -42,6 +60,7 @@ class JooqCalendarEventQuery(private val dsl: DSLContext) : CalendarEventPort {
                     kind = EventKind.valueOf(requireNotNull(it[e.KIND])),
                     ticker = requireNotNull(it[e.TICKER]),
                     stockName = requireNotNull(it[e.STOCK_NAME]),
+                    basisDate = requireNotNull(it[e.BASIS_DATE]),
                     endDate = it[e.END_DATE],
                     amount = it[e.AMOUNT],
                     ratio = it[e.RATIO],
@@ -52,13 +71,6 @@ class JooqCalendarEventQuery(private val dsl: DSLContext) : CalendarEventPort {
                 )
             }
     }
-
-    override fun findLatestUpdatedAt(): OffsetDateTime? =
-        dsl.select(DSL.max(STOCK_CALENDAR_EVENTS.UPDATED_AT))
-            .from(STOCK_CALENDAR_EVENTS)
-            .fetchOne()
-            ?.value1()
-            ?.withOffsetSameInstant(KST)
 
     private companion object {
         val KST: ZoneOffset = ZoneOffset.ofHours(9)

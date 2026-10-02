@@ -16,4 +16,11 @@ class JooqMarketDayQuery(private val dsl: DSLContext) : MarketDayPort {
             .and(MARKET_DAYS.IS_OPEN.eq(false))
             .orderBy(MARKET_DAYS.TRADE_DATE)
             .fetch { requireNotNull(it.value1()) }
+
+    override fun findDays(from: LocalDate, to: LocalDate): Map<LocalDate, Boolean> =
+        dsl.select(MARKET_DAYS.TRADE_DATE, MARKET_DAYS.IS_OPEN)
+            .from(MARKET_DAYS)
+            .where(MARKET_DAYS.TRADE_DATE.between(from, to))
+            .fetch()
+            .associate { requireNotNull(it.value1()) to requireNotNull(it.value2()) }
 }

@@ -7,5 +7,6 @@ import java.time.OffsetDateTime
 interface CalendarEventPort {
 
     fun findByTickers(tickers: Collection<String>, from: LocalDate, to: LocalDate): List<CalendarEvent>
+    fun findByTicker(ticker: String, basisFrom: LocalDate, basisTo: LocalDate): List<CalendarEvent>
     fun findLatestUpdatedAt(): OffsetDateTime?
 }

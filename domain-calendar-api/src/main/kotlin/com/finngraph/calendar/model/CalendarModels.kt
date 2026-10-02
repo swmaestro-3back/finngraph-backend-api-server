@@ -20,6 +20,7 @@ data class CalendarEvent(
     val kind: EventKind,
     val ticker: String,
     val stockName: String,
+    val basisDate: LocalDate,
     val endDate: LocalDate?,
     val amount: BigDecimal?,
     val ratio: BigDecimal?,

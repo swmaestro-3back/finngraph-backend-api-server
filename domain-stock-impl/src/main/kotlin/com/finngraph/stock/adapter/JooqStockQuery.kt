@@ -104,6 +104,22 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
                 )
             }
 
+    override fun findKrx300Tickers(): List<Ticker> =
+        dsl.select(STOCKS.TICKER)
+            .from(STOCKS)
+            .where(STOCKS.IS_ACTIVE.eq(true).and(STOCKS.KRX300.eq(true)))
+            .orderBy(STOCKS.TICKER)
+            .fetch { Ticker(requireNotNull(it.value1())) }
+
+    override fun findNamesByTickers(tickers: Collection<Ticker>): Map<Ticker, String> {
+        if (tickers.isEmpty()) return emptyMap()
+        return dsl.select(STOCKS.TICKER, STOCKS.NAME)
+            .from(STOCKS)
+            .where(STOCKS.TICKER.`in`(tickers.map { it.value }.distinct()).and(STOCKS.IS_ACTIVE.eq(true)))
+            .fetch { Ticker(requireNotNull(it.value1())) to requireNotNull(it.value2()) }
+            .toMap()
+    }
+
     private fun fetchStocks(filter: (Stocks) -> Condition, dates: PriceDates): List<Record> =
         dsl.select(
             STOCKS.TICKER,

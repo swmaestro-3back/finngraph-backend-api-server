@@ -6,8 +6,10 @@ import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
 import com.finngraph.news.port.NewsQueryPort
 import com.finngraph.stock.model.CandlePeriod
+import com.finngraph.stock.model.DividendReactions
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockCandlePort
+import com.finngraph.stock.port.StockDividendPort
 import com.finngraph.stock.port.StockFinancialsPort
 import com.finngraph.stock.port.StockFlowPort
 import com.finngraph.stock.port.StockQueryPort
@@ -29,6 +31,7 @@ class StockController(
     private val stockCandle: StockCandlePort,
     private val stockFlow: StockFlowPort,
     private val stockFinancials: StockFinancialsPort,
+    private val stockDividend: StockDividendPort,
     private val stockThemeComposer: StockThemeComposer,
     private val contractComposer: ContractComposer,
     private val newsQuery: NewsQueryPort,
@@ -80,6 +83,16 @@ class StockController(
         return DataResponse(contractComposer.forStock(target, limit).map(StockContractResponse::from))
     }
 
+    override fun dividends(ticker: String): DataResponse<List<DividendReactionResponse>> {
+        val target = toTicker(ticker)
+        requireStock(target, ticker)
+        val reactions = DividendReactions.of(
+            stockDividend.findDividends(target),
+            stockCandle.findCandles(target, CandlePeriod.D, DIVIDEND_CANDLES),
+        )
+        return DataResponse(reactions.map(DividendReactionResponse::from))
+    }
+
     private fun toTicker(raw: String): Ticker {
         val errors = buildMap {
             if (raw.isBlank()) put("ticker", "must not be blank")
@@ -121,5 +134,6 @@ class StockController(
         const val MAX_TICKER_LENGTH = 20
         const val MAX_FLOW_LIMIT = 250
         const val MAX_CONTRACT_LIMIT = 200
+        const val DIVIDEND_CANDLES = 800
     }
 }

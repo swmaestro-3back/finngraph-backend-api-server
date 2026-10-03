@@ -28,6 +28,7 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
                 STOCK_CANDLES_DAILY.CLOSE,
                 STOCK_CANDLES_DAILY.VOLUME,
                 STOCK_CANDLES_DAILY.TRADE_VALUE,
+                STOCK_CANDLES_DAILY.CHANGE_RATE,
             )
                 .from(STOCK_CANDLES_DAILY)
                 .where(STOCK_CANDLES_DAILY.STOCK_ID.eq(stockId).and(STOCK_CANDLES_DAILY.TRADE_DATE.le(priceDate)))
@@ -42,6 +43,7 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
                         close = requireNotNull(record.get(STOCK_CANDLES_DAILY.CLOSE)),
                         volume = requireNotNull(record.get(STOCK_CANDLES_DAILY.VOLUME)),
                         tradeValue = record.get(STOCK_CANDLES_DAILY.TRADE_VALUE),
+                        changeRate = record.get(STOCK_CANDLES_DAILY.CHANGE_RATE),
                     )
                 }
 

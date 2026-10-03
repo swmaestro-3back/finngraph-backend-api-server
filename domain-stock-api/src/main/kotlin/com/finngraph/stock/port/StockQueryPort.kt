@@ -15,4 +15,6 @@ interface StockQueryPort {
     fun findByTickers(tickers: List<Ticker>, asOf: LocalDate? = null): Map<Ticker, StockPriceView>
     fun findLatestTradeDate(): LocalDate?
     fun findFlagged(): List<StockFlags>
+    fun findKrx300Tickers(): List<Ticker>
+    fun findNamesByTickers(tickers: Collection<Ticker>): Map<Ticker, String>
 }

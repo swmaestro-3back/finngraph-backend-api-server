@@ -170,4 +170,26 @@ interface StockApi {
         @RequestParam(required = false, defaultValue = "50")
         limit: Int,
     ): DataResponse<List<StockContractResponse>>
+
+    @Operation(
+        summary = "종목 배당락 반응",
+        description = "과거 배당마다 배당락일 시초가 갭, 이론 낙폭, 전날 종가 회복 거래일(최대 60). 최신 기준일순",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 가 공백이거나 20자를 초과",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 종목",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{ticker}/dividends")
+    fun dividends(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+    ): DataResponse<List<DividendReactionResponse>>
 }

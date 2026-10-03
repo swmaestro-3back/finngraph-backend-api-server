@@ -1,0 +1,34 @@
+name: finngraph-backend
+
+services:
+  app:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE 를 .env 에 지정하세요}
+    platform: linux/arm64
+    container_name: finngraph-backend
+    env_file: backend.env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: finngraph-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - "${REDIS_BIND_ADDR:?REDIS_BIND_ADDR 를 .env 에 지정하세요}:6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  redis-data:

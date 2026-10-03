@@ -50,11 +50,8 @@ app:
   mail:
     provider: ${MAIL_PROVIDER:log}
     from: ${MAIL_FROM:}
-    host: ${MAIL_HOST:}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
     timeout: 5s
+    region: ${MAIL_SES_REGION:ap-northeast-2}
 
   verification:
     code-ttl: 5m

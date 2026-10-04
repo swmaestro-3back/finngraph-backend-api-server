@@ -5,6 +5,7 @@ import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.theme.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
+import com.finngraph.theme.adapter.jooq.tables.references.THEME_CANDLES_DAILY
 import com.finngraph.theme.adapter.jooq.tables.references.THEME_STOCKS
 import com.finngraph.theme.model.MarketStats
 import com.finngraph.theme.model.PricingBasis
@@ -14,6 +15,7 @@ import com.finngraph.theme.model.ThemeAggregation
 import com.finngraph.theme.model.ThemeBoard
 import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeIdentity
+import com.finngraph.theme.model.ThemeIndexStats
 import com.finngraph.theme.model.ThemeMember
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.TradeValueAverage
@@ -25,6 +27,7 @@ import org.jooq.impl.DSL
 import org.jooq.impl.SQLDataType
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
+import java.time.LocalDate
 
 @Component
 class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
@@ -106,6 +109,7 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         averages: Map<Long, TradeValueAverage>,
     ): List<ThemeSummary> {
         val stocks = observations.associateBy { it.id }
+        val indexChanges = indexChanges(themeFilter, basis.baseDate)
 
         val themes = LinkedHashMap<Long, ThemeIdentity>()
         val members = LinkedHashMap<Long, MutableList<ThemeMember>>()
@@ -138,8 +142,38 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
                 basis.prevTradingDate,
                 averages,
                 basis.valuationDate,
+                indexChanges[theme.id],
             )
         }
+    }
+
+    private fun indexChanges(themeFilter: Condition, baseDate: LocalDate?): Map<Long, BigDecimal> {
+        if (baseDate == null) return emptyMap()
+        val previous = THEME_CANDLES_DAILY.`as`(PREVIOUS_INDEX_ALIAS)
+        val prior = DSL.lateral(
+            DSL.select(previous.CLOSE.`as`(PRIOR_CLOSE_NAME))
+                .from(previous)
+                .where(
+                    previous.THEME_ID.eq(THEME_CANDLES_DAILY.THEME_ID)
+                        .and(previous.TRADE_DATE.ge(ThemeIndexStats.windowStart(baseDate)))
+                        .and(previous.TRADE_DATE.lt(baseDate)),
+                )
+                .orderBy(previous.TRADE_DATE.desc())
+                .limit(1)
+                .asTable(PRIOR_INDEX_ALIAS),
+        )
+        return dsl.select(THEME_CANDLES_DAILY.THEME_ID, THEME_CANDLES_DAILY.CLOSE, PRIOR_CLOSE)
+            .from(THEME_CANDLES_DAILY)
+            .join(THEMES).on(THEMES.ID.eq(THEME_CANDLES_DAILY.THEME_ID))
+            .leftJoin(prior).on(DSL.trueCondition())
+            .where(themeFilter.and(THEME_CANDLES_DAILY.TRADE_DATE.eq(baseDate)))
+            .fetch()
+            .mapNotNull { record ->
+                val close = requireNotNull(record.get(THEME_CANDLES_DAILY.CLOSE))
+                val change = ThemeIndexStats.dailyChange(close, record.get(PRIOR_CLOSE)) ?: return@mapNotNull null
+                requireNotNull(record.get(THEME_CANDLES_DAILY.THEME_ID)) to change
+            }
+            .toMap()
     }
 
     private data class Membership(
@@ -153,6 +187,12 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         private const val THEME_CAPS_ALIAS = "theme_caps"
         private const val CAP_THEME_ID_NAME = "cap_theme_id"
         private const val THEME_CAP_NAME = "theme_cap"
+        private const val PREVIOUS_INDEX_ALIAS = "previous_index"
+        private const val PRIOR_INDEX_ALIAS = "prior_index"
+        private const val PRIOR_CLOSE_NAME = "prior_close"
+
+        private val PRIOR_CLOSE: Field<BigDecimal?> =
+            DSL.field(DSL.name(PRIOR_INDEX_ALIAS, PRIOR_CLOSE_NAME), SQLDataType.NUMERIC)
 
         private val THEME_CAPS = run {
             val ts = THEME_STOCKS.`as`("cap_ts")

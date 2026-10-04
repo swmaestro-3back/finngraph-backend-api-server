@@ -1,6 +1,7 @@
 package com.finngraph.web.auth
 
 import com.finngraph.auth.model.Email
+import com.finngraph.auth.model.PasswordPolicy
 import com.finngraph.auth.model.VerificationCode
 import com.finngraph.auth.model.VerificationResult
 import com.finngraph.composition.account.AccountComposer
@@ -186,14 +187,7 @@ class AuthController(
         val email = parseEmail(request.email, errors)
 
         val password = request.password.orEmpty()
-        when {
-            password.length !in MIN_PASSWORD_LENGTH..MAX_PASSWORD_LENGTH ->
-                errors["password"] = "must be $MIN_PASSWORD_LENGTH-$MAX_PASSWORD_LENGTH characters"
-
-            password.any { it.isWhitespace() } -> errors["password"] = "must not contain whitespace"
-            password.none { it.isLetter() } -> errors["password"] = "must contain a letter"
-            password.none { it.isDigit() } -> errors["password"] = "must contain a digit"
-        }
+        PasswordPolicy.violation(password)?.let { errors["password"] = it }
 
         val nickname = runCatching { Nickname.of(request.nickname.orEmpty()) }.getOrElse {
             errors["nickname"] = "must be ${Nickname.MIN_LENGTH}-${Nickname.MAX_LENGTH} characters"
@@ -227,8 +221,6 @@ class AuthController(
 
     private companion object {
         const val MAX_CODE_LENGTH = 512
-        const val MIN_PASSWORD_LENGTH = 8
-        const val MAX_PASSWORD_LENGTH = 128
         const val FALLBACK_NICKNAME_PREFIX = "사용자"
         const val FALLBACK_SUFFIX_LENGTH = 4
     }

@@ -156,6 +156,35 @@ class HotThemeSelectorTest {
         assertEquals("하30", selected[20].name)
     }
 
+    @Test
+    fun `다른 조건으로 상승이어도 가중 등락률이 0 이하면 제외한다`() {
+        val zero = summary("가중보합", "3.0", lower = "2.0", upper = "4.0", weighted = "0.0000")
+        val negative = summary("가중하락", "3.0", lower = "2.0", upper = "4.0", weighted = "-0.0001")
+
+        assertNull(HotThemeSelector.hotSide(zero, market))
+        assertNull(HotThemeSelector.hotSide(negative, market))
+        assertEquals(emptyList(), HotThemeSelector.select(listOf(zero, negative), market, 4))
+    }
+
+    @Test
+    fun `다른 조건으로 하락이어도 가중 등락률이 0 이상이면 제외한다`() {
+        val zero = summary("가중보합", "-3.0", lower = "-4.0", upper = "-2.0", weighted = "0.0000")
+        val positive = summary("가중상승", "-3.0", lower = "-4.0", upper = "-2.0", weighted = "0.0001")
+
+        assertNull(HotThemeSelector.hotSide(zero, market))
+        assertNull(HotThemeSelector.hotSide(positive, market))
+        assertEquals(emptyList(), HotThemeSelector.select(listOf(zero, positive), market, 4))
+    }
+
+    @Test
+    fun `가중 등락률이 null이면 제외한다`() {
+        val up = summary("가중없음상승", "3.0", lower = "2.0", upper = "4.0", weighted = null)
+        val down = summary("가중없음하락", "-3.0", lower = "-4.0", upper = "-2.0", weighted = null)
+
+        assertNull(HotThemeSelector.hotSide(up, market))
+        assertNull(HotThemeSelector.hotSide(down, market))
+    }
+
     private fun market(priced: Int, up: Int, down: Int, median: String, coverage: String) = MarketStats(
         baseDate = null,
         pricedCount = priced,
@@ -177,6 +206,7 @@ class HotThemeSelectorTest {
         stockCount: Int = priced,
         up: Int = if ((change?.let(::BigDecimal)?.signum() ?: 0) > 0) priced else 0,
         down: Int = if ((change?.let(::BigDecimal)?.signum() ?: 0) < 0) priced else 0,
+        weighted: String? = change,
     ) = ThemeSummary(
         id = name.hashCode().toLong(),
         name = name,
@@ -208,5 +238,6 @@ class HotThemeSelectorTest {
         sources = emptyList(),
         hotSide = null,
         topStocks = emptyList(),
+        weightedChange = weighted?.let(::BigDecimal),
     )
 }

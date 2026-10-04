@@ -57,6 +57,7 @@ class ThemeHotApiTest {
             assertEquals(HotThemeSeed.BASE_DATE, surge["baseDate"])
             assertEquals(5.0, (surge["change"] as Number).toDouble())
             assertEquals(5.1667, (surge["meanChange"] as Number).toDouble())
+            assertEquals(4.321, (surge["weightedChange"] as Number).toDouble())
             assertEquals(7, surge["stockCount"])
             assertEquals(6, surge["pricedCount"])
             assertEquals(6, surge["upCount"])
@@ -86,10 +87,31 @@ class ThemeHotApiTest {
             val fall = themes.last()
             assertEquals(-4.6667, (fall["change"] as Number).toDouble())
             assertEquals(-4.8, (fall["meanChange"] as Number).toDouble())
+            assertEquals(-4.5679, (fall["weightedChange"] as Number).toDouble())
             assertEquals(0, fall["upCount"])
             assertEquals(5, fall["downCount"])
             val fallLeaders = (fall["leaders"] as List<*>).map { (it as Map<*, *>)["ticker"] }
             assertEquals(listOf("909115", "909113"), fallLeaders)
+        } finally {
+            HotThemeSeed.cleanup()
+        }
+    }
+
+    @Test
+    fun `가중 등락률이 테마 방향과 어긋나면 다른 조건을 갖춰도 핫테마에서 빠진다`() {
+        HotThemeSeed.seed()
+        HotThemeSeed.moveIndex(HotThemeSeed.SURGE_THEME, "990")
+        try {
+            val response = rest.getForEntity("/api/v1/themes/hot?count=20", String::class.java)
+            assertEquals(HttpStatus.OK, response.statusCode)
+            val themes = (mapper.readValue(response.body, Map::class.java)["data"] as List<*>).map { it as Map<*, *> }
+            assertEquals(listOf("시드경계테마", "시드하락테마"), themes.map { it["name"] })
+
+            val detail = rest.getForEntity("/api/v1/themes/${HotThemeSeed.SURGE_THEME}", String::class.java)
+            val surge = mapper.readValue(detail.body, Map::class.java)["data"] as Map<*, *>
+            assertEquals(5.0, (surge["change"] as Number).toDouble())
+            assertEquals(-1.0, (surge["weightedChange"] as Number).toDouble())
+            assertNull(surge["hotSide"])
         } finally {
             HotThemeSeed.cleanup()
         }

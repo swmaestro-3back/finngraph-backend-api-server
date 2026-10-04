@@ -103,6 +103,7 @@ class FavoriteApiTest {
         assertEquals("관심시드테마", theme["name"])
         assertEquals(1, theme["stockCount"])
         assertEquals(1, theme["pricedCount"])
+        assertEquals(10.0, (theme["weightedChange"] as Number).toDouble())
         assertNull(item["stock"])
     }
 

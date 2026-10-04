@@ -34,7 +34,11 @@ class SecurityConfig {
         http: HttpSecurity,
         internalProperties: InternalApiProperties,
         mapper: ObjectMapper,
+        environment: Environment,
     ): SecurityFilterChain {
+        check(!environment.acceptsProfiles(Profiles.of(PROD)) || internalProperties.token.isNotBlank()) {
+            "prod 프로파일에서는 app.internal.token(INTERNAL_API_TOKEN)이 비어 있을 수 없습니다"
+        }
         http
             .securityMatcher("/internal/**")
             .csrf { it.disable() }
@@ -102,6 +106,7 @@ class SecurityConfig {
     }
 
     private companion object {
+        const val PROD = "prod"
         const val ARGON2 = "argon2"
         const val BCRYPT = "bcrypt"
 

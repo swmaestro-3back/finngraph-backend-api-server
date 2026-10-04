@@ -113,6 +113,9 @@ data class ThemeStockResponse(
     val tradingValue: Long?,
     val marketCap: Long?,
     val reason: String?,
+    val r1w: BigDecimal?,
+    val r1m: BigDecimal?,
+    val r3m: BigDecimal?,
 ) {
     companion object {
         fun from(view: ThemeStockView) = ThemeStockResponse(
@@ -128,6 +131,9 @@ data class ThemeStockResponse(
             tradingValue = view.tradingValue,
             marketCap = view.marketCap,
             reason = view.reason,
+            r1w = view.r1w,
+            r1m = view.r1m,
+            r3m = view.r3m,
         )
     }
 }

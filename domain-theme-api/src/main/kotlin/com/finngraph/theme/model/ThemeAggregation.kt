@@ -228,6 +228,9 @@ object ThemeAggregation {
                 tradingValue = stock.tradeValue,
                 marketCap = stock.marketCap,
                 reason = member.reason,
+                r1w = stock.r1w,
+                r1m = stock.r1m,
+                r3m = stock.r3m,
             )
         }
     }

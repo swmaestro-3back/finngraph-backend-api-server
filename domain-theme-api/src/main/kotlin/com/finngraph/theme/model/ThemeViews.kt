@@ -83,4 +83,7 @@ data class ThemeStockView(
     val tradingValue: Long?,
     val marketCap: Long?,
     val reason: String?,
+    val r1w: BigDecimal?,
+    val r1m: BigDecimal?,
+    val r3m: BigDecimal?,
 )

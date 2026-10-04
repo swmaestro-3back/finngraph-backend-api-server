@@ -7,15 +7,22 @@ import com.finngraph.theme.model.ThemeLeader
 import com.finngraph.theme.model.ThemeStockView
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
+import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.OffsetDateTime
+
+const val WEIGHTED_CHANGE_DESCRIPTION =
+    "테마 지수(시가총액 가중, 종목당 비중 상한 25%, 4종목 이하는 동일 가중)의 기준일 등락률(%). " +
+        "/themes/{id}/index의 change와 같은 값. change(10% 절사평균)와 다른 지표"
 
 data class ThemeSummaryResponse(
     val id: Long,
     val name: String,
     val description: String?,
     val change: BigDecimal?,
+    @Schema(description = WEIGHTED_CHANGE_DESCRIPTION)
+    val weightedChange: BigDecimal?,
     val tradingValue: Long?,
     val avgTradingValue: Long?,
     val tradingValueRatio: BigDecimal?,
@@ -50,6 +57,7 @@ data class ThemeSummaryResponse(
             name = summary.name,
             description = summary.description,
             change = summary.change,
+            weightedChange = summary.weightedChange,
             tradingValue = summary.tradingValue,
             avgTradingValue = summary.avgTradingValue,
             tradingValueRatio = summary.tradingValueRatio,

@@ -5,6 +5,7 @@ import com.finngraph.composition.ContractRole
 import com.finngraph.composition.StockContract
 import com.finngraph.stock.model.AnnualFinancials
 import com.finngraph.stock.model.Candle
+import com.finngraph.stock.model.CompanyProfile
 import com.finngraph.stock.model.InvestorFlow
 import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockListView
@@ -50,6 +51,30 @@ data class StockSummaryResponse(
     }
 }
 
+data class CompanyProfileResponse(
+    val ceoName: String?,
+    val establishedOn: LocalDate?,
+    val listedOn: LocalDate?,
+    val fiscalMonth: String?,
+    val listedShares: Long?,
+    val parValue: BigDecimal?,
+    val homepage: String?,
+    val address: String?,
+) {
+    companion object {
+        fun from(profile: CompanyProfile) = CompanyProfileResponse(
+            ceoName = profile.ceoName,
+            establishedOn = profile.establishedOn,
+            listedOn = profile.listedOn,
+            fiscalMonth = profile.fiscalMonth,
+            listedShares = profile.listedShares,
+            parValue = profile.parValue,
+            homepage = profile.homepage,
+            address = profile.address,
+        )
+    }
+}
+
 data class StockDetailResponse(
     val ticker: String,
     val name: String,
@@ -69,6 +94,7 @@ data class StockDetailResponse(
     val description: String?,
     val descriptionSource: String?,
     val descriptionRceptNo: String?,
+    val profile: CompanyProfileResponse,
     val baseDate: LocalDate?,
     val valuationDate: LocalDate?,
 ) {
@@ -92,6 +118,7 @@ data class StockDetailResponse(
             description = view.description?.text,
             descriptionSource = view.description?.source,
             descriptionRceptNo = view.description?.rceptNo,
+            profile = CompanyProfileResponse.from(view.profile),
             baseDate = view.baseDate,
             valuationDate = view.valuationDate,
         )

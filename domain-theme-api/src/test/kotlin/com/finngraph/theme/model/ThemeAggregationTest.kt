@@ -190,6 +190,19 @@ class ThemeAggregationTest {
     }
 
     @Test
+    fun `가중 등락률은 받은 지수 등락률을 그대로 싣고 절사평균 change와 따로 간다`() {
+        val members = listOf(member(1, "103"), member(2, "104"), member(3, "105"))
+
+        val indexed = ThemeAggregation.summary(theme, members, base, prev, weightedChange = BigDecimal("-0.2500"))
+        val bare = ThemeAggregation.summary(theme, members, base, prev)
+
+        assertEquals(BigDecimal("-0.2500"), indexed.weightedChange)
+        assertEquals(BigDecimal("4.0000"), indexed.change)
+        assertNull(bare.weightedChange)
+        assertEquals(BigDecimal("4.0000"), bare.change)
+    }
+
+    @Test
     fun `시장 통계는 유니버스 종목의 등락률과 활성 종목 대비 캔들 수로 만든다`() {
         val stocks = listOf(
             member(1, "103").stock,

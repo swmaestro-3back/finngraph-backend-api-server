@@ -93,6 +93,21 @@ class ThemeIndexStatsTest {
     }
 
     @Test
+    fun `일간 등락률은 직전 지수 종가 대비이고 요약의 change와 같다`() {
+        val summary = assertNotNull(ThemeIndexStats.summarize(base, series))
+
+        assertEquals(BigDecimal("5.0000"), ThemeIndexStats.dailyChange(BigDecimal("1260"), BigDecimal("1200")))
+        assertEquals(summary.change, ThemeIndexStats.dailyChange(summary.close, BigDecimal("1200")))
+        assertEquals(BigDecimal("-4.5679"), ThemeIndexStats.dailyChange(BigDecimal("954.321"), BigDecimal("1000")))
+    }
+
+    @Test
+    fun `직전 지수 종가가 없거나 0이면 일간 등락률은 null이다`() {
+        assertNull(ThemeIndexStats.dailyChange(BigDecimal("1260"), null))
+        assertNull(ThemeIndexStats.dailyChange(BigDecimal("1260"), BigDecimal.ZERO))
+    }
+
+    @Test
     fun `조회 구간은 1년 기준점을 찾을 여유를 두고 시작한다`() {
         assertEquals(LocalDate.parse("2025-06-30"), ThemeIndexStats.windowStart(base))
     }

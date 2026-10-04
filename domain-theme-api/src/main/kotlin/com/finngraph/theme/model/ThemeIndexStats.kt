@@ -27,7 +27,7 @@ object ThemeIndexStats {
         return ThemeIndexSummary(
             date = baseDate,
             close = last.close,
-            change = ordered.getOrNull(ordered.size - 2)?.let { percent(last.close, it.close) },
+            change = dailyChange(last.close, ordered.getOrNull(ordered.size - 2)?.close),
             r1w = since(ordered, baseDate.minusDays(WEEK_DAYS), last.close),
             r1m = since(ordered, baseDate.minusMonths(1), last.close),
             r3m = since(ordered, baseDate.minusMonths(3), last.close),
@@ -39,6 +39,9 @@ object ThemeIndexStats {
             streak = streak(ordered),
         )
     }
+
+    fun dailyChange(close: BigDecimal, previousClose: BigDecimal?): BigDecimal? =
+        previousClose?.let { percent(close, it) }
 
     private fun since(ordered: List<ThemeIndexClose>, target: LocalDate, current: BigDecimal): BigDecimal? =
         ordered.lastOrNull { it.date <= target }?.let { percent(current, it.close) }

@@ -39,6 +39,7 @@ data class ThemeSummary(
     val hotSide: HotSide?,
     val topStocks: List<ThemeTopStock>,
     val valuationDate: LocalDate? = baseDate,
+    val weightedChange: BigDecimal? = null,
 )
 
 data class ThemeBoard(

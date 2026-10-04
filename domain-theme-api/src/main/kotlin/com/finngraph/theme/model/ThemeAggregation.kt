@@ -80,6 +80,7 @@ object ThemeAggregation {
         prevTradingDate: LocalDate?,
         averages: Map<Long, TradeValueAverage> = emptyMap(),
         valuationDate: LocalDate? = baseDate,
+        weightedChange: BigDecimal? = null,
     ): ThemeSummary {
         val evaluation = evaluate(members, prevTradingDate)
         val universe = evaluation.universe
@@ -127,6 +128,7 @@ object ThemeAggregation {
                 .take(TOP_STOCK_COUNT)
                 .map { ThemeTopStock(it.ticker, it.name, it.marketCap) },
             valuationDate = valuationDate,
+            weightedChange = weightedChange,
         )
     }
 

@@ -13,5 +13,7 @@ interface CredentialPort {
     fun findByEmail(email: Email): EmailCredentialView?
     fun existsByEmail(email: Email): Boolean
     fun findByUserId(userId: Long): CredentialView?
+    fun findPasswordHashByUserId(userId: Long): String?
+    fun updatePasswordHash(userId: Long, passwordHash: String): Boolean
     fun deleteAllByUserId(userId: Long): Int
 }

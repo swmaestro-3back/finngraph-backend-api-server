@@ -81,6 +81,24 @@ class JooqCredentialAdapter(
                 ),
         )
 
+    override fun findPasswordHashByUserId(userId: Long): String? =
+        dsl.select(AUTH_CREDENTIALS.PASSWORD_HASH)
+            .from(AUTH_CREDENTIALS)
+            .where(
+                AUTH_CREDENTIALS.PROVIDER.eq(AuthProvider.EMAIL.name)
+                    .and(AUTH_CREDENTIALS.USER_ID.eq(userId)),
+            )
+            .fetchOne(AUTH_CREDENTIALS.PASSWORD_HASH)
+
+    override fun updatePasswordHash(userId: Long, passwordHash: String): Boolean =
+        dsl.update(AUTH_CREDENTIALS)
+            .set(AUTH_CREDENTIALS.PASSWORD_HASH, passwordHash)
+            .where(
+                AUTH_CREDENTIALS.PROVIDER.eq(AuthProvider.EMAIL.name)
+                    .and(AUTH_CREDENTIALS.USER_ID.eq(userId)),
+            )
+            .execute() == 1
+
     override fun findByUserId(userId: Long): CredentialView? =
         dsl.select(AUTH_CREDENTIALS.PROVIDER, AUTH_CREDENTIALS.EMAIL)
             .from(AUTH_CREDENTIALS)

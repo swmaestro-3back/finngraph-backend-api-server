@@ -56,6 +56,7 @@ object TestContainers {
         registry.add("spring.data.redis.timeout") { REDIS_TIMEOUT }
         registry.add("app.jwt.signing-key") { jwtSigningKey }
         registry.add("app.jwt.public-key") { jwtPublicKey }
+        registry.add("spring.http.clients.imperative.factory") { "jdk" }
     }
 
     private fun applyMigrations(container: PostgreSQLContainer, dirProperty: String) {

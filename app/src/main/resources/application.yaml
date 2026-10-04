@@ -69,6 +69,10 @@ app:
       ip-max: 60
       window: 1h
 
+  password-attempt:
+    max: 5
+    window: 15m
+
 server:
   forward-headers-strategy: framework
   compression:

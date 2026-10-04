@@ -120,6 +120,10 @@ object HotThemeSeed {
         },
     )
 
+    fun seedPeriodReturns(stockId: Long, r1w: String, r1m: String, r3m: String) = execute(
+        "UPDATE stock_valuations_daily SET r_1w = $r1w, r_1m = $r1m, r_3m = $r3m WHERE listing_id = $stockId AND trade_date = '$BASE_DATE'",
+    )
+
     fun seedNullChange() = execute(
         """
         INSERT INTO stocks (id, name, ticker, market, standard_code, source) VALUES

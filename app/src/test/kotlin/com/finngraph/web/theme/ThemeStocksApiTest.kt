@@ -49,6 +49,22 @@ class ThemeStocksApiTest {
     }
 
     @Test
+    fun `구성 종목은 종목별 1주·1달·3달 수익률을 원값으로 내려주고 없으면 null이다`() {
+        val byTicker = stocks(HotThemeSeed.SURGE_THEME).associateBy { it["ticker"] }
+
+        val filled = byTicker.getValue("909101")
+        assertEquals(4.5, (filled["r1w"] as Number).toDouble())
+        assertEquals(-2.25, (filled["r1m"] as Number).toDouble())
+        assertEquals(12.0, (filled["r3m"] as Number).toDouble())
+
+        val empty = byTicker.getValue("909102")
+        assertEquals(true, empty.containsKey("r1w"))
+        assertNull(empty["r1w"])
+        assertNull(empty["r1m"])
+        assertNull(empty["r3m"])
+    }
+
+    @Test
     fun `부분 적재일 캔들은 전 거래일로 인정하지 않아 NO_PREV가 된다`() {
         val statuses = stocks(HotThemeSeed.SPARSE_THEME).associate { it["ticker"] to it["changeStatus"] }
 
@@ -110,7 +126,10 @@ class ThemeStocksApiTest {
     companion object {
         @JvmStatic
         @BeforeAll
-        fun seed() = HotThemeSeed.seed()
+        fun seed() {
+            HotThemeSeed.seed()
+            HotThemeSeed.seedPeriodReturns(9101, "4.5", "-2.25", "12.0")
+        }
 
         @JvmStatic
         @AfterAll

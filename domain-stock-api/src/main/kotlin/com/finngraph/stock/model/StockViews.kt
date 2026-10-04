@@ -82,6 +82,7 @@ data class Candle(
     val close: BigDecimal,
     val volume: Long,
     val tradeValue: Long?,
+    val changeRate: BigDecimal? = null,
 )
 
 data class InvestorFlow(

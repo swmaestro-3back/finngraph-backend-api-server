@@ -1,0 +1,33 @@
+name: finngraph-backend
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILE:-local}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/finngraph
+      SPRING_DATASOURCE_USERNAME: ${ETL_DB_USER:-threeback}
+      SPRING_DATASOURCE_PASSWORD: ${ETL_DB_PASSWORD:-12345678}
+      APP_DATASOURCE_URL: jdbc:postgresql://app-db:5432/finngraph_app
+      APP_DATASOURCE_USERNAME: ${APP_DB_RUNTIME_USER:-finngraph_app_runtime}
+      APP_DATASOURCE_PASSWORD: ${APP_DB_RUNTIME_PASSWORD:-app}
+      SPRING_DATA_REDIS_HOST: redis
+      JWT_SIGNING_KEY: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY 필요}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY 필요}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID:-}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET:-}
+      KAKAO_ADMIN_KEY: ${KAKAO_ADMIN_KEY:-}
+      KAKAO_REDIRECT_URI: ${KAKAO_REDIRECT_URI:-}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      BEDROCK_REGION: ${BEDROCK_REGION:-}
+      BEDROCK_CHAT_MODEL: ${BEDROCK_CHAT_MODEL:-}
+      AWS_BEARER_TOKEN_BEDROCK: ${AWS_BEARER_TOKEN_BEDROCK:-}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-log}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_SES_REGION: ${MAIL_SES_REGION:-}
+      TZ: Asia/Seoul
+    ports:
+      - "8081:8080"
+    restart: unless-stopped

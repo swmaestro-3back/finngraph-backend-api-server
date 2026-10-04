@@ -142,6 +142,8 @@ class PublicAccessTest {
             "/api/v1/news",
             "/api/v1/contracts/recent",
             "/api/v1/briefings",
+            "/api/v1/calendar?from=2026-10-01&to=2026-10-31",
+            "/api/v1/ipos",
         )
 
         private val PRIMARY_DETAIL_ENDPOINTS = listOf(
@@ -149,6 +151,7 @@ class PublicAccessTest {
             "/api/v1/briefings/1999-01-01",
             "/api/v1/stocks/000000",
             "/api/v1/news/999999",
+            "/api/v1/ipos/detail?ticker=000000",
         )
 
         private val SUB_RESOURCE_ENDPOINTS = listOf(
@@ -161,6 +164,8 @@ class PublicAccessTest {
             "/api/v1/stocks/000000/financials",
             "/api/v1/stocks/000000/news",
             "/api/v1/stocks/000000/contracts",
+            "/api/v1/stocks/000000/dividends",
+            "/api/v1/stocks/000000/calendar?from=2026-10-01&to=2026-10-31",
             "/api/v1/news/999999/companies",
         )
 

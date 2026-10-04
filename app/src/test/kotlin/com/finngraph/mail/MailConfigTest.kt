@@ -3,6 +3,7 @@ package com.finngraph.mail
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.springframework.mock.env.MockEnvironment
+import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class MailConfigTest {
@@ -26,27 +27,24 @@ class MailConfigTest {
     }
 
     @Test
-    fun `provider=smtp인데 from이나 host가 비면 기동을 실패시킨다`() {
+    fun `provider=ses인데 from이 비면 기동을 실패시킨다`() {
         assertThrows(IllegalStateException::class.java) {
-            config.mailSenderPort(MailProperties(provider = MailProvider.SMTP, host = "smtp.x"), MockEnvironment())
-        }
-        assertThrows(IllegalStateException::class.java) {
-            config.mailSenderPort(MailProperties(provider = MailProvider.SMTP, from = "a@x"), MockEnvironment())
+            config.mailSenderPort(MailProperties(provider = MailProvider.SES), MockEnvironment())
         }
     }
 
     @Test
-    fun `provider=smtp가 완전하면 SmtpMailSender를 만든다`() {
-        val properties = MailProperties(
-            provider = MailProvider.SMTP,
-            from = "no-reply@x",
-            host = "smtp.x",
-            username = "u",
-            password = "p",
-        )
+    fun `provider=ses는 자격 증명 없이도 SesMailSender를 만든다`() {
+        val properties = MailProperties(provider = MailProvider.SES, from = "noreply@finngraph.com")
 
         val sender = config.mailSenderPort(properties, MockEnvironment().apply { setActiveProfiles("prod") })
 
-        assertIs<SmtpMailSender>(sender)
+        assertIs<SesMailSender>(sender)
+        sender.close()
+    }
+
+    @Test
+    fun `SES 리전 기본값은 서울`() {
+        assertEquals("ap-northeast-2", MailProperties().region)
     }
 }

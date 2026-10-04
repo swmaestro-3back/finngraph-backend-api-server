@@ -4,6 +4,7 @@ import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomize
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import tools.jackson.core.JsonGenerator
+import tools.jackson.databind.DeserializationFeature
 import tools.jackson.databind.SerializationContext
 import tools.jackson.databind.ValueSerializer
 import tools.jackson.databind.module.SimpleModule
@@ -17,6 +18,7 @@ class JacksonConfig {
     @Bean
     fun offsetDateTimeKstCustomizer(): JsonMapperBuilderCustomizer =
         JsonMapperBuilderCustomizer { builder ->
+            builder.disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
             builder.addModule(
                 SimpleModule("offset-date-time-kst").apply {
                     addSerializer(OffsetDateTime::class.java, OffsetDateTimeKstSerializer())

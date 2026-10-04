@@ -82,6 +82,7 @@ CLAUDE.md
 
 ### bkit ###
 .bkit/
+.superpowers/
 db/seed/
 api-spec/
 scripts/

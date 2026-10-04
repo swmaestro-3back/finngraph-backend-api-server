@@ -35,6 +35,7 @@ data class StockDetailView(
     val revenueYoY: BigDecimal?,
     val baseDate: LocalDate?,
     val description: CompanyDescription?,
+    val profile: CompanyProfile,
     val valuationDate: LocalDate? = baseDate,
 )
 
@@ -42,6 +43,17 @@ data class CompanyDescription(
     val text: String,
     val source: String?,
     val rceptNo: String?,
+)
+
+data class CompanyProfile(
+    val ceoName: String?,
+    val establishedOn: LocalDate?,
+    val listedOn: LocalDate?,
+    val fiscalMonth: String?,
+    val listedShares: Long?,
+    val parValue: BigDecimal?,
+    val homepage: String?,
+    val address: String?,
 )
 
 data class StockFlags(

@@ -33,6 +33,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
 
         val valuations = yearEndValuations(stockId)
         val dividends = annualDps(stockId)
+        val reportedRoe = reportedRoe(companyId)
 
         return statements.keys.sorted().map { year ->
             val perFsDiv = statements.getValue(year)
@@ -47,7 +48,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
                 operatingProfit = body?.operatingIncome,
                 netIncome = body?.netIncome,
                 operatingMargin = percentage(body?.operatingIncome?.toDecimal(), body?.revenue?.toDecimal()),
-                roe = body?.roe,
+                roe = body?.roe ?: reportedRoe[year],
                 debtRatio = percentage(body?.totalLiabilities?.toDecimal(), body?.totalEquity?.toDecimal()),
                 totalAssets = body?.totalAssets,
                 separateAssets = perFsDiv.separate?.totalAssets,
@@ -126,6 +127,20 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
                 )
             }
     }
+
+    private fun reportedRoe(companyId: Long): Map<Int, BigDecimal> =
+        dsl.select(COMPANY_FINANCIALS.FISCAL_YYMM, COMPANY_FINANCIALS.ROE)
+            .from(COMPANY_FINANCIALS)
+            .where(COMPANY_FINANCIALS.COMPANY_ID.eq(companyId))
+            .and(COMPANY_FINANCIALS.PERIOD_TYPE.eq(ANNUAL))
+            .and(COMPANY_FINANCIALS.SOURCE.eq(KIS))
+            .and(COMPANY_FINANCIALS.ROE.isNotNull)
+            .orderBy(COMPANY_FINANCIALS.FISCAL_YYMM.asc())
+            .fetch()
+            .associate { record ->
+                requireNotNull(record.get(COMPANY_FINANCIALS.FISCAL_YYMM)).take(4).toInt() to
+                    requireNotNull(record.get(COMPANY_FINANCIALS.ROE))
+            }
 
     private fun yearEndValuations(stockId: Long): Map<Int, Valuation> {
         val tradeYear = DSL.extract(STOCK_VALUATIONS_DAILY.TRADE_DATE, DatePart.YEAR)
@@ -216,6 +231,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
         const val ANNUAL = "A"
         const val CONSOLIDATED = "CFS"
         const val SEPARATE = "OFS"
+        const val KIS = "KIS"
         const val RANKED = "ranked"
         const val RANK = "rn"
         const val FISCAL_YEAR = "fiscal_year"

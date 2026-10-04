@@ -51,6 +51,7 @@ class PriceBasisApiTest {
         assertEquals(IntradaySeed.TODAY, theme["baseDate"])
         assertEquals(HotThemeSeed.BASE_DATE, theme["valuationDate"])
         assertEquals(10.0, theme.number("change"))
+        assertEquals(10.0, theme.number("weightedChange"))
         assertNotNull(theme["marketCap"])
         assertNotNull(theme["avgTradingValue"])
         assertNull(theme["tradingValueRatio"])

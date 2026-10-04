@@ -32,6 +32,23 @@ object HotThemeSeed {
         val ticker: String get() = "90$id"
     }
 
+    data class IndexClose(
+        val theme: Long,
+        val date: String,
+        val close: String,
+    )
+
+    val INDEX_CLOSES: List<IndexClose> = listOf(
+        IndexClose(SURGE_THEME, PREV_DATE, "1000"),
+        IndexClose(SURGE_THEME, BASE_DATE, "1043.21"),
+        IndexClose(FALL_THEME, PREV_DATE, "1000"),
+        IndexClose(FALL_THEME, BASE_DATE, "954.321"),
+        IndexClose(BOUNDARY_THEME, PREV_DATE, "1000"),
+        IndexClose(BOUNDARY_THEME, BASE_DATE, "1036"),
+        IndexClose(SPARSE_THEME, AVERAGE_DATE, "1000"),
+        IndexClose(SPARSE_THEME, BASE_DATE, "1050"),
+    )
+
     val STOCKS: List<Stock> = listOf(
         Stock(9101, "시드급등1", "103", 2_000_000, SURGE_THEME),
         Stock(9102, "시드급등2", "104", 1_000_000, SURGE_THEME),
@@ -106,7 +123,13 @@ object HotThemeSeed {
             appendLine(STOCKS.flatMap { it.candleRows() }.joinToString(",\n", postfix = ";"))
             appendLine("INSERT INTO stock_valuations_daily (listing_id, trade_date, market_cap) VALUES")
             appendLine(STOCKS.joinToString(",\n", postfix = ";") { "(${it.id}, '$BASE_DATE', ${it.cap})" })
+            appendLine("INSERT INTO theme_candles_daily (theme_id, trade_date, open, high, low, close, volume, trade_value, source) VALUES")
+            appendLine(INDEX_CLOSES.joinToString(",\n", postfix = ";") { it.row() })
         },
+    )
+
+    fun moveIndex(theme: Long, close: String) = execute(
+        "UPDATE theme_candles_daily SET open = $close, high = $close, low = $close, close = $close WHERE theme_id = $theme AND trade_date = '$BASE_DATE'",
     )
 
     fun seedAverageWindow() = execute(
@@ -118,6 +141,10 @@ object HotThemeSeed {
                 },
             )
         },
+    )
+
+    fun seedPeriodReturns(stockId: Long, r1w: String, r1m: String, r3m: String) = execute(
+        "UPDATE stock_valuations_daily SET r_1w = $r1w, r_1m = $r1m, r_3m = $r3m WHERE listing_id = $stockId AND trade_date = '$BASE_DATE'",
     )
 
     fun seedNullChange() = execute(
@@ -150,6 +177,8 @@ object HotThemeSeed {
         if (kind != Kind.NO_CANDLE) rows += candle(BASE_DATE, close, if (kind == Kind.SUSPENDED) 0 else 1000)
         return rows
     }
+
+    private fun IndexClose.row(): String = "($theme, '$date', $close, $close, $close, $close, 0, NULL, 'TEST')"
 
     private fun Stock.candle(date: String, price: String, volume: Long): String =
         "($id, '$date', $price, $price, $price, $price, $volume, ${(price.toDouble() * 1000).toLong()}, 'TEST')"

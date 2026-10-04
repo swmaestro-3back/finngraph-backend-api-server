@@ -7,6 +7,7 @@ import com.finngraph.web.common.ErrorResponse
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.filter.OncePerRequestFilter
 import tools.jackson.databind.ObjectMapper
@@ -16,6 +17,8 @@ class InternalTokenFilter(
     private val properties: InternalApiProperties,
     private val mapper: ObjectMapper,
 ) : OncePerRequestFilter() {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -28,6 +31,7 @@ class InternalTokenFilter(
             MessageDigest.isEqual(properties.token.toByteArray(), presented.toByteArray())
 
         if (!authorized) {
+            log.warn("internal token rejected: path={}, remote={}", request.requestURI, request.remoteAddr)
             response.status = HttpServletResponse.SC_UNAUTHORIZED
             response.contentType = MediaType.APPLICATION_JSON_VALUE
             response.characterEncoding = Charsets.UTF_8.name()

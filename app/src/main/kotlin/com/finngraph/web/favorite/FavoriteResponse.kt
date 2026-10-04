@@ -5,6 +5,8 @@ import com.finngraph.composition.favorite.FavoriteList
 import com.finngraph.favorite.model.FavoriteView
 import com.finngraph.stock.model.StockPriceView
 import com.finngraph.theme.model.ThemeSummary
+import com.finngraph.web.theme.WEIGHTED_CHANGE_DESCRIPTION
+import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -68,6 +70,8 @@ data class FavoriteThemeResponse(
     val id: Long,
     val name: String,
     val change: BigDecimal?,
+    @Schema(description = WEIGHTED_CHANGE_DESCRIPTION)
+    val weightedChange: BigDecimal?,
     val baseDate: LocalDate?,
     val stockCount: Int,
     val pricedCount: Int,
@@ -77,6 +81,7 @@ data class FavoriteThemeResponse(
             id = summary.id,
             name = summary.name,
             change = summary.change,
+            weightedChange = summary.weightedChange,
             baseDate = summary.baseDate,
             stockCount = summary.stockCount,
             pricedCount = summary.pricedCount,

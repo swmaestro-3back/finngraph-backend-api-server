@@ -39,6 +39,7 @@ data class ThemeSummary(
     val hotSide: HotSide?,
     val topStocks: List<ThemeTopStock>,
     val valuationDate: LocalDate? = baseDate,
+    val weightedChange: BigDecimal? = null,
 )
 
 data class ThemeBoard(
@@ -83,4 +84,7 @@ data class ThemeStockView(
     val tradingValue: Long?,
     val marketCap: Long?,
     val reason: String?,
+    val r1w: BigDecimal?,
+    val r1m: BigDecimal?,
+    val r3m: BigDecimal?,
 )

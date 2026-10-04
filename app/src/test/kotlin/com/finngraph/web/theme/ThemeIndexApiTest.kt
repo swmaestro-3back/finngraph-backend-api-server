@@ -110,6 +110,20 @@ class ThemeIndexApiTest {
     }
 
     @Test
+    fun `테마 요약의 weightedChange는 지수 성과의 change와 같은 값이다`() {
+        val index = assertNotNull(index(ThemeIndexSeed.INDEXED_THEME))
+        val detail = summary(ThemeIndexSeed.INDEXED_THEME)
+        val listed = list().single { it["id"] == ThemeIndexSeed.INDEXED_THEME.toInt() }
+
+        assertEquals(5.0, index.number("change"))
+        assertEquals(index.number("change"), detail.number("weightedChange"))
+        assertEquals(index.number("change"), listed.number("weightedChange"))
+        assertNull(index(ThemeIndexSeed.LAGGING_THEME))
+        assertNull(summary(ThemeIndexSeed.LAGGING_THEME)["weightedChange"])
+        assertNull(summary(ThemeIndexSeed.BARE_THEME)["weightedChange"])
+    }
+
+    @Test
     fun `없는 테마는 404다`() {
         assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/themes/999999/candles").statusCode)
         assertEquals(HttpStatus.NOT_FOUND, get("/api/v1/themes/999999/index").statusCode)
@@ -145,6 +159,18 @@ class ThemeIndexApiTest {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertTrue(response.body!!.containsKey("data"))
         return response.body!!["data"] as Map<*, *>?
+    }
+
+    private fun summary(id: Long): Map<*, *> {
+        val response = get("/api/v1/themes/$id")
+        assertEquals(HttpStatus.OK, response.statusCode)
+        return response.body!!["data"] as Map<*, *>
+    }
+
+    private fun list(): List<Map<*, *>> {
+        val response = get("/api/v1/themes")
+        assertEquals(HttpStatus.OK, response.statusCode)
+        return (response.body!!["data"] as List<*>).map { it as Map<*, *> }
     }
 
     private fun get(path: String): ResponseEntity<Map<*, *>> = rest.getForEntity(path, Map::class.java)

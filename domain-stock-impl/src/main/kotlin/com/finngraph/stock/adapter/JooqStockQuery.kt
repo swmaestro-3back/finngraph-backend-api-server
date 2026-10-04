@@ -8,6 +8,7 @@ import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.CompanyDescription
+import com.finngraph.stock.model.CompanyProfile
 import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockFlags
 import com.finngraph.stock.model.StockListView
@@ -47,7 +48,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         val filter: (Stocks) -> Condition = { s -> s.TICKER.eq(ticker.value).and(s.IS_ACTIVE.eq(true)) }
         val dates = StockPricing.dates(dsl)
         val row = fetchStocks(filter, dates).firstOrNull() ?: return null
-        return row.toDetailView(revenueYoY(filter), companyDescription(filter), dates)
+        return row.toDetailView(revenueYoY(filter), companyDescription(filter), companyProfile(filter), dates)
     }
 
     override fun findByTickers(tickers: List<Ticker>, asOf: LocalDate?): Map<Ticker, StockPriceView> {
@@ -199,6 +200,35 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             .fetchOne()
             ?.let { CompanyDescription(requireNotNull(it.value1()), it.value2(), it.value3()) }
 
+    private fun companyProfile(filter: (Stocks) -> Condition): CompanyProfile =
+        dsl.select(
+            COMPANIES.CEO_NAME,
+            COMPANIES.ESTABLISHED_ON,
+            STOCKS.LISTED_DATE,
+            COMPANIES.FISCAL_MONTH,
+            STOCKS.LISTED_SHARES,
+            STOCKS.PAR_VALUE,
+            COMPANIES.HOMEPAGE,
+            COMPANIES.ADDRESS,
+        )
+            .from(STOCKS)
+            .leftJoin(COMPANIES).on(COMPANIES.ID.eq(STOCKS.COMPANY_ID))
+            .where(filter(STOCKS))
+            .limit(1)
+            .fetchOne()
+            ?.let {
+                CompanyProfile(
+                    ceoName = it.get(COMPANIES.CEO_NAME),
+                    establishedOn = it.get(COMPANIES.ESTABLISHED_ON),
+                    listedOn = it.get(STOCKS.LISTED_DATE),
+                    fiscalMonth = it.get(COMPANIES.FISCAL_MONTH),
+                    listedShares = it.get(STOCKS.LISTED_SHARES),
+                    parValue = it.get(STOCKS.PAR_VALUE),
+                    homepage = it.get(COMPANIES.HOMEPAGE),
+                    address = it.get(COMPANIES.ADDRESS),
+                )
+            } ?: EMPTY_PROFILE
+
     private fun revenueYoY(filter: (Stocks) -> Condition): BigDecimal? {
         val chosenPerYear = LinkedHashMap<String, Long?>()
         dsl.select(FISCAL_YEAR, COMPANY_FINANCIALS.REVENUE)
@@ -245,7 +275,12 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         dividendYield = get(STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD),
     )
 
-    private fun Record.toDetailView(revenueYoY: BigDecimal?, description: CompanyDescription?, dates: PriceDates) = StockDetailView(
+    private fun Record.toDetailView(
+        revenueYoY: BigDecimal?,
+        description: CompanyDescription?,
+        profile: CompanyProfile,
+        dates: PriceDates,
+    ) = StockDetailView(
         ticker = requireNotNull(get(STOCKS.TICKER)),
         name = requireNotNull(get(STOCKS.NAME)),
         market = requireNotNull(get(STOCKS.MARKET)),
@@ -261,6 +296,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         revenueYoY = revenueYoY,
         baseDate = dates.price,
         description = description,
+        profile = profile,
         valuationDate = dates.valuation,
     )
 
@@ -276,10 +312,12 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
     companion object {
         private const val ANNUAL = "A"
         private const val CONSOLIDATED = "CFS"
+        private const val KIS = "KIS"
         private const val DERIVED_SCALE = 4
 
         private const val LATEST_CANDLES = "lc"
         private const val PREV_CANDLES = "pc"
+        private const val KIS_ROWS = "kf"
         private const val PREV = "prev"
         private const val PX = "px"
         private const val PRICE = "price"
@@ -289,6 +327,8 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val FOREIGN_RATIO = "foreign_ratio"
 
         private val HUNDRED: BigDecimal = BigDecimal("100")
+
+        private val EMPTY_PROFILE = CompanyProfile(null, null, null, null, null, null, null, null)
 
         private val ACTIVE: (Stocks) -> Condition = { s -> s.IS_ACTIVE.eq(true) }
 
@@ -308,8 +348,24 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             COMPANY_FINANCIALS.RCEPT_NO.desc().nullsLast(),
         )
 
+        private val KIS_FINANCIALS = COMPANY_FINANCIALS.`as`(KIS_ROWS)
+
+        private val SAME_YEAR_KIS_ROE: Field<BigDecimal?> = DSL.field(
+            DSL.select(KIS_FINANCIALS.ROE)
+                .from(KIS_FINANCIALS)
+                .where(
+                    KIS_FINANCIALS.COMPANY_ID.eq(COMPANY_FINANCIALS.COMPANY_ID)
+                        .and(KIS_FINANCIALS.PERIOD_TYPE.eq(ANNUAL))
+                        .and(KIS_FINANCIALS.SOURCE.eq(KIS))
+                        .and(KIS_FINANCIALS.ROE.isNotNull)
+                        .and(KIS_FINANCIALS.FISCAL_YYMM.substring(1, 4).eq(FISCAL_YEAR)),
+                )
+                .orderBy(KIS_FINANCIALS.FISCAL_YYMM.desc())
+                .limit(1),
+        )
+
         private val ROE: Field<BigDecimal?> = DSL.field(
-            DSL.select(COMPANY_FINANCIALS.ROE)
+            DSL.select(DSL.coalesce(COMPANY_FINANCIALS.ROE, SAME_YEAR_KIS_ROE))
                 .from(COMPANY_FINANCIALS)
                 .where(
                     COMPANY_FINANCIALS.COMPANY_ID.eq(STOCKS.COMPANY_ID)

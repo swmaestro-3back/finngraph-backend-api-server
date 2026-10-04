@@ -20,6 +20,7 @@ import com.finngraph.briefing.model.RelationLine
 import com.finngraph.briefing.model.RelationParty
 import com.finngraph.briefing.model.RiskItem
 import com.finngraph.briefing.model.WatchPoint
+import io.swagger.v3.oas.annotations.media.Schema
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -97,6 +98,7 @@ data class LeaderResponse(val ticker: String, val name: String, val change: BigD
 data class ThemeRadarResponse(
     val id: Long,
     val name: String,
+    @Schema(description = "테마 지수 기준일 등락률(%). 테마 응답의 weightedChange와 같은 지표이고 change(10% 절사평균)가 아니다. 전환 전에 저장된 브리핑은 절사평균 값")
     val change: BigDecimal?,
     val hotSide: String,
     val stockCount: Int,

@@ -44,6 +44,19 @@ class BriefingRulesTest {
     }
 
     @Test
+    fun `테마 레이더 등락률은 절사평균이 아니라 가중 등락률이고 주도주 등락률은 그대로다`() {
+        val hot = listOf(
+            theme(1, "상승1", HotSide.UP, weighted = "0.7500"),
+            theme(2, "하락1", HotSide.DOWN, weighted = "-1.2500"),
+        )
+
+        val radar = BriefingRules.themeRadar(hot)
+
+        assertEquals(listOf(BigDecimal("0.7500"), BigDecimal("-1.2500")), radar.map { it.change })
+        assertEquals(BigDecimal("3.0"), radar[0].leaders.single().change)
+    }
+
+    @Test
     fun `이슈 종목은 상장 종목만 등락 절대값 순으로 최대 6개`() {
         val refs = listOf(
             CompanyRef("작은", "000001"), CompanyRef("비상장", null), CompanyRef("큰하락", "000002"),
@@ -157,13 +170,13 @@ class BriefingRulesTest {
         if (source.newsId != null) Citation(CitationType.NEWS, source.newsId.toString(), "기사", "https://n/${source.newsId}")
         else Citation(CitationType.DISCLOSURE, requireNotNull(source.rceptNo), "공시", "https://d/${source.rceptNo}")
 
-    private fun theme(id: Long, name: String, side: HotSide) = ThemeSummary(
+    private fun theme(id: Long, name: String, side: HotSide, weighted: String = "1.0") = ThemeSummary(
         id = id, name = name, description = null, baseDate = baseDate, change = BigDecimal("1.0"),
         tradingValue = null, avgTradingValue = null, tradingValueRatio = null, marketCap = null,
         w1 = null, m1 = null, m3 = null, stockCount = 5, pricedCount = 5, upCount = 4, downCount = 1, flatCount = 0,
         suspendedCount = 0, trimCount = 1, meanChange = null, changeLower = null, changeUpper = null, sensitivity = null,
         w1Count = 0, m1Count = 0, m3Count = 0, leaders = listOf(ThemeLeader("000001", "주도주", BigDecimal("3.0"))),
-        sources = listOf("naver"), hotSide = side, topStocks = emptyList(),
+        sources = listOf("naver"), hotSide = side, topStocks = emptyList(), weightedChange = BigDecimal(weighted),
     )
 
     private fun price(ticker: String, name: String, change: String?) =

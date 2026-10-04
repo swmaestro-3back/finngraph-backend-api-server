@@ -15,6 +15,7 @@ import org.springframework.test.context.DynamicPropertySource
 import tools.jackson.databind.ObjectMapper
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
@@ -46,6 +47,22 @@ class ThemeStocksApiTest {
         assertEquals(true, stocks[7]["delistingTrade"])
         assertEquals(false, stocks[7]["underAdministration"])
         assertEquals(80.0, (stocks[7]["price"] as Number).toDouble())
+    }
+
+    @Test
+    fun `구성 종목은 종목별 1주·1달·3달 수익률을 원값으로 내려주고 없으면 null이다`() {
+        val byTicker = stocks(HotThemeSeed.SURGE_THEME).associateBy { it["ticker"] }
+
+        val filled = byTicker.getValue("909101")
+        assertEquals(4.5, (filled["r1w"] as Number).toDouble())
+        assertEquals(-2.25, (filled["r1m"] as Number).toDouble())
+        assertEquals(12.0, (filled["r3m"] as Number).toDouble())
+
+        val empty = byTicker.getValue("909102")
+        assertEquals(true, empty.containsKey("r1w"))
+        assertNull(empty["r1w"])
+        assertNull(empty["r1m"])
+        assertNull(empty["r3m"])
     }
 
     @Test
@@ -100,6 +117,31 @@ class ThemeStocksApiTest {
         assertEquals(listOf("judal"), data["sources"])
     }
 
+    @Test
+    fun `상세의 weightedChange는 기준일 지수 종가를 직전 지수 종가와 비교한 값이고 절사평균 change와 다르다`() {
+        val response = rest.getForEntity("/api/v1/themes/${HotThemeSeed.FALL_THEME}", String::class.java)
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val data = mapper.readValue(response.body!!, Map::class.java)["data"] as Map<*, *>
+
+        assertEquals(-4.5679, (data["weightedChange"] as Number).toDouble())
+        assertEquals(-4.6667, (data["change"] as Number).toDouble())
+    }
+
+    @Test
+    fun `목록도 weightedChange를 내려주고 직전 지수 행이 비면 그 앞 행과 비교하며 지수가 없으면 null이다`() {
+        val response = rest.getForEntity("/api/v1/themes", String::class.java)
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val payload = mapper.readValue(response.body!!, Map::class.java)
+        val themes = (payload["data"] as List<*>).map { it as Map<*, *> }.associateBy { it["name"] as String }
+
+        assertEquals(4.321, (themes.getValue("시드급등테마")["weightedChange"] as Number).toDouble())
+        assertEquals(3.6, (themes.getValue("시드경계테마")["weightedChange"] as Number).toDouble())
+        assertEquals(5.0, (themes.getValue("시드결손테마")["weightedChange"] as Number).toDouble())
+        val mild = themes.getValue("시드완만테마")
+        assertTrue(mild.containsKey("weightedChange"))
+        assertNull(mild["weightedChange"])
+    }
+
     private fun stocks(themeId: Long): List<Map<*, *>> {
         val response = rest.getForEntity("/api/v1/themes/$themeId/stocks", String::class.java)
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -110,7 +152,10 @@ class ThemeStocksApiTest {
     companion object {
         @JvmStatic
         @BeforeAll
-        fun seed() = HotThemeSeed.seed()
+        fun seed() {
+            HotThemeSeed.seed()
+            HotThemeSeed.seedPeriodReturns(9101, "4.5", "-2.25", "12.0")
+        }
 
         @JvmStatic
         @AfterAll

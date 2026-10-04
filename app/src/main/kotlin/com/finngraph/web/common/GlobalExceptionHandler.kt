@@ -3,6 +3,9 @@ package com.finngraph.web.common
 import com.finngraph.auth.DuplicateCredentialException
 import com.finngraph.auth.model.AuthProvider
 import com.finngraph.composition.account.EmailNotVerifiedException
+import com.finngraph.composition.account.PasswordMismatchException
+import com.finngraph.composition.account.PasswordNotSetException
+import com.finngraph.composition.account.PasswordRequiredException
 import com.finngraph.composition.account.RateLimitedException
 import com.finngraph.composition.favorite.FavoriteTargetNotFoundException
 import com.finngraph.composition.port.KakaoAuthFailedException
@@ -16,6 +19,8 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
+import org.springframework.web.HttpMediaTypeNotSupportedException
+import org.springframework.web.HttpRequestMethodNotSupportedException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
@@ -56,6 +61,16 @@ class GlobalExceptionHandler {
             details = mapOf("fieldErrors" to mapOf("body" to "must be a valid JSON body")),
         )
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException::class)
+    fun handleMethodNotSupported(e: HttpRequestMethodNotSupportedException): ResponseEntity<ErrorResponse> =
+        ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+            .headers { headers -> e.supportedHttpMethods?.let { headers.allow = it } }
+            .body(ErrorResponse(ErrorBody(ErrorCode.METHOD_NOT_ALLOWED, "${e.method} 메서드는 지원하지 않습니다")))
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException::class)
+    fun handleMediaTypeNotSupported(e: HttpMediaTypeNotSupportedException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ErrorCode.UNSUPPORTED_MEDIA_TYPE, "요청 본문은 application/json이어야 합니다")
+
     @ExceptionHandler(RateLimitedException::class)
     fun handleRateLimited(e: RateLimitedException): ResponseEntity<ErrorResponse> {
         val retryAfterSeconds = maxOf(MIN_RETRY_AFTER_SECONDS, e.retryAfter.seconds)
@@ -71,6 +86,28 @@ class GlobalExceptionHandler {
                 ),
             )
     }
+
+    @ExceptionHandler(PasswordMismatchException::class)
+    fun handlePasswordMismatch(e: PasswordMismatchException): ResponseEntity<ErrorResponse> =
+        respond(
+            HttpStatus.BAD_REQUEST,
+            ErrorCode.PASSWORD_MISMATCH,
+            "비밀번호가 일치하지 않습니다.",
+            mapOf("remainingAttempts" to e.remainingAttempts),
+        )
+
+    @ExceptionHandler(PasswordNotSetException::class)
+    fun handlePasswordNotSet(e: PasswordNotSetException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.CONFLICT, ErrorCode.PASSWORD_NOT_SET, "비밀번호로 로그인하지 않는 계정입니다.")
+
+    @ExceptionHandler(PasswordRequiredException::class)
+    fun handlePasswordRequired(e: PasswordRequiredException): ResponseEntity<ErrorResponse> =
+        respond(
+            HttpStatus.BAD_REQUEST,
+            ErrorCode.INVALID_PARAMETER,
+            "비밀번호를 입력해 주세요.",
+            mapOf("fieldErrors" to mapOf("password" to "must not be blank")),
+        )
 
     @ExceptionHandler(VerificationFailedException::class)
     fun handleVerificationFailed(e: VerificationFailedException): ResponseEntity<ErrorResponse> =

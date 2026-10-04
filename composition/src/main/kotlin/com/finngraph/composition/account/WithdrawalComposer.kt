@@ -10,11 +10,13 @@ class WithdrawalComposer(
     private val accounts: AccountWriter,
     private val tokens: TokenPort,
     private val kakaoClient: KakaoOAuthPort,
+    private val passwords: PasswordVerifier,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    fun withdraw(userId: Long): Boolean {
+    fun withdraw(userId: Long, password: String?): Boolean {
+        passwords.verifyIfSet(userId, password)
         tokens.revokeAllByUserId(userId)
         val deleted = accounts.deleteAccount(userId) ?: return false
         deleted.kakaoUserId?.let(::unlinkQuietly)

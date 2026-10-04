@@ -37,11 +37,13 @@ object HotThemeSelector {
 
         return when {
             change.signum() > 0 &&
+                theme.weightedChange?.let { it.signum() > 0 } == true &&
                 majority(theme.upCount, theme.pricedCount) &&
                 broader(theme.upCount, theme.pricedCount, market.upCount, market.pricedCount) &&
                 theme.changeLower?.subtract(median)?.let { it >= MIN_EXCESS } == true -> HotSide.UP
 
             change.signum() < 0 &&
+                theme.weightedChange?.let { it.signum() < 0 } == true &&
                 majority(theme.downCount, theme.pricedCount) &&
                 broader(theme.downCount, theme.pricedCount, market.downCount, market.pricedCount) &&
                 theme.changeUpper?.subtract(median)?.let { it <= MIN_EXCESS.negate() } == true -> HotSide.DOWN

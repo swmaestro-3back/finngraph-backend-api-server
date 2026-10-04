@@ -29,6 +29,9 @@ object FavoriteSeed {
             (9302, '2026-07-31', 95, 95, 95, 95, 1000, 95000, 'TEST');
         INSERT INTO stock_valuations_daily (listing_id, trade_date, market_cap) VALUES
             (9301, '2026-07-31', 3000000), (9302, '2026-07-31', 1500000);
+        INSERT INTO theme_candles_daily (theme_id, trade_date, open, high, low, close, volume, trade_value, source) VALUES
+            (9301, '2026-07-30', 1000, 1000, 1000, 1000, 0, NULL, 'TEST'),
+            (9301, '2026-07-31', 1100, 1100, 1100, 1100, 0, NULL, 'TEST');
         INSERT INTO companies (id, name, ticker, is_listed, country) VALUES
             (9301, '관심시드1', '$ACTIVE_TICKER', true, 'KR'),
             (9302, '관심시드2', '$ACTIVE_TICKER_2', true, 'KR');

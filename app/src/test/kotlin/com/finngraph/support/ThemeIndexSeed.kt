@@ -10,6 +10,7 @@ object ThemeIndexSeed {
 
     fun seed() = execute(
         """
+        DELETE FROM theme_candles_daily WHERE theme_id BETWEEN 9201 AND 9299;
         INSERT INTO theme_candles_daily (theme_id, trade_date, open, high, low, close, volume, trade_value, source) VALUES
             ($INDEXED_THEME, '2025-07-30', 800, 800, 800, 800, 10, 100, 'TEST'),
             ($INDEXED_THEME, '2025-09-15', 1300, 1300, 1300, 1300, 10, 100, 'TEST'),

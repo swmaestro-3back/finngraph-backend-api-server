@@ -61,7 +61,7 @@ object BriefingRules {
             BriefingTheme(
                 id = theme.id,
                 name = theme.name,
-                change = theme.change,
+                change = theme.weightedChange,
                 hotSide = requireNotNull(theme.hotSide).name,
                 stockCount = theme.stockCount,
                 pricedCount = theme.pricedCount,

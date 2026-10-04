@@ -209,7 +209,13 @@ class FavoriteApiTest {
         put("/api/v1/me/favorites/STOCK/${FavoriteSeed.ACTIVE_TICKER}", token)
         val userId = countFavoritesOwner()
 
-        assertEquals(HttpStatus.NO_CONTENT, delete("/api/v1/me", token).statusCode)
+        val withdrawn = rest.exchange(
+            "/api/v1/me/withdrawal",
+            HttpMethod.POST,
+            HttpEntity(mapOf("password" to AuthFixtures.DEFAULT_PASSWORD), bearer(token)),
+            Map::class.java,
+        )
+        assertEquals(HttpStatus.NO_CONTENT, withdrawn.statusCode)
         assertEquals(0, countFavorites(userId))
     }
 

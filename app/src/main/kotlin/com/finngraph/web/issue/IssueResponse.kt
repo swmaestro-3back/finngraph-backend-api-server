@@ -5,6 +5,8 @@ import com.finngraph.composition.issue.IssueCompany
 import com.finngraph.composition.issue.IssueDetail
 import com.finngraph.composition.issue.IssuePage
 import com.finngraph.composition.issue.IssueSummary
+import com.finngraph.composition.issue.IssueTimeline
+import com.finngraph.composition.issue.IssueTimelineNode
 import com.finngraph.composition.issue.LatestStockIssue
 import com.finngraph.composition.issue.StockIssue
 import com.finngraph.composition.issue.ThemeIssueBoard
@@ -207,6 +209,52 @@ data class LatestStockIssueResponse(
 ) {
     companion object {
         fun from(latest: LatestStockIssue) = LatestStockIssueResponse(latest.ticker, latest.issue?.let(StockIssueResponse::from))
+    }
+}
+
+data class IssueTimelineResponse(
+    @Schema(description = "요청 이슈 id")
+    val issueId: Long,
+    @Schema(description = "요청 이슈 쪽부터 부모를 따라 과거로")
+    val nodes: List<IssueTimelineNodeResponse>,
+) {
+    companion object {
+        fun from(timeline: IssueTimeline) = IssueTimelineResponse(
+            issueId = timeline.issueId,
+            nodes = timeline.nodes.map(IssueTimelineNodeResponse::from),
+        )
+    }
+}
+
+data class IssueTimelineNodeResponse(
+    @Schema(description = "노드 대표 이슈 id. 같은 사건으로 합친 이슈 중 편입 기사 수(original_size)가 가장 많은 이슈")
+    val issueId: Long,
+    @Schema(description = "대표 이슈의 클러스터 제목")
+    val title: String,
+    @Schema(description = "대표 공개 기사 요약 핵심 포인트의 CHANGE 문장 → 요약 첫 문장. 대표 이슈에 둘 다 없으면 대표를 고르는 순서대로 합친 다른 이슈에서 찾는다. 모두 없으면 null")
+    val summary: String?,
+    @Schema(description = "firstPublishedAt의 KST 날짜. firstPublishedAt이 null이면 null", example = "2026-10-01")
+    val date: LocalDate?,
+    @Schema(description = "합친 이슈 전체의 공개 기사 보도 시각 최솟값. 보도 시각이 있는 공개 기사가 없으면 null")
+    val firstPublishedAt: OffsetDateTime?,
+    @Schema(description = "합친 이슈 전체의 공개 기사 보도 시각 최댓값. 보도 시각이 있는 공개 기사가 없으면 null")
+    val lastPublishedAt: OffsetDateTime?,
+    @Schema(description = "요청 이슈가 이 노드에 들어 있는지")
+    val current: Boolean,
+    @Schema(description = "이 노드로 합친 이슈 id 전부(대표 포함). 사슬 밖에서 같은 사건으로 갈라진 이슈도 든다. 클러스터 첫 기사 시각 최신순")
+    val mergedIssueIds: List<Long>,
+) {
+    companion object {
+        fun from(node: IssueTimelineNode) = IssueTimelineNodeResponse(
+            issueId = node.issueId,
+            title = node.title,
+            summary = node.summary,
+            date = node.date,
+            firstPublishedAt = node.firstPublishedAt,
+            lastPublishedAt = node.lastPublishedAt,
+            current = node.current,
+            mergedIssueIds = node.mergedIssueIds,
+        )
     }
 }
 

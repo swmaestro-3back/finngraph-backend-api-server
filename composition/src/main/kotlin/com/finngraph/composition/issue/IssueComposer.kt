@@ -110,6 +110,47 @@ class IssueComposer(
         return ThemeIssueBoard(day, themes)
     }
 
+    fun timeline(id: Long, limit: Int): IssueTimeline? {
+        val chain = issues.findChain(id, TIMELINE_MAX_DEPTH)
+        val groups = IssueRules.timelineGroups(chain)
+        val trees = issues.findSameEventTrees(groups.map { it.last().clusterId }, TIMELINE_MAX_DEPTH)
+        val events = IssueRules.timelineEvents(groups, trees)
+        val ids = events.flatten().map { it.clusterId }
+        val articles = issues.findArticles(ids)
+        if (articles[id].isNullOrEmpty()) return null
+
+        // 노드는 제목(클러스터 제목)이 붙고 공개 기사가 있는 이슈만이다. 못 되는 칸은 건너뛰되 사슬은 끝까지 따라간다.
+        val titled = summaries(issues.findByIds(ids), articles)
+            .filter { it.titleSource == IssueTitleSource.CLUSTER }
+            .associateBy { it.id }
+        val nodes = events
+            .map { event -> event.mapNotNull { link -> titled[link.clusterId]?.let { TimelineMember(it, link.originalSize) } } }
+            .filter { it.isNotEmpty() }
+            .take(limit)
+
+        val points = issues.findChangePoints(nodes.flatten().map { it.issue.representativeNewsId })
+        return IssueTimeline(id, nodes.map { timelineNode(id, it, points) })
+    }
+
+    // 제목은 대표 이슈의 것을 쓰고, 요약은 대표 순서대로 처음 나오는 것을 쓴다. 같은 사건이라 다른 이슈의 요약도 맞고,
+    // 대표 이슈의 대표 기사가 아직 공개 전이면 요약 없는 가장 이른 공개 기사로 대신해 요약이 비는 일이 잦기 때문이다.
+    private fun timelineNode(id: Long, node: List<TimelineMember>, points: Map<Long, String>): IssueTimelineNode {
+        val byLead = IssueRules.timelineLeadOrder(node)
+        val lead = byLead.first().issue
+        val members = node.map { it.issue }
+        val first = members.mapNotNull { it.firstPublishedAt }.minOrNull()
+        return IssueTimelineNode(
+            issueId = lead.id,
+            title = requireNotNull(lead.title),
+            summary = byLead.firstNotNullOfOrNull { points[it.issue.representativeNewsId] ?: IssueRules.firstSentence(it.issue.summary) },
+            date = first?.let(IssueRules::kstDate),
+            firstPublishedAt = first,
+            lastPublishedAt = members.mapNotNull { it.lastPublishedAt }.maxOrNull(),
+            current = members.any { it.id == id },
+            mergedIssueIds = members.map { it.id },
+        )
+    }
+
     private fun latestDay(): LocalDate? = issues.findLatestPublishedAt()?.let(IssueRules::kstDate)
 
     private fun stockIssues(picks: List<IssueMention>): Map<IssueMention, StockIssue> {
@@ -189,5 +230,7 @@ class IssueComposer(
     companion object {
         const val LIST_COMPANY_LIMIT = 5
         const val THEME_ISSUE_LIMIT = 3
+        const val TIMELINE_MAX_LIMIT = 20
+        const val TIMELINE_MAX_DEPTH = 100
     }
 }

@@ -74,6 +74,33 @@ interface IssueApi {
     fun detail(@Parameter(description = "이슈 id(news_clusters.id)") @PathVariable id: Long): DataResponse<IssueDetailResponse>
 
     @Operation(
+        summary = "이슈 타임라인",
+        description = "요청 이슈에서 앞선 이슈(부모)를 따라 거슬러 올라간 같은 이야기의 사슬. 요청 이슈 쪽부터 과거 순이다. " +
+            "같은 이야기에서 후속(follow_up)으로 갈라진 다른 갈래는 넣지 않는다. 노드는 클러스터 제목이 있고 공개 기사가 있는 이슈만이며, " +
+            "못 되는 이슈는 건너뛰고 그 앞까지 이어 준다. 같은 사건(same_event)으로 이어진 이슈는 사슬 밖에서 갈라진 것까지 " +
+            "한 노드로 합쳐 사건의 어느 이슈를 요청해도 같은 노드가 나오고, 대표는 편입 기사 수(news_clusters.original_size)가 " +
+            "가장 많은 이슈다. 아직 연결 전인 이슈는 자기 하나만 나온다. limit은 합친 뒤 노드 수다",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공. 요청 이슈에 클러스터 제목이 없으면 그 노드는 빠진다"),
+        ApiResponse(
+            responseCode = "400",
+            description = "id가 양수가 아니거나 숫자가 아님, limit < 1, limit > 20",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "없는 이슈이거나 공개 기사가 0건",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/api/v1/issues/{id}/timeline")
+    fun timeline(
+        @Parameter(description = "이슈 id(news_clusters.id)") @PathVariable id: Long,
+        @Parameter(description = "노드 수 (최대 20)") @RequestParam(required = false, defaultValue = "10") limit: Int,
+    ): DataResponse<IssueTimelineResponse>
+
+    @Operation(
         summary = "종목이 나온 이슈",
         description = "그 종목을 언급한 공개 기사가 속한 이슈 중 from~to(KST, 양끝 포함)에 보도된 공개 기사가 1건 이상 있는 이슈. " +
             "언급 기사는 기간 밖이어도 된다. 항목은 이슈 목록 항목에 mentionCount(이 이슈에서 이 종목을 언급한 공개 기사 수)를 더한다. " +

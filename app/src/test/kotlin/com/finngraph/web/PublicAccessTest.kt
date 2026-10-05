@@ -154,6 +154,7 @@ class PublicAccessTest {
             "/api/v1/stocks/000000",
             "/api/v1/news/999999",
             "/api/v1/ipos/detail?ticker=000000",
+            "/api/v1/issues/999999/timeline",
         )
 
         private val SUB_RESOURCE_ENDPOINTS = listOf(

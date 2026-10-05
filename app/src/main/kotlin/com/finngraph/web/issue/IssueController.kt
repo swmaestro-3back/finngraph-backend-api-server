@@ -43,6 +43,19 @@ class IssueController(
         return DataResponse(IssueDetailResponse.from(found))
     }
 
+    override fun timeline(id: Long, limit: Int): DataResponse<IssueTimelineResponse> {
+        val errors = buildMap {
+            if (id <= 0) put("id", "must be positive")
+            if (limit !in 1..IssueComposer.TIMELINE_MAX_LIMIT) put("limit", "must be between 1 and ${IssueComposer.TIMELINE_MAX_LIMIT}")
+        }
+        if (errors.isNotEmpty()) {
+            throw InvalidParameterException("이슈 타임라인 파라미터가 올바르지 않습니다", errors)
+        }
+        val found = composer.timeline(id, limit)
+            ?: throw ResourceNotFoundException(ErrorCode.ISSUE_NOT_FOUND, "이슈를 찾을 수 없습니다: $id")
+        return DataResponse(IssueTimelineResponse.from(found))
+    }
+
     override fun stockIssues(ticker: String, from: String?, to: String?, page: Int, size: Int): PageResponse<StockIssueResponse> {
         val target = toTicker(ticker)
         val start = parseDate(from)

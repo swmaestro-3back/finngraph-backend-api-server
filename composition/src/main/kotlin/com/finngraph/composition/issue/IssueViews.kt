@@ -67,3 +67,25 @@ data class ThemeIssueBoard(
     val date: LocalDate?,
     val themes: List<ThemeIssues>,
 )
+
+data class IssueTimeline(
+    val issueId: Long,
+    val nodes: List<IssueTimelineNode>,
+)
+
+data class IssueTimelineNode(
+    val issueId: Long,
+    val title: String,
+    val summary: String?,
+    val date: LocalDate?,
+    val firstPublishedAt: OffsetDateTime?,
+    val lastPublishedAt: OffsetDateTime?,
+    val current: Boolean,
+    val mergedIssueIds: List<Long>,
+)
+
+// 타임라인 노드 후보. originalSize(편입 기사 수)는 같은 사건으로 합친 이슈 중 대표를 고를 때 쓴다.
+data class TimelineMember(
+    val issue: IssueSummary,
+    val originalSize: Int,
+)

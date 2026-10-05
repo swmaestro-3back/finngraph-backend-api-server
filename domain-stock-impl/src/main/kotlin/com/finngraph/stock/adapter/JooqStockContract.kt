@@ -41,6 +41,13 @@ class JooqStockContract(private val dsl: DSLContext) : StockContractPort {
             .orderBy(DISCLOSURES.END_DATE.asc(), DISCLOSURES.RCEPT_NO.desc())
             .fetch { it.toContract() }
 
+    override fun findByRceptNos(rceptNos: Collection<String>): List<SupplyContract> {
+        if (rceptNos.isEmpty()) return emptyList()
+        return selectContracts()
+            .where(DISCLOSURES.RCEPT_NO.`in`(rceptNos.distinct()))
+            .fetch { it.toContract() }
+    }
+
     private fun selectContracts() =
         dsl.select(
             DISCLOSURES.RCEPT_NO,

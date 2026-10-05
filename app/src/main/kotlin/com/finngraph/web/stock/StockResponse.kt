@@ -19,6 +19,7 @@ data class StockSummaryResponse(
     val market: String,
     val price: BigDecimal?,
     val change: BigDecimal?,
+    val changeAmount: BigDecimal?,
     val w1: BigDecimal?,
     val m1: BigDecimal?,
     val m3: BigDecimal?,
@@ -37,6 +38,7 @@ data class StockSummaryResponse(
             market = view.market,
             price = view.price,
             change = view.change,
+            changeAmount = view.changeAmount,
             w1 = view.w1,
             m1 = view.m1,
             m3 = view.m3,
@@ -81,6 +83,7 @@ data class StockDetailResponse(
     val market: String,
     val price: BigDecimal?,
     val change: BigDecimal?,
+    val changeAmount: BigDecimal?,
     val themeId: Long?,
     val themeName: String?,
     val marketCap: Long?,
@@ -105,6 +108,7 @@ data class StockDetailResponse(
             market = view.market,
             price = view.price,
             change = view.change,
+            changeAmount = view.changeAmount,
             themeId = primaryTheme?.id,
             themeName = primaryTheme?.name,
             marketCap = view.marketCap,
@@ -132,6 +136,7 @@ data class CandleResponse(
     val low: BigDecimal,
     val close: BigDecimal,
     val volume: Long,
+    val changeRate: BigDecimal?,
 ) {
     companion object {
         fun from(candle: Candle) = CandleResponse(
@@ -141,6 +146,7 @@ data class CandleResponse(
             low = candle.low,
             close = candle.close,
             volume = candle.volume,
+            changeRate = candle.changeRate,
         )
     }
 }

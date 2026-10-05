@@ -22,6 +22,7 @@ data class StockObservation(
     val tradeValue: Long?,
     val prevDate: LocalDate?,
     val prevClose: BigDecimal?,
+    val basePrice: BigDecimal?,
     val marketCap: Long?,
     val r1w: BigDecimal?,
     val r1m: BigDecimal?,
@@ -36,11 +37,11 @@ data class StockObservation(
     fun dailyChange(prevTradingDate: LocalDate?): DailyChange {
         if (close == null) return DailyChange(ChangeStatus.NO_CANDLE, null)
         if (tradingSuspended || volume == null || volume <= 0) return DailyChange(ChangeStatus.SUSPENDED, null)
-        if (prevTradingDate == null || prevDate != prevTradingDate) return DailyChange(ChangeStatus.NO_PREV, null)
-        if (prevClose == null || prevClose.signum() == 0) return DailyChange(ChangeStatus.NO_PREV, null)
-        val change = close.subtract(prevClose)
+        val base = basePrice ?: prevClose.takeIf { prevTradingDate != null && prevDate == prevTradingDate }
+        if (base == null || base.signum() == 0) return DailyChange(ChangeStatus.NO_PREV, null)
+        val change = close.subtract(base)
             .multiply(HUNDRED)
-            .divide(prevClose, ThemeMetrics.VALUE_SCALE, RoundingMode.HALF_UP)
+            .divide(base, ThemeMetrics.VALUE_SCALE, RoundingMode.HALF_UP)
         return DailyChange(ChangeStatus.PRICED, change)
     }
 

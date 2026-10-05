@@ -65,7 +65,11 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                 Database()
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
-                    .withIncludes("news|news_companies|news_clusters|relation_sources|companies")
+                    // 컬럼에도 필터를 걸어 news_clusters.embedding(pgvector)을 뺀다. 백엔드는 읽지 않는데,
+                    // 남겨두면 jOOQ가 타입을 몰라 Any? 필드가 되고 selectFrom 이 1024차원 벡터까지 끌어온다.
+                    .withIncludeExcludeColumns(true)
+                    .withIncludes("(news|news_companies|news_clusters|relation_sources|companies)(\\.\\w+)?")
+                    .withExcludes("news_clusters\\.embedding")
                     .withOutputSchemaToDefault(true),
             )
             .withGenerate(

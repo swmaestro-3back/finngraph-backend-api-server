@@ -5,7 +5,9 @@ import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.DailyCandleCount
 import com.finngraph.stock.model.PriceCalendar
 import org.jooq.DSLContext
+import org.jooq.Field
 import org.jooq.impl.DSL
+import java.math.BigDecimal
 import java.time.LocalDate
 
 internal data class PriceDates(val price: LocalDate?, val valuation: LocalDate?)
@@ -13,6 +15,20 @@ internal data class PriceDates(val price: LocalDate?, val valuation: LocalDate?)
 internal object StockPricing {
 
     private const val CANDLE_WINDOW_DAYS = 60L
+    private const val CHANGE_SCALE = 4
+
+    private val HUNDRED: BigDecimal = BigDecimal("100")
+
+    fun dailyChange(close: Field<BigDecimal?>, basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> {
+        val base = changeBase(basePrice, prevClose)
+        return DSL.round(close.minus(base).div(base).times(HUNDRED), CHANGE_SCALE)
+    }
+
+    fun dailyChangeAmount(close: Field<BigDecimal?>, basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
+        close.minus(changeBase(basePrice, prevClose))
+
+    private fun changeBase(basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
+        DSL.nullif(DSL.coalesce(basePrice, prevClose), BigDecimal.ZERO)
 
     fun priceDate(dsl: DSLContext): LocalDate? {
         val latest = dsl.select(DSL.max(STOCK_CANDLES_DAILY.TRADE_DATE))

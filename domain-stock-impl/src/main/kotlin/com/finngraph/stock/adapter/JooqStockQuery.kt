@@ -128,6 +128,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             STOCKS.MARKET,
             PX_PRICE,
             PX_CHANGE,
+            PX_CHANGE_AMOUNT,
             STOCK_VALUATIONS_DAILY.MARKET_CAP,
             STOCK_VALUATIONS_DAILY.PER,
             STOCK_VALUATIONS_DAILY.PBR,
@@ -162,10 +163,8 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         return DSL.lateral(
             DSL.select(
                 lc.CLOSE.`as`(PRICE),
-                DSL.round(
-                    lc.CLOSE.minus(PREV_CLOSE_FIELD).div(DSL.nullif(PREV_CLOSE_FIELD, BigDecimal.ZERO)).times(HUNDRED),
-                    DERIVED_SCALE,
-                ).`as`(CHANGE),
+                StockPricing.dailyChange(lc.CLOSE, lc.BASE_PRICE, PREV_CLOSE_FIELD).`as`(CHANGE),
+                StockPricing.dailyChangeAmount(lc.CLOSE, lc.BASE_PRICE, PREV_CLOSE_FIELD).`as`(CHANGE_AMOUNT),
             )
                 .from(lc)
                 .leftJoin(prev).on(DSL.trueCondition())
@@ -265,6 +264,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
+        changeAmount = get(PX_CHANGE_AMOUNT),
         w1 = get(STOCK_VALUATIONS_DAILY.R_1W),
         m1 = get(STOCK_VALUATIONS_DAILY.R_1M),
         m3 = get(STOCK_VALUATIONS_DAILY.R_3M),
@@ -286,6 +286,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
+        changeAmount = get(PX_CHANGE_AMOUNT),
         marketCap = get(STOCK_VALUATIONS_DAILY.MARKET_CAP),
         per = get(STOCK_VALUATIONS_DAILY.PER),
         pbr = get(STOCK_VALUATIONS_DAILY.PBR),
@@ -322,6 +323,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val PX = "px"
         private const val PRICE = "price"
         private const val CHANGE = "change"
+        private const val CHANGE_AMOUNT = "change_amount"
         private const val PREV_CLOSE = "prev_close"
         private const val COMPANY_ID_SOURCE = "cid"
         private const val FOREIGN_RATIO = "foreign_ratio"
@@ -338,6 +340,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
         private val PX_PRICE: Field<BigDecimal?> = DSL.field(DSL.name(PX, PRICE), SQLDataType.NUMERIC)
         private val PX_CHANGE: Field<BigDecimal?> = DSL.field(DSL.name(PX, CHANGE), SQLDataType.NUMERIC)
+        private val PX_CHANGE_AMOUNT: Field<BigDecimal?> = DSL.field(DSL.name(PX, CHANGE_AMOUNT), SQLDataType.NUMERIC)
 
         private val FISCAL_YEAR: Field<String?> = COMPANY_FINANCIALS.FISCAL_YYMM.substring(1, 4)
 

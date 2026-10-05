@@ -127,6 +127,13 @@ class TradingCalendarTest {
     }
 
     @Test
+    fun `통합 장전 수집처럼 30퍼센트 종목만 당일 봉이 있으면 가격 기준일은 전일에 머문다`() {
+        val recent = (1L..20L).map { CandleDayCount(base.minusDays(it), 2650) } + CandleDayCount(base, 795)
+
+        assertEquals(base.minusDays(1), TradingCalendar.priceDate(recent))
+    }
+
+    @Test
     fun `밸류에이션이 가격 기준일보다 늦으면 확정 기준은 밸류에이션 기준일로 다시 잡는다`() {
         val closedAt = OffsetDateTime.parse("2026-09-17T18:40:00+09:00")
         val counts = listOf(

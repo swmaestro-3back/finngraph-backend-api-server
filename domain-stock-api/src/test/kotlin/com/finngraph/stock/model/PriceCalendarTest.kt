@@ -45,4 +45,11 @@ class PriceCalendarTest {
     fun `캔들이 없으면 가격 기준일도 없다`() {
         assertNull(PriceCalendar.priceDate(emptyList()))
     }
+
+    @Test
+    fun `통합 장전 수집처럼 30퍼센트 종목만 당일 봉이 있으면 가격 기준일은 전일에 머문다`() {
+        val recent = (1L..20L).map { DailyCandleCount(base.minusDays(it), 2650) } + DailyCandleCount(base, 795)
+
+        assertEquals(base.minusDays(1), PriceCalendar.priceDate(recent))
+    }
 }

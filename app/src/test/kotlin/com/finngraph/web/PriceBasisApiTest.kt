@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import java.time.LocalDate
+import kotlin.math.roundToInt
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -97,6 +98,20 @@ class PriceBasisApiTest {
     }
 
     @Test
+    fun `통합 장전 수집처럼 30퍼센트 종목만 당일 봉이 있으면 종목과 테마 가격 기준일은 전일에 머문다`() {
+        val candled = HotThemeSeed.STOCKS.filter { it.kind != HotThemeSeed.Kind.NO_CANDLE }
+        val early = candled.take((candled.size * EARLY_SHARE).roundToInt()).map { it.id }
+        IntradaySeed.load(early)
+
+        assertEquals(HotThemeSeed.BASE_DATE, data("/api/v1/themes/market")["baseDate"])
+        assertEquals(HotThemeSeed.BASE_DATE, data("/api/v1/themes/${HotThemeSeed.SURGE_THEME}")["baseDate"])
+        val stock = data("/api/v1/stocks/909101")
+        assertEquals(HotThemeSeed.BASE_DATE, stock["baseDate"])
+        assertEquals(103.0, stock.number("price"))
+        assertEquals(HotThemeSeed.BASE_DATE, list("/api/v1/stocks/909101/candles?period=D").last()["date"])
+    }
+
+    @Test
     fun `ETL 핫테마는 장중 가격 기준일로 화면 핫테마와 같은 테마를 발행한다`() {
         IntradaySeed.load(risers = HotThemeSeed.STOCKS.filter { it.theme == HotThemeSeed.FALL_THEME }.map { it.id })
 
@@ -144,6 +159,7 @@ class PriceBasisApiTest {
 
     companion object {
         private const val HOT_COUNT = 30
+        private const val EARLY_SHARE = 0.3
 
         @JvmStatic
         @BeforeAll

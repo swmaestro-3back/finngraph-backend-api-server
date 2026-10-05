@@ -29,9 +29,9 @@ object StockCalendarSeed {
         UPDATE stock_candles_daily SET open = 9900, close = 9900 WHERE stock_id = 9611 AND trade_date BETWEEN '2027-03-25' AND '2027-03-31';
         UPDATE stock_candles_daily SET open = 9950 WHERE stock_id = 9611 AND trade_date = '2027-03-25';
         UPDATE stock_candles_daily SET close = 11000 WHERE stock_id = 9612 AND trade_date = '2027-02-15';
-        UPDATE stock_candles_daily SET open = 10300, change_rate = -3.8462 WHERE stock_id = 9612 AND trade_date = '2027-02-16';
+        UPDATE stock_candles_daily SET open = 10300, base_price = 10400 WHERE stock_id = 9612 AND trade_date = '2027-02-16';
         UPDATE stock_candles_daily SET close = 20000 WHERE stock_id = 9613 AND trade_date = '2027-02-01';
-        UPDATE stock_candles_daily SET change_rate = 0 WHERE stock_id = 9613 AND trade_date = '2027-02-02';
+        UPDATE stock_candles_daily SET base_price = 10000 WHERE stock_id = 9613 AND trade_date = '2027-02-02';
         UPDATE stock_candles_daily SET close = 11000 WHERE stock_id = 9613 AND trade_date = '2027-02-08';
         INSERT INTO stock_dividends (listing_id, record_date, divi_kind, dps, pay_date) VALUES
             (9611, '2027-03-31', '결산', 0, NULL),

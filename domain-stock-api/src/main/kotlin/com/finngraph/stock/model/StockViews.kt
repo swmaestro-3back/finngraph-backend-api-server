@@ -9,6 +9,9 @@ data class StockListView(
     val market: String,
     val price: BigDecimal?,
     val change: BigDecimal?,
+    val changeAmount: BigDecimal?,
+    val tradeValue: Long?,
+    val week52: Week52Range?,
     val w1: BigDecimal?,
     val m1: BigDecimal?,
     val m3: BigDecimal?,
@@ -25,6 +28,9 @@ data class StockDetailView(
     val market: String,
     val price: BigDecimal?,
     val change: BigDecimal?,
+    val changeAmount: BigDecimal?,
+    val tradeValue: Long?,
+    val week52: Week52Range?,
     val marketCap: Long?,
     val per: BigDecimal?,
     val pbr: BigDecimal?,
@@ -38,6 +44,19 @@ data class StockDetailView(
     val profile: CompanyProfile,
     val valuationDate: LocalDate? = baseDate,
 )
+
+data class Week52Range(
+    val high: BigDecimal,
+    val highDate: LocalDate,
+    val low: BigDecimal,
+    val lowDate: LocalDate,
+) {
+    companion object {
+        const val MONTHS = 12L
+
+        fun exclusiveStart(priceDate: LocalDate): LocalDate = priceDate.minusMonths(MONTHS)
+    }
+}
 
 data class CompanyDescription(
     val text: String,

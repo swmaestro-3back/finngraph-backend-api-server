@@ -48,6 +48,7 @@ object TestContainers {
         registry.add("spring.datasource.url") { etlPostgres.jdbcUrl }
         registry.add("spring.datasource.username") { etlPostgres.username }
         registry.add("spring.datasource.password") { etlPostgres.password }
+        registry.add("spring.datasource.maximum-pool-size") { ETL_POOL_SIZE }
         registry.add("app.datasource.url") { appPostgres.jdbcUrl }
         registry.add("app.datasource.username") { appPostgres.username }
         registry.add("app.datasource.password") { appPostgres.password }
@@ -80,4 +81,5 @@ object TestContainers {
         fileName.removePrefix("V").substringBefore("__").toInt()
 
     private const val REDIS_TIMEOUT = "2s"
+    private const val ETL_POOL_SIZE = 5
 }

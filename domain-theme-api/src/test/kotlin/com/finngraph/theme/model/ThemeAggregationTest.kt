@@ -74,6 +74,35 @@ class ThemeAggregationTest {
     }
 
     @Test
+    fun `기준가가 있으면 직전 종가 대신 기준가 대비 등락률이다`() {
+        val change = member(1, "106", prevClose = "105", basePrice = "100").stock.dailyChange(prev)
+
+        assertEquals(DailyChange(ChangeStatus.PRICED, BigDecimal("6.0000")), change)
+    }
+
+    @Test
+    fun `기준가가 있으면 직전 캔들이 전 거래일이 아니어도 등락률을 낸다`() {
+        val resumed = member(1, "102", prevDate = partial, basePrice = "100").stock.dailyChange(prev)
+        val listed = member(2, "102", prevDate = null, prevClose = null, basePrice = "100").stock.dailyChange(prev)
+
+        assertEquals(DailyChange(ChangeStatus.PRICED, BigDecimal("2.0000")), resumed)
+        assertEquals(DailyChange(ChangeStatus.PRICED, BigDecimal("2.0000")), listed)
+    }
+
+    @Test
+    fun `기준가가 0이면 직전 종가로 대체하지 않고 NO_PREV다`() {
+        val change = member(1, "102", basePrice = "0").stock.dailyChange(prev)
+
+        assertEquals(DailyChange(ChangeStatus.NO_PREV, null), change)
+    }
+
+    @Test
+    fun `기준가가 있어도 거래정지와 기준일 캔들 없음이 먼저다`() {
+        assertEquals(ChangeStatus.SUSPENDED, member(1, "100", suspended = true, volume = 0, basePrice = "90").stock.dailyChange(prev).status)
+        assertEquals(ChangeStatus.NO_CANDLE, member(2, null, basePrice = "90").stock.dailyChange(prev).status)
+    }
+
+    @Test
     fun `전 거래일이 없으면 모든 등락률이 null이다`() {
         val members = (1L..5L).map { member(it, "105") }
 
@@ -246,6 +275,7 @@ class ThemeAggregationTest {
         volume: Long = 1000,
         prevDate: LocalDate? = prev,
         prevClose: String? = "100",
+        basePrice: String? = null,
         cap: Long? = 1000 - id,
         r1w: String? = null,
         tradeValue: Long = 1000L,
@@ -267,6 +297,7 @@ class ThemeAggregationTest {
             tradeValue = if (close == null) null else tradeValue,
             prevDate = prevDate,
             prevClose = prevClose?.let(::BigDecimal),
+            basePrice = basePrice?.let(::BigDecimal),
             marketCap = cap,
             r1w = r1w?.let(::BigDecimal),
             r1m = null,

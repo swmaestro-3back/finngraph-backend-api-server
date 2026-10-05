@@ -27,6 +27,7 @@ data class ErrorBody(
 
 object ErrorCode {
     const val NEWS_NOT_FOUND = "NEWS_NOT_FOUND"
+    const val ISSUE_NOT_FOUND = "ISSUE_NOT_FOUND"
     const val THEME_NOT_FOUND = "THEME_NOT_FOUND"
     const val STOCK_NOT_FOUND = "STOCK_NOT_FOUND"
     const val BRIEFING_NOT_FOUND = "BRIEFING_NOT_FOUND"

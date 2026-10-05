@@ -12,6 +12,8 @@ data class NewsResponse(
     val title: String?,
     val summary: String?,
     val url: String?,
+    @Schema(description = "언론사 원문 링크. 없으면 null")
+    val originalUrl: String?,
     val publishedAt: OffsetDateTime?,
     val collectedAt: OffsetDateTime?,
     @Schema(description = "관계 추출 결과 true: 삼중항 있음, false: 삼중항 없음")
@@ -23,6 +25,7 @@ data class NewsResponse(
             title = view.title,
             summary = view.summary,
             url = view.url,
+            originalUrl = view.originalUrl,
             publishedAt = view.publishedAt,
             collectedAt = view.collectedAt,
             tripleExtracted = requireNotNull(view.tripleExtracted),

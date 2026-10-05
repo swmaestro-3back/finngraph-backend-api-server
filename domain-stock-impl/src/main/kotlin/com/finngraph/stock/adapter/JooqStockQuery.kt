@@ -14,6 +14,7 @@ import com.finngraph.stock.model.StockFlags
 import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.StockPriceView
 import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.model.Week52Range
 import com.finngraph.stock.port.StockQueryPort
 import org.jooq.Condition
 import org.jooq.DSLContext
@@ -41,14 +42,19 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
                 .where(STOCKS.TICKER.eq(ticker.value).and(STOCKS.IS_ACTIVE.eq(true))),
         )
 
-    override fun findAll(): List<StockListView> =
-        fetchStocks(ACTIVE, StockPricing.dates(dsl)).map { it.toListView() }
+    override fun findAll(): List<StockListView> {
+        val dates = StockPricing.dates(dsl)
+        val ranges = week52Ranges(dates.price, DSL.noCondition())
+        return fetchStocks(ACTIVE, dates).map { it.toListView(ranges[it.get(STOCKS.ID)]) }
+    }
 
     override fun findByTicker(ticker: Ticker): StockDetailView? {
         val filter: (Stocks) -> Condition = { s -> s.TICKER.eq(ticker.value).and(s.IS_ACTIVE.eq(true)) }
         val dates = StockPricing.dates(dsl)
         val row = fetchStocks(filter, dates).firstOrNull() ?: return null
-        return row.toDetailView(revenueYoY(filter), companyDescription(filter), companyProfile(filter), dates)
+        val stockId = requireNotNull(row.get(STOCKS.ID))
+        val week52 = week52Ranges(dates.price, STOCK_CANDLES_DAILY.STOCK_ID.eq(stockId))[stockId]
+        return row.toDetailView(revenueYoY(filter), companyDescription(filter), companyProfile(filter), dates, week52)
     }
 
     override fun findByTickers(tickers: List<Ticker>, asOf: LocalDate?): Map<Ticker, StockPriceView> {
@@ -123,11 +129,14 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
     private fun fetchStocks(filter: (Stocks) -> Condition, dates: PriceDates): List<Record> =
         dsl.select(
+            STOCKS.ID,
             STOCKS.TICKER,
             STOCKS.NAME,
             STOCKS.MARKET,
             PX_PRICE,
             PX_CHANGE,
+            PX_CHANGE_AMOUNT,
+            PX_TRADE_VALUE,
             STOCK_VALUATIONS_DAILY.MARKET_CAP,
             STOCK_VALUATIONS_DAILY.PER,
             STOCK_VALUATIONS_DAILY.PBR,
@@ -162,16 +171,42 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         return DSL.lateral(
             DSL.select(
                 lc.CLOSE.`as`(PRICE),
-                DSL.round(
-                    lc.CLOSE.minus(PREV_CLOSE_FIELD).div(DSL.nullif(PREV_CLOSE_FIELD, BigDecimal.ZERO)).times(HUNDRED),
-                    DERIVED_SCALE,
-                ).`as`(CHANGE),
+                StockPricing.dailyChange(lc.CLOSE, lc.BASE_PRICE, PREV_CLOSE_FIELD).`as`(CHANGE),
+                StockPricing.dailyChangeAmount(lc.CLOSE, lc.BASE_PRICE, PREV_CLOSE_FIELD).`as`(CHANGE_AMOUNT),
+                lc.TRADE_VALUE.`as`(TRADE_VALUE),
             )
                 .from(lc)
                 .leftJoin(prev).on(DSL.trueCondition())
                 .where(lc.STOCK_ID.eq(STOCKS.ID).and(lc.TRADE_DATE.eq(dateValue(priceDate))))
                 .asTable(PX),
         )
+    }
+
+    private fun week52Ranges(priceDate: LocalDate?, candleScope: Condition): Map<Long, Week52Range> {
+        if (priceDate == null) return emptyMap()
+        val close = STOCK_CANDLES_DAILY.CLOSE
+        val epochDay = DSL.localDateDiff(STOCK_CANDLES_DAILY.TRADE_DATE, DSL.inline(LocalDate.EPOCH)).cast(SQLDataType.NUMERIC)
+        val highestThenEarliest = DSL.max(DSL.array(close, epochDay.neg()))
+        val lowestThenEarliest = DSL.min(DSL.array(close, epochDay))
+        return dsl.select(STOCK_CANDLES_DAILY.STOCK_ID, highestThenEarliest, lowestThenEarliest)
+            .from(STOCK_CANDLES_DAILY)
+            .where(
+                STOCK_CANDLES_DAILY.TRADE_DATE.gt(DSL.inline(Week52Range.exclusiveStart(priceDate)))
+                    .and(STOCK_CANDLES_DAILY.TRADE_DATE.le(DSL.inline(priceDate)))
+                    .and(candleScope),
+            )
+            .groupBy(STOCK_CANDLES_DAILY.STOCK_ID)
+            .fetch { record ->
+                val high = requireNotNull(record.get(highestThenEarliest))
+                val low = requireNotNull(record.get(lowestThenEarliest))
+                requireNotNull(record.get(STOCK_CANDLES_DAILY.STOCK_ID)) to Week52Range(
+                    high = requireNotNull(high[0]),
+                    highDate = LocalDate.ofEpochDay(requireNotNull(high[1]).negate().longValueExact()),
+                    low = requireNotNull(low[0]),
+                    lowDate = LocalDate.ofEpochDay(requireNotNull(low[1]).longValueExact()),
+                )
+            }
+            .toMap()
     }
 
     private fun foreignRatio(priceDate: LocalDate?): Field<BigDecimal?> = DSL.field(
@@ -259,12 +294,15 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             .divide(BigDecimal.valueOf(abs(previous)), DERIVED_SCALE, RoundingMode.HALF_UP)
     }
 
-    private fun Record.toListView() = StockListView(
+    private fun Record.toListView(week52: Week52Range?) = StockListView(
         ticker = requireNotNull(get(STOCKS.TICKER)),
         name = requireNotNull(get(STOCKS.NAME)),
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
+        changeAmount = get(PX_CHANGE_AMOUNT),
+        tradeValue = get(PX_TRADE_VALUE),
+        week52 = week52,
         w1 = get(STOCK_VALUATIONS_DAILY.R_1W),
         m1 = get(STOCK_VALUATIONS_DAILY.R_1M),
         m3 = get(STOCK_VALUATIONS_DAILY.R_3M),
@@ -280,12 +318,16 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         description: CompanyDescription?,
         profile: CompanyProfile,
         dates: PriceDates,
+        week52: Week52Range?,
     ) = StockDetailView(
         ticker = requireNotNull(get(STOCKS.TICKER)),
         name = requireNotNull(get(STOCKS.NAME)),
         market = requireNotNull(get(STOCKS.MARKET)),
         price = get(PX_PRICE),
         change = get(PX_CHANGE),
+        changeAmount = get(PX_CHANGE_AMOUNT),
+        tradeValue = get(PX_TRADE_VALUE),
+        week52 = week52,
         marketCap = get(STOCK_VALUATIONS_DAILY.MARKET_CAP),
         per = get(STOCK_VALUATIONS_DAILY.PER),
         pbr = get(STOCK_VALUATIONS_DAILY.PBR),
@@ -322,6 +364,8 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val PX = "px"
         private const val PRICE = "price"
         private const val CHANGE = "change"
+        private const val CHANGE_AMOUNT = "change_amount"
+        private const val TRADE_VALUE = "trade_value"
         private const val PREV_CLOSE = "prev_close"
         private const val COMPANY_ID_SOURCE = "cid"
         private const val FOREIGN_RATIO = "foreign_ratio"
@@ -338,6 +382,8 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
         private val PX_PRICE: Field<BigDecimal?> = DSL.field(DSL.name(PX, PRICE), SQLDataType.NUMERIC)
         private val PX_CHANGE: Field<BigDecimal?> = DSL.field(DSL.name(PX, CHANGE), SQLDataType.NUMERIC)
+        private val PX_CHANGE_AMOUNT: Field<BigDecimal?> = DSL.field(DSL.name(PX, CHANGE_AMOUNT), SQLDataType.NUMERIC)
+        private val PX_TRADE_VALUE: Field<Long?> = DSL.field(DSL.name(PX, TRADE_VALUE), SQLDataType.BIGINT)
 
         private val FISCAL_YEAR: Field<String?> = COMPANY_FINANCIALS.FISCAL_YYMM.substring(1, 4)
 

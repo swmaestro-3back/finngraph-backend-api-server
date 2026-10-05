@@ -11,4 +11,6 @@ interface ThemeStockPort {
     fun findStocks(ids: List<ThemeId>, basis: PricingBasis): Map<ThemeId, List<ThemeStockView>>
 
     fun findTickers(id: ThemeId): List<String>
+
+    fun findTickers(ids: List<ThemeId>): Map<ThemeId, List<String>>
 }

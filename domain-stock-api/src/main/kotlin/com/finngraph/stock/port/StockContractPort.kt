@@ -10,4 +10,5 @@ interface StockContractPort {
     fun findLatestReceiptDate(): LocalDate?
     fun findReceivedSince(from: LocalDate): List<SupplyContract>
     fun findEndingBetween(from: LocalDate, to: LocalDate): List<SupplyContract>
+    fun findByRceptNos(rceptNos: Collection<String>): List<SupplyContract>
 }

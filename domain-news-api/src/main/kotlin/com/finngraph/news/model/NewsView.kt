@@ -7,6 +7,7 @@ data class NewsView(
     val title: String?,
     val summary: String?,
     val url: String?,
+    val originalUrl: String?,
     val publishedAt: OffsetDateTime?,
     val collectedAt: OffsetDateTime?,
     val tripleExtracted: Boolean?,

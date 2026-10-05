@@ -23,3 +23,9 @@ data class IssueNeighbors(
     val latestBefore: OffsetDateTime?,
     val earliestFrom: OffsetDateTime?,
 )
+
+data class IssueMention(
+    val ticker: String,
+    val clusterId: Long,
+    val lastPublishedAt: OffsetDateTime?,
+)

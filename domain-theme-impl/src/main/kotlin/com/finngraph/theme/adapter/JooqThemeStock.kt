@@ -42,12 +42,19 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
         }
     }
 
-    override fun findTickers(id: ThemeId): List<String> =
-        dsl.select(STOCKS.TICKER)
+    override fun findTickers(id: ThemeId): List<String> = findTickers(listOf(id))[id].orEmpty()
+
+    override fun findTickers(ids: List<ThemeId>): Map<ThemeId, List<String>> {
+        if (ids.isEmpty()) return emptyMap()
+        val values = ids.map { it.value }.distinct()
+        val found = dsl.select(THEMES.ID, STOCKS.TICKER)
             .from(THEMES)
             .join(THEME_STOCKS).on(THEME_STOCKS.THEME_ID.eq(THEMES.ID))
             .join(STOCKS).on(STOCKS.ID.eq(THEME_STOCKS.STOCK_ID))
-            .where(THEMES.ID.eq(id.value).and(STOCKS.IS_ACTIVE.eq(true)))
-            .orderBy(STOCKS.TICKER.asc())
-            .fetch { requireNotNull(it.get(STOCKS.TICKER)) }
+            .where(THEMES.ID.`in`(values).and(STOCKS.IS_ACTIVE.eq(true)))
+            .orderBy(THEMES.ID.asc(), STOCKS.TICKER.asc())
+            .fetch()
+            .groupBy({ requireNotNull(it.get(THEMES.ID)) }, { requireNotNull(it.get(STOCKS.TICKER)) })
+        return values.associate { ThemeId(it) to found[it].orEmpty() }
+    }
 }

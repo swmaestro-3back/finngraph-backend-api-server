@@ -1,6 +1,7 @@
 package com.finngraph.composition.issue
 
 import com.finngraph.news.model.IssueArticle
+import com.finngraph.news.model.IssueMention
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -13,11 +14,16 @@ data class IssueTitle(val text: String?, val source: IssueTitleSource)
 
 data class DayWindow(val start: OffsetDateTime, val end: OffsetDateTime)
 
+data class DateRange(val from: LocalDate, val to: LocalDate)
+
 data class PublishedSpan(val first: OffsetDateTime?, val last: OffsetDateTime?)
 
 object IssueRules {
 
     val KST: ZoneOffset = ZoneOffset.ofHours(9)
+
+    const val STOCK_RANGE_DAYS = 365L
+    const val LATEST_RANGE_DAYS = 30L
 
     private val HOST = Regex("^[A-Za-z][A-Za-z0-9+.-]*://(?:[^/?#@]*@)?([^/?#:]+)")
     private const val WWW = "www."
@@ -25,18 +31,29 @@ object IssueRules {
     private val EARLIEST: Comparator<IssueArticle> =
         compareBy<IssueArticle, OffsetDateTime?>(nullsLast()) { it.publishedAt }.thenBy { it.id }
 
+    private fun <T> latestFirst(lastPublishedAt: (T) -> OffsetDateTime?, id: (T) -> Long): Comparator<T> =
+        compareBy(nullsLast(reverseOrder()), lastPublishedAt).thenByDescending(id)
+
+    private val BY_RECENT: Comparator<IssueSummary> = latestFirst({ it.lastPublishedAt }, { it.id })
+
     private val BY_MEDIA: Comparator<IssueSummary> =
         compareByDescending<IssueSummary> { it.mediaCount }
             .thenByDescending { it.articleCount }
-            .thenBy(nullsLast(reverseOrder())) { it.lastPublishedAt }
-            .thenByDescending { it.id }
+            .then(BY_RECENT)
 
-    private val BY_RECENT: Comparator<IssueSummary> =
-        compareBy<IssueSummary, OffsetDateTime?>(nullsLast(reverseOrder())) { it.lastPublishedAt }
-            .thenByDescending { it.id }
+    private val MENTION_BY_RECENT: Comparator<IssueMention> = latestFirst({ it.lastPublishedAt }, { it.clusterId })
 
-    fun dayWindow(date: LocalDate): DayWindow =
-        DayWindow(date.atStartOfDay().atOffset(KST), date.plusDays(1).atStartOfDay().atOffset(KST))
+    fun dayWindow(date: LocalDate): DayWindow = window(DateRange(date, date))
+
+    fun window(range: DateRange): DayWindow =
+        DayWindow(range.from.atStartOfDay().atOffset(KST), range.to.plusDays(1).atStartOfDay().atOffset(KST))
+
+    fun stockRange(from: LocalDate?, to: LocalDate?, today: LocalDate): DateRange {
+        val end = to ?: today
+        return DateRange(from ?: end.minusDays(STOCK_RANGE_DAYS), end)
+    }
+
+    fun latestRange(today: LocalDate): DateRange = DateRange(today.minusDays(LATEST_RANGE_DAYS), today)
 
     fun kstDate(at: OffsetDateTime): LocalDate = at.atZoneSameInstant(KST).toLocalDate()
 
@@ -79,4 +96,6 @@ object IssueRules {
         IssueSort.MEDIA -> BY_MEDIA
         IssueSort.RECENT -> BY_RECENT
     }
+
+    fun mentionOrder(): Comparator<IssueMention> = MENTION_BY_RECENT
 }

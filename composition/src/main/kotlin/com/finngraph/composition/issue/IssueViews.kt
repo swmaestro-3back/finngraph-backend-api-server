@@ -45,3 +45,25 @@ data class IssuePage(
     val nextDate: LocalDate?,
     val result: PageResult<IssueSummary>,
 )
+
+data class StockIssue(
+    val issue: IssueSummary,
+    val mentionCount: Int,
+)
+
+data class LatestStockIssue(
+    val ticker: String,
+    val issue: StockIssue?,
+)
+
+data class ThemeIssues(
+    val themeId: Long,
+    val issueCount: Int,
+    val issueIds: List<Long>,
+    val issues: List<IssueSummary>,
+)
+
+data class ThemeIssueBoard(
+    val date: LocalDate?,
+    val themes: List<ThemeIssues>,
+)

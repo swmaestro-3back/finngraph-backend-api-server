@@ -144,6 +144,8 @@ class PublicAccessTest {
             "/api/v1/briefings",
             "/api/v1/calendar?from=2026-10-01&to=2026-10-31",
             "/api/v1/ipos",
+            "/api/v1/stocks/issues/latest?tickers=000000",
+            "/api/v1/themes/issues?ids=999999",
         )
 
         private val PRIMARY_DETAIL_ENDPOINTS = listOf(
@@ -166,6 +168,7 @@ class PublicAccessTest {
             "/api/v1/stocks/000000/contracts",
             "/api/v1/stocks/000000/dividends",
             "/api/v1/stocks/000000/calendar?from=2026-10-01&to=2026-10-31",
+            "/api/v1/stocks/000000/issues",
             "/api/v1/news/999999/companies",
         )
 

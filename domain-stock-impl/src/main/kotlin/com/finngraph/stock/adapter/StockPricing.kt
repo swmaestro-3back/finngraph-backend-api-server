@@ -27,6 +27,11 @@ internal object StockPricing {
     fun dailyChangeAmount(close: Field<BigDecimal?>, basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
         close.minus(changeBase(basePrice, prevClose))
 
+    fun periodChange(close: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> {
+        val base = DSL.nullif(prevClose, BigDecimal.ZERO)
+        return DSL.round(close.minus(base).div(base).times(HUNDRED), CHANGE_SCALE)
+    }
+
     private fun changeBase(basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
         DSL.nullif(DSL.coalesce(basePrice, prevClose), BigDecimal.ZERO)
 

@@ -39,11 +39,11 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
     }
 
     override fun findPageByTicker(ticker: String, page: Int, size: Int): PageResult<NewsView> =
-        fetchPage(NEWS.ID.`in`(companyNewsIds(listOf(ticker))).and(PROCESSED), page, size)
+        fetchPage(NEWS.ID.`in`(companyNewsIds(listOf(ticker))), page, size)
 
     override fun findPageByCompanyTickers(tickers: List<String>, page: Int, size: Int): PageResult<NewsView> {
         if (tickers.isEmpty()) return PageResult(emptyList(), page, size, 0)
-        return fetchPage(NEWS.ID.`in`(companyNewsIds(tickers)).and(PROCESSED), page, size)
+        return fetchPage(NEWS.ID.`in`(companyNewsIds(tickers)), page, size)
     }
 
     private fun fetchPage(condition: Condition, page: Int, size: Int): PageResult<NewsView> {

@@ -78,12 +78,13 @@ class StockIssueApiTest {
     }
 
     @Test
-    fun `공개 기사가 언급한 종목만 세고 비공개 기사 언급은 이슈도 언급 수도 늘리지 않는다`() {
+    fun `관계가 나온 기사가 있는 이슈는 다른 기사 언급도 세고 그런 기사가 없는 이슈는 언급돼도 뺀다`() {
         val items = fetch("/api/v1/stocks/${IssueMentionSeed.TICKER_A}/issues?from=${day(400)}").items()
             .associateBy { it.long("id") }
 
+        assertTrue(IssueMentionSeed.UNEXTRACTED !in items)
         assertTrue(IssueMentionSeed.HIDDEN_MENTION !in items)
-        assertEquals(1, items.getValue(IssueMentionSeed.RECENT)["mentionCount"])
+        assertEquals(2, items.getValue(IssueMentionSeed.RECENT)["mentionCount"])
         assertEquals(2, items.getValue(IssueMentionSeed.MIDDLE)["mentionCount"])
         assertEquals(2, items.getValue(IssueMentionSeed.MIDDLE)["articleCount"])
         assertEquals("${day(3)}T10:00:00+09:00", items.getValue(IssueMentionSeed.MIDDLE)["lastPublishedAt"])
@@ -98,13 +99,13 @@ class StockIssueApiTest {
 
         assertEquals(listItem, stockItem - "mentionCount")
         assertEquals("가상 최근 이슈", stockItem["title"])
-        assertEquals(2, stockItem["articleCount"])
-        assertEquals(2, stockItem["mediaCount"])
-        assertEquals("${day(0)}T08:00:00+09:00", stockItem["lastPublishedAt"])
+        assertEquals(3, stockItem["articleCount"])
+        assertEquals(3, stockItem["mediaCount"])
+        assertEquals("${day(0)}T09:00:00+09:00", stockItem["lastPublishedAt"])
         assertEquals(
             listOf(
+                mapOf("ticker" to IssueMentionSeed.TICKER_A, "name" to "가상종목1", "mentionCount" to 2),
                 mapOf("ticker" to IssueMentionSeed.TICKER_B, "name" to "가상종목2", "mentionCount" to 2),
-                mapOf("ticker" to IssueMentionSeed.TICKER_A, "name" to "가상종목1", "mentionCount" to 1),
             ),
             stockItem["companies"],
         )
@@ -181,7 +182,7 @@ class StockIssueApiTest {
         )
         val issues = data.associate { it["ticker"] to it["issue"] as Map<*, *>? }
         assertEquals(IssueMentionSeed.RECENT, issues.getValue(IssueMentionSeed.TICKER_A)!!.long("id"))
-        assertEquals(1, issues.getValue(IssueMentionSeed.TICKER_A)!!["mentionCount"])
+        assertEquals(2, issues.getValue(IssueMentionSeed.TICKER_A)!!["mentionCount"])
         assertEquals(IssueMentionSeed.RECENT, issues.getValue(IssueMentionSeed.TICKER_B)!!.long("id"))
         assertEquals(2, issues.getValue(IssueMentionSeed.TICKER_B)!!["mentionCount"])
         assertEquals(IssueMentionSeed.HIDDEN_MENTION, issues.getValue(IssueMentionSeed.TICKER_C)!!.long("id"))

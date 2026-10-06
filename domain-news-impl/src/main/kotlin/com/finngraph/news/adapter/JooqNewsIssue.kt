@@ -72,7 +72,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             NEWS.TRIPLE_EXTRACTED,
         )
             .from(NEWS)
-            .where(NEWS.CLUSTER_ID.`in`(clusterIds.distinct()).and(PUBLIC))
+            .where(NEWS.CLUSTER_ID.`in`(clusterIds.distinct()).and(CLUSTERED_PUBLIC))
             .orderBy(NEWS.PUBLISHED_AT.asc().nullsLast(), NEWS.ID.asc())
             .fetch {
                 IssueArticle(
@@ -82,7 +82,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                     url = it.get(NEWS.ORIGINALLINK) ?: it.get(NEWS.LINK),
                     publishedAt = it.get(NEWS.PUBLISHED_AT),
                     summary = it.get(NEWS.SUMMARY),
-                    tripleExtracted = requireNotNull(it.get(NEWS.TRIPLE_EXTRACTED)),
+                    tripleExtracted = it.get(NEWS.TRIPLE_EXTRACTED) == true,
                 )
             }
             .groupBy { it.clusterId }
@@ -108,7 +108,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
 
         return dsl.select(ticker, clusterId, lastPublishedAt)
             .from(mentions)
-            .join(NEWS).on(NEWS.CLUSTER_ID.eq(clusterId).and(PUBLIC))
+            .join(NEWS).on(NEWS.CLUSTER_ID.eq(clusterId))
             .groupBy(ticker, clusterId)
             .having(DSL.condition(DSL.boolOr(publishedInRange)))
             .fetch {
@@ -143,7 +143,13 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
 
         val PUBLIC: Condition = NEWS.TRIPLE_EXTRACTED.eq(true)
 
-        val CLUSTERED_PUBLIC: Condition = NEWS.CLUSTER_ID.isNotNull.and(PUBLIC)
+        val PUBLIC_NEWS = NEWS.`as`("public_news")
+
+        val CLUSTERED_PUBLIC: Condition = NEWS.CLUSTER_ID.`in`(
+            DSL.select(PUBLIC_NEWS.CLUSTER_ID)
+                .from(PUBLIC_NEWS)
+                .where(PUBLIC_NEWS.CLUSTER_ID.isNotNull.and(PUBLIC_NEWS.TRIPLE_EXTRACTED.eq(true))),
+        )
 
         val HAS_PUBLIC_ARTICLE: Condition = DSL.exists(
             DSL.selectOne()

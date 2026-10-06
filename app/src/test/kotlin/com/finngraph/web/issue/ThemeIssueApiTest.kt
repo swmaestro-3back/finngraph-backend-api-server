@@ -57,6 +57,7 @@ class ThemeIssueApiTest {
         assertEquals(IssueMentionSeed.CROWDED, crowded.long("id"))
         assertEquals(IssueMentionSeed.CROWD, (crowded["companies"] as List<*>).map { (it as Map<*, *>)["ticker"] })
         assertTrue(IssueMentionSeed.HIDDEN_THEME_MENTION !in main.ids("issueIds"))
+        assertTrue(IssueMentionSeed.UNEXTRACTED_THEME !in main.ids("issueIds"))
         assertTrue(IssueMentionSeed.PREV_DAY_ONLY !in main.ids("issueIds"))
         assertTrue(IssueMentionSeed.INACTIVE_THEME !in main.ids("issueIds"))
     }

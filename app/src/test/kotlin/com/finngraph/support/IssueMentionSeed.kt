@@ -19,6 +19,7 @@ object IssueMentionSeed {
     const val INACTIVE_ONLY = 407L
     const val EDGE_IN = 408L
     const val EDGE_OUT = 409L
+    const val UNEXTRACTED = 410L
 
     const val CROWDED = 411L
     const val TWO_MEDIA = 412L
@@ -29,6 +30,7 @@ object IssueMentionSeed {
     const val INACTIVE_THEME = 417L
     const val HIDDEN_THEME_MENTION = 418L
     const val PREV_DAY_ONLY = 419L
+    const val UNEXTRACTED_THEME = 420L
 
     const val TICKER_A = "975001"
     const val TICKER_B = "975002"
@@ -72,10 +74,11 @@ object IssueMentionSeed {
             """
             INSERT INTO news_clusters (id, title, keywords, member_count, original_size, first_published_at, last_published_at) VALUES
                 ($RECENT, '가상 최근 이슈', '{최근}', 3, 3, '${at(1, "09:00:00")}', '${at(0, "09:00:00")}'),
-                ($MIDDLE, '가상 중간 이슈', '{중간}', 3, 3, '${at(3, "09:00:00")}', '${at(1, "12:00:00")}'),
+                ($MIDDLE, '가상 중간 이슈', '{중간}', 2, 2, '${at(3, "09:00:00")}', '${at(3, "10:00:00")}'),
                 ($OLD, '가상 오래된 이슈', '{오래}', 1, 1, '${at(40, "09:00:00")}', '${at(40, "09:00:00")}'),
                 ($OUT_OF_RANGE, '가상 기간 밖 이슈', '{기간}', 1, 1, '${at(400, "09:00:00")}', '${at(400, "09:00:00")}'),
-                ($HIDDEN_MENTION, '가상 비공개 언급 이슈', '{비공개}', 2, 2, '${at(1, "10:00:00")}', '${at(1, "11:00:00")}'),
+                ($HIDDEN_MENTION, '가상 비공개 언급 이슈', '{비공개}', 1, 1, '${at(1, "10:00:00")}', '${at(1, "10:00:00")}'),
+                ($UNEXTRACTED, '가상 추출 전 이슈', '{추출전}', 2, 2, '${at(1, "11:00:00")}', '${at(1, "12:00:00")}'),
                 ($SPANNING, '가상 긴 이슈', '{긴}', 2, 2, '${at(400, "10:00:00")}', '${at(20, "09:00:00")}'),
                 ($INACTIVE_ONLY, '가상 비활성 이슈', '{비활성}', 1, 1, '${at(1, "13:00:00")}', '${at(1, "13:00:00")}'),
                 ($EDGE_IN, '가상 경계 안 이슈', '{경계}', 1, 1, '${at(30, "00:00:00")}', '${at(30, "00:00:00")}'),
@@ -87,7 +90,8 @@ object IssueMentionSeed {
                 ($SINGLE_LATE, '가상 늦은 단독 이슈', '{단독}', 1, 1, '$THEME_DAY 12:00:00+09', '$THEME_DAY 12:00:00+09'),
                 ($SECOND_THEME, '가상 둘째 테마 이슈', '{둘째}', 1, 1, '$THEME_DAY 11:00:00+09', '$THEME_DAY 11:00:00+09'),
                 ($INACTIVE_THEME, '가상 비활성 테마 이슈', '{비활성}', 1, 1, '$THEME_DAY 11:30:00+09', '$THEME_DAY 11:30:00+09'),
-                ($HIDDEN_THEME_MENTION, '가상 숨은 테마 언급', '{숨김}', 2, 2, '$THEME_DAY 14:00:00+09', '$THEME_DAY 15:00:00+09'),
+                ($HIDDEN_THEME_MENTION, '가상 숨은 테마 언급', '{숨김}', 1, 1, '$THEME_DAY 14:00:00+09', '$THEME_DAY 14:00:00+09'),
+                ($UNEXTRACTED_THEME, '가상 추출 전 테마 언급', '{추출전}', 1, 1, '$THEME_DAY 15:00:00+09', '$THEME_DAY 15:00:00+09'),
                 ($PREV_DAY_ONLY, '가상 전날 이슈', '{전날}', 1, 1, '$THEME_PREV_DAY 15:00:00+09', '$THEME_PREV_DAY 15:00:00+09');
 
             INSERT INTO news (id, title, summary, link, originallink, published_at, triple_extracted, cluster_id) VALUES
@@ -96,11 +100,11 @@ object IssueMentionSeed {
                 (9503, '최근 미처리 기사', NULL, 'https://seed.test/mention/9503', 'https://press-c.test/9503', '${at(0, "09:00:00")}', NULL, $RECENT),
                 (9511, '중간 첫 기사', '중간 첫 요약', 'https://seed.test/mention/9511', 'https://press-a.test/9511', '${at(3, "09:00:00")}', true, $MIDDLE),
                 (9512, '중간 둘째 기사', '중간 둘째 요약', 'https://seed.test/mention/9512', 'https://press-b.test/9512', '${at(3, "10:00:00")}', true, $MIDDLE),
-                (9513, '중간 삼중항 없음', NULL, 'https://seed.test/mention/9513', 'https://press-c.test/9513', '${at(1, "12:00:00")}', false, $MIDDLE),
+                (9513, '중간 삼중항 없음', NULL, 'https://seed.test/mention/9513', 'https://press-c.test/9513', '${at(1, "12:00:00")}', false, $UNEXTRACTED),
                 (9521, '오래된 기사', '오래된 요약', 'https://seed.test/mention/9521', 'https://press-a.test/9521', '${at(40, "09:00:00")}', true, $OLD),
                 (9531, '기간 밖 기사', '기간 밖 요약', 'https://seed.test/mention/9531', 'https://press-a.test/9531', '${at(400, "09:00:00")}', true, $OUT_OF_RANGE),
                 (9541, '비공개 언급 공개 기사', '공개 요약', 'https://seed.test/mention/9541', 'https://press-a.test/9541', '${at(1, "10:00:00")}', true, $HIDDEN_MENTION),
-                (9542, '비공개 언급 기사', NULL, 'https://seed.test/mention/9542', 'https://press-b.test/9542', '${at(1, "11:00:00")}', false, $HIDDEN_MENTION),
+                (9542, '비공개 언급 기사', NULL, 'https://seed.test/mention/9542', 'https://press-b.test/9542', '${at(1, "11:00:00")}', false, $UNEXTRACTED),
                 (9551, '긴 이슈 첫 기사', '긴 첫 요약', 'https://seed.test/mention/9551', 'https://press-a.test/9551', '${at(400, "10:00:00")}', true, $SPANNING),
                 (9552, '긴 이슈 최근 기사', '긴 최근 요약', 'https://seed.test/mention/9552', 'https://press-b.test/9552', '${at(20, "09:00:00")}', true, $SPANNING),
                 (9561, '비활성 기사', '비활성 요약', 'https://seed.test/mention/9561', 'https://press-a.test/9561', '${at(1, "13:00:00")}', true, $INACTIVE_ONLY),
@@ -119,7 +123,7 @@ object IssueMentionSeed {
                 (9661, '둘째 테마 기사', '둘째 테마 요약', 'https://seed.test/mention/9661', 'https://press-a.test/9661', '$THEME_DAY 11:00:00+09', true, $SECOND_THEME),
                 (9671, '비활성 테마 기사', '비활성 테마 요약', 'https://seed.test/mention/9671', 'https://press-a.test/9671', '$THEME_DAY 11:30:00+09', true, $INACTIVE_THEME),
                 (9681, '숨은 테마 공개 기사', '숨은 테마 요약', 'https://seed.test/mention/9681', 'https://press-a.test/9681', '$THEME_DAY 14:00:00+09', true, $HIDDEN_THEME_MENTION),
-                (9682, '숨은 테마 언급 기사', NULL, 'https://seed.test/mention/9682', 'https://press-b.test/9682', '$THEME_DAY 15:00:00+09', NULL, $HIDDEN_THEME_MENTION),
+                (9682, '숨은 테마 언급 기사', NULL, 'https://seed.test/mention/9682', 'https://press-b.test/9682', '$THEME_DAY 15:00:00+09', NULL, $UNEXTRACTED_THEME),
                 (9691, '전날 기사', '전날 요약', 'https://seed.test/mention/9691', 'https://press-a.test/9691', '$THEME_PREV_DAY 15:00:00+09', true, $PREV_DAY_ONLY);
 
             INSERT INTO news_companies (news_id, company_id) VALUES

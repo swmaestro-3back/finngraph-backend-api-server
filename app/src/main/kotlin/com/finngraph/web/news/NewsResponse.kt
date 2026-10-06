@@ -28,7 +28,7 @@ data class NewsResponse(
             originalUrl = view.originalUrl,
             publishedAt = view.publishedAt,
             collectedAt = view.collectedAt,
-            tripleExtracted = requireNotNull(view.tripleExtracted),
+            tripleExtracted = view.tripleExtracted == true,
         )
     }
 }

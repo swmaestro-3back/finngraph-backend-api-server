@@ -181,7 +181,7 @@ class FavoriteApiTest {
     }
 
     @Test
-    fun `F-10 관심종목 뉴스 피드는 처리된 뉴스만 종목 합집합으로 내려주고 미처리는 제외한다`() {
+    fun `F-10 관심종목 뉴스 피드는 추출 전 뉴스까지 종목 합집합으로 내려준다`() {
         val token = signup()
         put("/api/v1/me/favorites/STOCK/${FavoriteSeed.ACTIVE_TICKER}", token)
         put("/api/v1/me/favorites/STOCK/${FavoriteSeed.ACTIVE_TICKER_2}", token)
@@ -189,8 +189,8 @@ class FavoriteApiTest {
         val page = get("/api/v1/me/favorites/news", token)
         assertEquals(HttpStatus.OK, page.statusCode)
         val ids = page.pageData().map { (it["id"] as Number).toLong() }
-        assertEquals(setOf(9301L, 9302L, 9304L), ids.toSet())
-        assertEquals(3, (page.body!!["pagination"] as Map<*, *>)["totalElements"])
+        assertEquals(setOf(9301L, 9302L, 9303L, 9304L), ids.toSet())
+        assertEquals(4, (page.body!!["pagination"] as Map<*, *>)["totalElements"])
     }
 
     @Test

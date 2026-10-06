@@ -25,38 +25,62 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
 
         val rows = when (period) {
             CandlePeriod.D -> dailyCandles(stockId, priceDate, limit)
-
-            CandlePeriod.W, CandlePeriod.M -> dsl.select(
-                STOCK_CANDLES_PERIOD.BASE_DATE,
-                STOCK_CANDLES_PERIOD.OPEN,
-                STOCK_CANDLES_PERIOD.HIGH,
-                STOCK_CANDLES_PERIOD.LOW,
-                STOCK_CANDLES_PERIOD.CLOSE,
-                STOCK_CANDLES_PERIOD.VOLUME,
-                STOCK_CANDLES_PERIOD.TRADE_VALUE,
-            )
-                .from(STOCK_CANDLES_PERIOD)
-                .where(
-                    STOCK_CANDLES_PERIOD.STOCK_ID.eq(stockId)
-                        .and(STOCK_CANDLES_PERIOD.PERIOD.eq(period.name))
-                        .and(STOCK_CANDLES_PERIOD.BASE_DATE.le(priceDate)),
-                )
-                .orderBy(STOCK_CANDLES_PERIOD.BASE_DATE.desc())
-                .limit(limit)
-                .fetch { record ->
-                    Candle(
-                        date = requireNotNull(record.get(STOCK_CANDLES_PERIOD.BASE_DATE)),
-                        open = requireNotNull(record.get(STOCK_CANDLES_PERIOD.OPEN)),
-                        high = requireNotNull(record.get(STOCK_CANDLES_PERIOD.HIGH)),
-                        low = requireNotNull(record.get(STOCK_CANDLES_PERIOD.LOW)),
-                        close = requireNotNull(record.get(STOCK_CANDLES_PERIOD.CLOSE)),
-                        volume = requireNotNull(record.get(STOCK_CANDLES_PERIOD.VOLUME)),
-                        tradeValue = record.get(STOCK_CANDLES_PERIOD.TRADE_VALUE),
-                    )
-                }
+            CandlePeriod.W, CandlePeriod.M -> periodCandles(stockId, period, priceDate, limit)
         }
 
         return rows.reversed()
+    }
+
+    private fun periodCandles(
+        stockId: Select<out Record1<Long?>>,
+        period: CandlePeriod,
+        priceDate: LocalDate,
+        limit: Int,
+    ): List<Candle> {
+        val recent = dsl.select(
+            STOCK_CANDLES_PERIOD.BASE_DATE,
+            STOCK_CANDLES_PERIOD.OPEN,
+            STOCK_CANDLES_PERIOD.HIGH,
+            STOCK_CANDLES_PERIOD.LOW,
+            STOCK_CANDLES_PERIOD.CLOSE,
+            STOCK_CANDLES_PERIOD.VOLUME,
+            STOCK_CANDLES_PERIOD.TRADE_VALUE,
+        )
+            .from(STOCK_CANDLES_PERIOD)
+            .where(
+                STOCK_CANDLES_PERIOD.STOCK_ID.eq(stockId)
+                    .and(STOCK_CANDLES_PERIOD.PERIOD.eq(period.name))
+                    .and(STOCK_CANDLES_PERIOD.BASE_DATE.le(priceDate)),
+            )
+            .orderBy(STOCK_CANDLES_PERIOD.BASE_DATE.desc())
+            .limit(limit + 1)
+            .asTable(RECENT)
+
+        val date = recent.column(STOCK_CANDLES_PERIOD.BASE_DATE)
+        val open = recent.column(STOCK_CANDLES_PERIOD.OPEN)
+        val high = recent.column(STOCK_CANDLES_PERIOD.HIGH)
+        val low = recent.column(STOCK_CANDLES_PERIOD.LOW)
+        val close = recent.column(STOCK_CANDLES_PERIOD.CLOSE)
+        val volume = recent.column(STOCK_CANDLES_PERIOD.VOLUME)
+        val tradeValue = recent.column(STOCK_CANDLES_PERIOD.TRADE_VALUE)
+        val changeRate = StockPricing.periodChange(close, DSL.lag(close).over(DSL.orderBy(date))).`as`(CHANGE_RATE)
+
+        return dsl.select(date, open, high, low, close, volume, tradeValue, changeRate)
+            .from(recent)
+            .orderBy(date.desc())
+            .limit(limit)
+            .fetch { record ->
+                Candle(
+                    date = requireNotNull(record.get(date)),
+                    open = requireNotNull(record.get(open)),
+                    high = requireNotNull(record.get(high)),
+                    low = requireNotNull(record.get(low)),
+                    close = requireNotNull(record.get(close)),
+                    volume = requireNotNull(record.get(volume)),
+                    tradeValue = record.get(tradeValue),
+                    changeRate = record.get(changeRate),
+                )
+            }
     }
 
     private fun dailyCandles(stockId: Select<out Record1<Long?>>, priceDate: LocalDate, limit: Int): List<Candle> {

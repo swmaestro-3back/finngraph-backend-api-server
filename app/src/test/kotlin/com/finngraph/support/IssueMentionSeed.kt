@@ -152,6 +152,10 @@ object IssueMentionSeed {
                 (9682, 9511),
                 (9691, 9511);
 
+            UPDATE news_clusters c
+               SET representative_news_id = (SELECT min(n.id) FROM news n WHERE n.cluster_id = c.id)
+             WHERE c.id BETWEEN 400 AND 449 AND c.id NOT IN ($UNEXTRACTED, $UNEXTRACTED_THEME);
+
             INSERT INTO themes (id, name) VALUES
                 ($THEME_MAIN, '가상주력테마'),
                 ($THEME_SECOND, '가상둘째테마'),

@@ -30,6 +30,7 @@ object ErrorCode {
     const val ISSUE_NOT_FOUND = "ISSUE_NOT_FOUND"
     const val THEME_NOT_FOUND = "THEME_NOT_FOUND"
     const val STOCK_NOT_FOUND = "STOCK_NOT_FOUND"
+    const val STOCK_NOT_IN_THEME = "STOCK_NOT_IN_THEME"
     const val BRIEFING_NOT_FOUND = "BRIEFING_NOT_FOUND"
     const val IPO_NOT_FOUND = "IPO_NOT_FOUND"
     const val NOT_FOUND = "NOT_FOUND"

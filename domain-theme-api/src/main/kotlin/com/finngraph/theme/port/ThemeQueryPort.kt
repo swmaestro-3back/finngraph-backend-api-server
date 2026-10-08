@@ -17,6 +17,7 @@ interface ThemeQueryPort {
     fun findById(id: ThemeId): ThemeSummary?
     fun findByIds(ids: List<ThemeId>): Map<ThemeId, ThemeSummary>
     fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme>
+    fun findThemesByTicker(ticker: String): List<PrimaryTheme>
     fun marketStats(): MarketStats
     fun pricingBasis(): PricingBasis
 }

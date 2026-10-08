@@ -67,8 +67,21 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     override fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme> {
         if (tickers.isEmpty()) return emptyMap()
 
-        val values = tickers.distinct()
-        return dsl.select(STOCKS.TICKER, THEMES.ID, THEMES.NAME, THEME_CAP)
+        return memberships(tickers.distinct())
+            .groupBy { it.ticker }
+            .mapValues { (_, memberships) ->
+                val primary = memberships.sortedWith(PRIMARY_ORDER).first()
+                PrimaryTheme(primary.themeId, primary.themeName)
+            }
+    }
+
+    override fun findThemesByTicker(ticker: String): List<PrimaryTheme> =
+        memberships(listOf(ticker))
+            .sortedWith(PRIMARY_ORDER)
+            .map { PrimaryTheme(it.themeId, it.themeName) }
+
+    private fun memberships(values: List<String>): List<Membership> =
+        dsl.select(STOCKS.TICKER, THEMES.ID, THEMES.NAME, THEME_CAP)
             .from(STOCKS)
             .join(THEME_STOCKS).on(THEME_STOCKS.STOCK_ID.eq(STOCKS.ID))
             .join(THEMES).on(THEMES.ID.eq(THEME_STOCKS.THEME_ID))
@@ -82,12 +95,6 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
                     cap = it.get(THEME_CAP),
                 )
             }
-            .groupBy { it.ticker }
-            .mapValues { (_, memberships) ->
-                val primary = memberships.sortedWith(PRIMARY_ORDER).first()
-                PrimaryTheme(primary.themeId, primary.themeName)
-            }
-    }
 
     private fun board(themeFilter: Condition, basis: PricingBasis): ThemeBoard {
         val stocks = ThemeQuerySupport.activeStocks(dsl, basis)

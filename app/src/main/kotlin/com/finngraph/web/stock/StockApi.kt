@@ -192,4 +192,51 @@ interface StockApi {
     fun dividends(
         @Parameter(description = "종목코드") @PathVariable ticker: String,
     ): DataResponse<List<DividendReactionResponse>>
+
+    @Operation(
+        summary = "종목이 속한 테마",
+        description = "테마 시가총액이 큰 순. 첫 항목이 종목 상세의 대표 테마(primary). change 는 테마 목록과 같은 테마 등락률",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 가 공백이거나 20자를 초과",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 종목",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{ticker}/themes")
+    fun themes(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+    ): DataResponse<List<StockThemeResponse>>
+
+    @Operation(
+        summary = "테마 안에서의 순위와 중앙값",
+        description = "테마 활성 구성 종목 안에서 지표별 순위(RANK, 같은 값은 같은 순위)와 중앙값. " +
+            "등락률·시가총액·거래대금·ROE·배당수익률은 큰 값이 1위, PER·PBR 은 낮은 값이 1위이고 0 이하는 뺀다. " +
+            "값이 없는 종목은 순위·중앙값에서 빼고, 값이 있는 종목이 5개 미만이면 rank·median 은 null",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 검증 실패 또는 themeId 가 양수가 아님",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 종목·테마, 또는 그 테마에 속하지 않은 종목",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{ticker}/themes/{themeId}/compare")
+    fun themeCompare(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+        @Parameter(description = "테마 id") @PathVariable themeId: Long,
+    ): DataResponse<StockThemeCompareResponse>
 }

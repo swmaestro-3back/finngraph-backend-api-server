@@ -78,7 +78,7 @@ class StockIssueApiTest {
     }
 
     @Test
-    fun `관계가 나온 기사가 있는 이슈는 다른 기사 언급도 세고 그런 기사가 없는 이슈는 언급돼도 뺀다`() {
+    fun `이벤트가 된 이슈는 관계 추출 전 기사 언급도 세고 이벤트가 아닌 이슈는 언급돼도 뺀다`() {
         val items = fetch("/api/v1/stocks/${IssueMentionSeed.TICKER_A}/issues?from=${day(400)}").items()
             .associateBy { it.long("id") }
 

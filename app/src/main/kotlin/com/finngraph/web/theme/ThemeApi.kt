@@ -36,7 +36,7 @@ interface ThemeApi {
 
     @Operation(
         summary = "핫테마 상위",
-        description = "상승 ⌈N/2⌉ + 하락 ⌊N/2⌋, 신뢰구간 하한·상한이 시장 중앙값을 넘는 정도로 순위. 상승은 weightedChange > 0, 하락은 < 0인 테마만. 적재율 0.8 미만이면 빈 목록",
+        description = "상승 ⌈N/2⌉ + 하락 ⌊N/2⌋, change(절사평균) 크기로 순위. 신뢰구간 하한·상한이 시장 중앙값을 0.5%p 넘는 테마만 후보. 상승은 weightedChange > 0, 하락은 < 0인 테마만. 이미 뽑힌 같은 방향 테마와 구성 종목이 절반 넘게 겹치면(작은 쪽 기준) 건너뜀. 적재율 0.8 미만이면 빈 목록",
     )
     @ApiResponses(
         ApiResponse(responseCode = "200", description = "조회 성공"),

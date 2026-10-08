@@ -22,7 +22,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
     override fun findLatestPublishedAt(): OffsetDateTime? =
         dsl.select(DSL.max(NEWS.PUBLISHED_AT))
             .from(NEWS)
-            .where(CLUSTERED_PUBLIC)
+            .where(IN_VISIBLE)
             .fetchOne()
             ?.value1()
 
@@ -31,7 +31,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             NEWS_CLUSTERS.ID.`in`(
                 DSL.select(NEWS.CLUSTER_ID)
                     .from(NEWS)
-                    .where(CLUSTERED_PUBLIC.and(NEWS.PUBLISHED_AT.ge(from)).and(NEWS.PUBLISHED_AT.lt(until))),
+                    .where(IN_VISIBLE.and(NEWS.PUBLISHED_AT.ge(from)).and(NEWS.PUBLISHED_AT.lt(until))),
             ),
         )
 
@@ -39,23 +39,23 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         val latestBefore = DSL.field(
             DSL.select(DSL.max(NEWS.PUBLISHED_AT))
                 .from(NEWS)
-                .where(CLUSTERED_PUBLIC.and(NEWS.PUBLISHED_AT.lt(before))),
+                .where(IN_VISIBLE.and(NEWS.PUBLISHED_AT.lt(before))),
         )
         val earliestFrom = DSL.field(
             DSL.select(DSL.min(NEWS.PUBLISHED_AT))
                 .from(NEWS)
-                .where(CLUSTERED_PUBLIC.and(NEWS.PUBLISHED_AT.ge(from))),
+                .where(IN_VISIBLE.and(NEWS.PUBLISHED_AT.ge(from))),
         )
         val row = dsl.select(latestBefore, earliestFrom).fetchOne()
         return IssueNeighbors(latestBefore = row?.value1(), earliestFrom = row?.value2())
     }
 
     override fun findById(id: Long): IssueCluster? =
-        selectClusters(NEWS_CLUSTERS.ID.eq(id).and(HAS_PUBLIC_ARTICLE)).firstOrNull()
+        selectClusters(NEWS_CLUSTERS.ID.eq(id).and(VISIBLE)).firstOrNull()
 
     override fun findByIds(ids: List<Long>): List<IssueCluster> {
         if (ids.isEmpty()) return emptyList()
-        return selectClusters(NEWS_CLUSTERS.ID.`in`(ids.distinct()).and(HAS_PUBLIC_ARTICLE))
+        return selectClusters(NEWS_CLUSTERS.ID.`in`(ids.distinct()).and(VISIBLE))
     }
 
     override fun findArticles(clusterIds: List<Long>): Map<Long, List<IssueArticle>> {
@@ -72,7 +72,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             NEWS.TRIPLE_EXTRACTED,
         )
             .from(NEWS)
-            .where(NEWS.CLUSTER_ID.`in`(clusterIds.distinct()).and(CLUSTERED_PUBLIC))
+            .where(NEWS.CLUSTER_ID.`in`(clusterIds.distinct()).and(IN_VISIBLE))
             .orderBy(NEWS.PUBLISHED_AT.asc().nullsLast(), NEWS.ID.asc())
             .fetch {
                 IssueArticle(
@@ -99,7 +99,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             .from(NEWS)
             .join(NEWS_COMPANIES).on(NEWS_COMPANIES.NEWS_ID.eq(NEWS.ID))
             .join(COMPANIES).on(COMPANIES.ID.eq(NEWS_COMPANIES.COMPANY_ID))
-            .where(CLUSTERED_PUBLIC.and(COMPANIES.TICKER.`in`(tickers.distinct())))
+            .where(IN_VISIBLE.and(COMPANIES.TICKER.`in`(tickers.distinct())))
             .asTable(MENTIONS)
         val clusterId = requireNotNull(mentions.field(NEWS.CLUSTER_ID))
         val ticker = requireNotNull(mentions.field(COMPANIES.TICKER))
@@ -141,20 +141,28 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
     private companion object {
         const val MENTIONS = "mentions"
 
-        val PUBLIC: Condition = NEWS.TRIPLE_EXTRACTED.eq(true)
+        val EVENT_CLUSTERS = NEWS_CLUSTERS.`as`("event_clusters")
 
-        val PUBLIC_NEWS = NEWS.`as`("public_news")
+        val EXTRACTED_NEWS = NEWS.`as`("extracted_news")
 
-        val CLUSTERED_PUBLIC: Condition = NEWS.CLUSTER_ID.`in`(
-            DSL.select(PUBLIC_NEWS.CLUSTER_ID)
-                .from(PUBLIC_NEWS)
-                .where(PUBLIC_NEWS.CLUSTER_ID.isNotNull.and(PUBLIC_NEWS.TRIPLE_EXTRACTED.eq(true))),
-        )
+        val VISIBLE: Condition = NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID.isNotNull.and(NEWS_CLUSTERS.TITLE.isNotNull)
+            .or(
+                DSL.exists(
+                    DSL.selectOne()
+                        .from(EXTRACTED_NEWS)
+                        .where(EXTRACTED_NEWS.CLUSTER_ID.eq(NEWS_CLUSTERS.ID).and(EXTRACTED_NEWS.TRIPLE_EXTRACTED.eq(true))),
+                ),
+            )
 
-        val HAS_PUBLIC_ARTICLE: Condition = DSL.exists(
-            DSL.selectOne()
-                .from(NEWS)
-                .where(NEWS.CLUSTER_ID.eq(NEWS_CLUSTERS.ID).and(PUBLIC)),
+        val IN_VISIBLE: Condition = NEWS.CLUSTER_ID.`in`(
+            DSL.select(EVENT_CLUSTERS.ID)
+                .from(EVENT_CLUSTERS)
+                .where(EVENT_CLUSTERS.REPRESENTATIVE_NEWS_ID.isNotNull.and(EVENT_CLUSTERS.TITLE.isNotNull))
+                .union(
+                    DSL.select(EXTRACTED_NEWS.CLUSTER_ID)
+                        .from(EXTRACTED_NEWS)
+                        .where(EXTRACTED_NEWS.CLUSTER_ID.isNotNull.and(EXTRACTED_NEWS.TRIPLE_EXTRACTED.eq(true))),
+                ),
         )
     }
 }

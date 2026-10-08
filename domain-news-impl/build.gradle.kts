@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(project(":domain-news-api"))
     implementation("org.springframework.boot:spring-boot-starter-jooq")
+    implementation("tools.jackson.core:jackson-databind")
 
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")

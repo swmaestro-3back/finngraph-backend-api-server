@@ -106,6 +106,8 @@ data class IssueDetailResponse(
     val summary: String?,
     @Schema(description = "대표 공개 기사 id. 클러스터 대표 기사가 공개 기사가 아니면 가장 이른 공개 기사")
     val representativeNewsId: Long,
+    @Schema(description = "대표 기사 요약의 핵심 포인트(ETL 표시 순서 그대로, 보통 2~3개). kind 는 CHANGE·AFFECTED·SCALE·CAUSE·RIPPLE")
+    val summaryPoints: List<SummaryPointResponse>,
     @Schema(description = "공개 기사에 언급된 상장 종목 전부. mentionCount 내림차순")
     val companies: List<IssueCompanyResponse>,
     @Schema(description = "공개 기사 전부. publishedAt 오름차순")
@@ -124,6 +126,7 @@ data class IssueDetailResponse(
                 keywords = keywords,
                 summary = summary,
                 representativeNewsId = representativeNewsId,
+                summaryPoints = detail.summaryPoints.map { SummaryPointResponse(it.kind, it.text) },
                 companies = companies,
                 articles = detail.articles.map(IssueArticleResponse::from),
             )
@@ -245,3 +248,8 @@ data class ThemeIssuesResponse(
         )
     }
 }
+
+data class SummaryPointResponse(
+    val kind: String,
+    val text: String,
+)

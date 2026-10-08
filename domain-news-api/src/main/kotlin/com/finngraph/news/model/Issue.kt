@@ -16,7 +16,13 @@ data class IssueArticle(
     val url: String?,
     val publishedAt: OffsetDateTime?,
     val summary: String?,
+    val summaryPoints: List<SummaryPoint>,
     val tripleExtracted: Boolean,
+)
+
+data class SummaryPoint(
+    val kind: String,
+    val text: String,
 )
 
 data class IssueNeighbors(

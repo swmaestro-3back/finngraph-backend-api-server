@@ -69,6 +69,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             NEWS.ORIGINALLINK,
             NEWS.PUBLISHED_AT,
             NEWS.SUMMARY,
+            NEWS.SUMMARY_POINTS,
             NEWS.TRIPLE_EXTRACTED,
         )
             .from(NEWS)
@@ -82,6 +83,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                     url = it.get(NEWS.ORIGINALLINK) ?: it.get(NEWS.LINK),
                     publishedAt = it.get(NEWS.PUBLISHED_AT),
                     summary = it.get(NEWS.SUMMARY),
+                    summaryPoints = SummaryPointJson.parse(it.get(NEWS.SUMMARY_POINTS)?.data()),
                     tripleExtracted = it.get(NEWS.TRIPLE_EXTRACTED) == true,
                 )
             }

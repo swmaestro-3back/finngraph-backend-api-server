@@ -4,7 +4,7 @@ enum class CandleInterval { D, W, M }
 
 data class CandleQuery(val interval: CandleInterval, val limit: Int)
 
-private const val MAX_CANDLE_LIMIT = 500
+private const val MAX_CANDLE_LIMIT = 2500
 private const val DEFAULT_DAILY_LIMIT = 65
 private const val DEFAULT_WEEKLY_LIMIT = 52
 private const val DEFAULT_MONTHLY_LIMIT = 36

@@ -9,6 +9,8 @@ import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.CompanyDescription
 import com.finngraph.stock.model.CompanyProfile
+import com.finngraph.stock.model.PeerComparison
+import com.finngraph.stock.model.PeerMetric
 import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockFlags
 import com.finngraph.stock.model.StockListView
@@ -126,6 +128,94 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
             .fetch { Ticker(requireNotNull(it.value1())) to requireNotNull(it.value2()) }
             .toMap()
     }
+
+    override fun compareWithin(ticker: Ticker, peers: Collection<Ticker>): PeerComparison? {
+        val values = peers.map { it.value }.distinct()
+        val dates = StockPricing.dates(dsl)
+        val members = DSL.name(PEERS).`as`(
+            dsl.select(
+                STOCKS.TICKER.`as`(PEER_TICKER),
+                PX_CHANGE.`as`(PEER_CHANGE),
+                STOCK_VALUATIONS_DAILY.MARKET_CAP.`as`(PEER_MARKET_CAP),
+                PX_TRADE_VALUE.`as`(PEER_TRADE_VALUE),
+                positiveOnly(STOCK_VALUATIONS_DAILY.PER).`as`(PEER_PER),
+                positiveOnly(STOCK_VALUATIONS_DAILY.PBR).`as`(PEER_PBR),
+                ROE,
+                STOCK_VALUATIONS_DAILY.DIVIDEND_YIELD.`as`(PEER_DIVIDEND_YIELD),
+            )
+                .from(STOCKS)
+                .leftJoin(priceTable(dates.price)).on(DSL.trueCondition())
+                .leftJoin(STOCK_VALUATIONS_DAILY)
+                .on(STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID).and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(dateValue(dates.valuation))))
+                .where(STOCKS.TICKER.`in`(values).and(STOCKS.IS_ACTIVE.eq(true))),
+        )
+
+        val metrics = PEER_METRICS.map { PeerColumn(it, members.peerField(it.column)) }
+        val memberTicker = members.peerField(PEER_TICKER, String::class.java)
+        val ranked = DSL.select(
+            listOf(memberTicker, DSL.count().over().`as`(PEER_MEMBERS)) +
+                metrics.flatMap { (metric, field) ->
+                    val order = if (metric.ascending) field.asc().nullsLast() else field.desc().nullsLast()
+                    listOf(
+                        field,
+                        DSL.`when`(field.isNotNull, DSL.rank().over(DSL.orderBy(order))).`as`(metric.rank),
+                        DSL.count(field).over().`as`(metric.count),
+                    )
+                },
+        )
+            .from(members)
+            .asTable(RANKED)
+        val stats = DSL.select(
+            metrics.map { (metric, field) ->
+                DSL.round(DSL.percentileCont(MEDIAN).withinGroupOrderBy(field).cast(SQLDataType.NUMERIC), metric.scale)
+                    .`as`(metric.median)
+            },
+        )
+            .from(members)
+            .asTable(STATS)
+
+        val row = dsl.with(members)
+            .select(ranked.asterisk(), stats.asterisk())
+            .from(ranked)
+            .crossJoin(stats)
+            .where(requireNotNull(ranked.field(PEER_TICKER, String::class.java)).eq(ticker.value))
+            .fetchOne() ?: return null
+
+        fun metric(spec: PeerMetricSpec): PeerMetric<BigDecimal> {
+            val count = row.get(spec.count, Int::class.java) ?: 0
+            val enough = count >= MIN_PEERS
+            return PeerMetric(
+                value = row.get(spec.column, BigDecimal::class.java),
+                rank = if (enough) row.get(spec.rank, Int::class.java) else null,
+                count = count,
+                median = if (enough) row.get(spec.median, BigDecimal::class.java) else null,
+            )
+        }
+
+        fun PeerMetric<BigDecimal>.whole(): PeerMetric<Long> =
+            PeerMetric(value?.toLong(), rank, count, median?.setScale(0, RoundingMode.HALF_UP)?.toLong())
+
+        return PeerComparison(
+            memberCount = row.get(PEER_MEMBERS, Int::class.java) ?: 0,
+            baseDate = dates.price,
+            valuationDate = dates.valuation,
+            change = metric(CHANGE_SPEC),
+            marketCap = metric(MARKET_CAP_SPEC).whole(),
+            tradeValue = metric(TRADE_VALUE_SPEC).whole(),
+            per = metric(PER_SPEC),
+            pbr = metric(PBR_SPEC),
+            roe = metric(ROE_SPEC),
+            dividendYield = metric(DIVIDEND_YIELD_SPEC),
+        )
+    }
+
+    private fun positiveOnly(field: Field<BigDecimal?>): Field<BigDecimal?> =
+        DSL.`when`(field.gt(BigDecimal.ZERO), field)
+
+    private fun Table<*>.peerField(name: String): Field<BigDecimal?> = peerField(name, BigDecimal::class.java)
+
+    private fun <T> Table<*>.peerField(name: String, type: Class<T>): Field<T?> =
+        requireNotNull(field(name, type))
 
     private fun fetchStocks(filter: (Stocks) -> Condition, dates: PriceDates): List<Record> =
         dsl.select(
@@ -368,6 +458,39 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         private const val TRADE_VALUE = "trade_value"
         private const val PREV_CLOSE = "prev_close"
         private const val COMPANY_ID_SOURCE = "cid"
+        private const val PEERS = "peers"
+        private const val RANKED = "ranked"
+        private const val STATS = "stats"
+        private const val PEER_TICKER = "ticker"
+        private const val PEER_MEMBERS = "member_count"
+        private const val PEER_CHANGE = "change"
+        private const val PEER_MARKET_CAP = "market_cap"
+        private const val PEER_TRADE_VALUE = "trade_value"
+        private const val PEER_PER = "per"
+        private const val PEER_PBR = "pbr"
+        private const val PEER_ROE = "roe"
+        private const val PEER_DIVIDEND_YIELD = "dividend_yield"
+        private const val MEDIAN = 0.5
+        private const val MIN_PEERS = 5
+        private const val RATIO_SCALE = 4
+
+        private val CHANGE_SPEC = PeerMetricSpec(PEER_CHANGE, ascending = false, scale = RATIO_SCALE)
+        private val MARKET_CAP_SPEC = PeerMetricSpec(PEER_MARKET_CAP, ascending = false, scale = 0)
+        private val TRADE_VALUE_SPEC = PeerMetricSpec(PEER_TRADE_VALUE, ascending = false, scale = 0)
+        private val PER_SPEC = PeerMetricSpec(PEER_PER, ascending = true, scale = RATIO_SCALE)
+        private val PBR_SPEC = PeerMetricSpec(PEER_PBR, ascending = true, scale = RATIO_SCALE)
+        private val ROE_SPEC = PeerMetricSpec(PEER_ROE, ascending = false, scale = RATIO_SCALE)
+        private val DIVIDEND_YIELD_SPEC = PeerMetricSpec(PEER_DIVIDEND_YIELD, ascending = false, scale = RATIO_SCALE)
+
+        private val PEER_METRICS = listOf(
+            CHANGE_SPEC,
+            MARKET_CAP_SPEC,
+            TRADE_VALUE_SPEC,
+            PER_SPEC,
+            PBR_SPEC,
+            ROE_SPEC,
+            DIVIDEND_YIELD_SPEC,
+        )
         private const val FOREIGN_RATIO = "foreign_ratio"
 
         private val HUNDRED: BigDecimal = BigDecimal("100")
@@ -422,3 +545,11 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
         ).`as`("roe")
     }
 }
+
+private data class PeerMetricSpec(val column: String, val ascending: Boolean, val scale: Int) {
+    val rank = "${column}_rank"
+    val count = "${column}_count"
+    val median = "${column}_median"
+}
+
+private data class PeerColumn(val spec: PeerMetricSpec, val field: Field<BigDecimal?>)

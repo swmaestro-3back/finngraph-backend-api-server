@@ -13,6 +13,8 @@ import com.finngraph.stock.port.StockDividendPort
 import com.finngraph.stock.port.StockFinancialsPort
 import com.finngraph.stock.port.StockFlowPort
 import com.finngraph.stock.port.StockQueryPort
+import com.finngraph.theme.model.ThemeId
+import com.finngraph.theme.port.ThemeQueryPort
 import com.finngraph.web.common.CandleInterval
 import com.finngraph.web.common.DataResponse
 import com.finngraph.web.common.ErrorCode
@@ -35,6 +37,7 @@ class StockController(
     private val stockThemeComposer: StockThemeComposer,
     private val contractComposer: ContractComposer,
     private val newsQuery: NewsQueryPort,
+    private val themeQuery: ThemeQueryPort,
 ) : StockApi {
 
     override fun list(): DataResponse<List<StockSummaryResponse>> =
@@ -91,6 +94,33 @@ class StockController(
             stockCandle.findCandles(target, CandlePeriod.D, DIVIDEND_CANDLES),
         )
         return DataResponse(reactions.map(DividendReactionResponse::from))
+    }
+
+    override fun themes(ticker: String): DataResponse<List<StockThemeResponse>> {
+        val target = toTicker(ticker)
+        requireStock(target, ticker)
+        return DataResponse(stockThemeComposer.themesOf(target).map(StockThemeResponse::from))
+    }
+
+    override fun themeCompare(ticker: String, themeId: Long): DataResponse<StockThemeCompareResponse> {
+        val target = toTicker(ticker)
+        val theme = toThemeId(themeId)
+        requireStock(target, ticker)
+        if (!themeQuery.exists(theme)) {
+            throw ResourceNotFoundException(ErrorCode.THEME_NOT_FOUND, "테마를 찾을 수 없습니다: $themeId")
+        }
+        val found = stockThemeComposer.compareInTheme(target, theme)
+            ?: throw ResourceNotFoundException(ErrorCode.STOCK_NOT_IN_THEME, "테마에 속하지 않은 종목입니다: $ticker, $themeId")
+        return DataResponse(StockThemeCompareResponse.from(found))
+    }
+
+    private fun toThemeId(raw: Long): ThemeId = try {
+        ThemeId(raw)
+    } catch (e: IllegalArgumentException) {
+        throw InvalidParameterException(
+            e.message ?: "themeId가 올바르지 않습니다",
+            mapOf("themeId" to "must be positive"),
+        )
     }
 
     private fun toTicker(raw: String): Ticker {

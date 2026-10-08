@@ -120,6 +120,7 @@ class SecurityConfig {
             "/api/v1/themes",
             "/api/v1/themes/hot",
             "/api/v1/themes/market",
+            "/api/v1/themes/tickers",
             "/api/v1/themes/{id}",
             "/api/v1/themes/{id}/stocks",
             "/api/v1/themes/{id}/news",

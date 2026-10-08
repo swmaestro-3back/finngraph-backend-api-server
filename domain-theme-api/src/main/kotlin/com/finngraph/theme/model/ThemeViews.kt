@@ -71,6 +71,11 @@ data class PrimaryTheme(
     val name: String,
 )
 
+data class ThemeNameMatch(
+    val themes: List<PrimaryTheme>,
+    val tickers: List<String>,
+)
+
 data class ThemeStockView(
     val ticker: String,
     val name: String,

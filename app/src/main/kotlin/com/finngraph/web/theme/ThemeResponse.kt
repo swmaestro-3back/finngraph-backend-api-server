@@ -4,6 +4,7 @@ import com.finngraph.theme.model.MarketStats
 import com.finngraph.theme.model.ThemeIndexCandle
 import com.finngraph.theme.model.ThemeIndexSummary
 import com.finngraph.theme.model.ThemeLeader
+import com.finngraph.theme.model.ThemeNameMatch
 import com.finngraph.theme.model.ThemeStockView
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.ThemeTopStock
@@ -226,6 +227,25 @@ data class ThemeIndexResponse(
             low52w = summary.low52w,
             fromHigh52w = summary.fromHigh52w,
             streak = summary.streak,
+        )
+    }
+}
+
+data class ThemeRefResponse(
+    val id: Long,
+    val name: String,
+)
+
+data class ThemeTickersResponse(
+    val query: String,
+    val themes: List<ThemeRefResponse>,
+    val tickers: List<String>,
+) {
+    companion object {
+        fun from(query: String, match: ThemeNameMatch) = ThemeTickersResponse(
+            query = query,
+            themes = match.themes.map { ThemeRefResponse(it.id, it.name) },
+            tickers = match.tickers,
         )
     }
 }

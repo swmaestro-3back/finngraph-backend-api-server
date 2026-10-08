@@ -4,9 +4,11 @@ import com.finngraph.theme.adapter.jooq.tables.references.STOCKS
 import com.finngraph.theme.adapter.jooq.tables.references.THEMES
 import com.finngraph.theme.adapter.jooq.tables.references.THEME_STOCKS
 import com.finngraph.theme.model.PricingBasis
+import com.finngraph.theme.model.PrimaryTheme
 import com.finngraph.theme.model.ThemeAggregation
 import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeMember
+import com.finngraph.theme.model.ThemeNameMatch
 import com.finngraph.theme.model.ThemeStockView
 import com.finngraph.theme.port.ThemeStockPort
 import org.jooq.DSLContext
@@ -56,5 +58,17 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
             .fetch()
             .groupBy({ requireNotNull(it.get(THEMES.ID)) }, { requireNotNull(it.get(STOCKS.TICKER)) })
         return values.associate { ThemeId(it) to found[it].orEmpty() }
+    }
+
+    override fun findTickersByName(query: String): ThemeNameMatch {
+        val themes = dsl.select(THEMES.ID, THEMES.NAME)
+            .from(THEMES)
+            .where(THEMES.NAME.containsIgnoreCase(query))
+            .orderBy(THEMES.NAME.asc(), THEMES.ID.asc())
+            .fetch { PrimaryTheme(requireNotNull(it.value1()), requireNotNull(it.value2())) }
+        if (themes.isEmpty()) return ThemeNameMatch(emptyList(), emptyList())
+
+        val tickers = findTickers(themes.map { ThemeId(it.id) }).values.flatten().distinct().sorted()
+        return ThemeNameMatch(themes, tickers)
     }
 }

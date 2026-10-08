@@ -67,6 +67,23 @@ interface ThemeApi {
     fun market(): DataResponse<ThemeMarketResponse>
 
     @Operation(
+        summary = "이름에 검색어가 들어간 테마와 그 종목",
+        description = "테마 이름에 q 가 들어간(대소문자 무시) 테마 전부와, 그 테마들에 속한 활성 종목코드의 합집합. 종목 목록의 테마 검색 필터용",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "q 가 공백이거나 30자를 초과",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/tickers")
+    fun tickers(
+        @Parameter(description = "테마 이름 검색어") @RequestParam(required = false) q: String?,
+    ): DataResponse<ThemeTickersResponse>
+
+    @Operation(
         summary = "테마 단건",
     )
     @ApiResponses(

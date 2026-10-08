@@ -41,6 +41,17 @@ class ThemeController(
     override fun market(): DataResponse<ThemeMarketResponse> =
         DataResponse(ThemeMarketResponse.from(themeQuery.marketStats()))
 
+    override fun tickers(q: String?): DataResponse<ThemeTickersResponse> {
+        val query = q?.trim().orEmpty()
+        if (query.isEmpty() || query.length > MAX_QUERY_LENGTH) {
+            throw InvalidParameterException(
+                "q는 1자 이상 ${MAX_QUERY_LENGTH}자 이하여야 합니다",
+                mapOf("q" to "must be 1..$MAX_QUERY_LENGTH characters"),
+            )
+        }
+        return DataResponse(ThemeTickersResponse.from(query, themeStock.findTickersByName(query)))
+    }
+
     override fun detail(id: Long): DataResponse<ThemeSummaryResponse> {
         val target = toThemeId(id)
         val found = hotThemeComposer.detail(target) ?: throw notFound(id)
@@ -112,6 +123,7 @@ class ThemeController(
     )
 
     private companion object {
+        const val MAX_QUERY_LENGTH = 30
         val HOT_COUNTS = setOf(10, 20, 30)
     }
 }

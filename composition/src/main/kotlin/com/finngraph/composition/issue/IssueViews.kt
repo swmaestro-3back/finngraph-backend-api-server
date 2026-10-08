@@ -1,6 +1,7 @@
 package com.finngraph.composition.issue
 
 import com.finngraph.news.model.PageResult
+import com.finngraph.news.model.SummaryPoint
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -36,6 +37,7 @@ data class IssueArticleView(
 
 data class IssueDetail(
     val issue: IssueSummary,
+    val summaryPoints: List<SummaryPoint>,
     val articles: List<IssueArticleView>,
 )
 

@@ -51,8 +51,10 @@ class IssueComposer(
         val cluster = issues.findById(id) ?: return null
         val articles = issues.findArticles(listOf(id))[id]?.takeIf { it.isNotEmpty() } ?: return null
 
+        val issue = summarize(cluster, articles).copy(companies = mentions(articles).companies(articles, null))
         return IssueDetail(
-            issue = summarize(cluster, articles).copy(companies = mentions(articles).companies(articles, null)),
+            issue = issue,
+            summaryPoints = articles.firstOrNull { it.id == issue.representativeNewsId }?.summaryPoints.orEmpty(),
             articles = articles.map { it.toView() },
         )
     }

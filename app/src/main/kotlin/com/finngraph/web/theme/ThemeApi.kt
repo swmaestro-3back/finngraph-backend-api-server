@@ -159,7 +159,7 @@ interface ThemeApi {
         ApiResponse(responseCode = "200", description = "조회 성공. 지수가 없는 테마는 빈 배열"),
         ApiResponse(
             responseCode = "400",
-            description = "id 가 양수가 아님, period 가 D/W/M 이 아님, limit 이 1~500 범위 밖",
+            description = "id 가 양수가 아님, period 가 D/W/M 이 아님, limit 이 1~2500 범위 밖",
             content = [Content(schema = Schema(implementation = ErrorResponse::class))],
         ),
         ApiResponse(
@@ -174,7 +174,7 @@ interface ThemeApi {
         @Parameter(description = "캔들 주기 (D | W | M)")
         @RequestParam(required = false, defaultValue = "D")
         period: String,
-        @Parameter(description = "개수 (1~500). 미지정 시 D=65, W=52, M=36")
+        @Parameter(description = "개수 (1~2500). 미지정 시 D=65, W=52, M=36")
         @RequestParam(required = false)
         limit: Int?,
     ): DataResponse<List<ThemeIndexCandleResponse>>

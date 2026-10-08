@@ -131,7 +131,7 @@ class ThemeIndexApiTest {
 
     @Test
     fun `캔들 파라미터 검증은 종목 캔들과 같은 규칙과 응답을 쓴다`() {
-        listOf("period=X", "limit=0", "limit=501", "period=Y&limit=600").forEach { query ->
+        listOf("period=X", "limit=0", "limit=2501", "period=Y&limit=600").forEach { query ->
             val theme = get("/api/v1/themes/${ThemeIndexSeed.INDEXED_THEME}/candles?$query")
             val stock = get("/api/v1/stocks/000000/candles?$query")
 

@@ -47,6 +47,11 @@ class HotThemeComposer(
         )
     }
 
-    fun select(board: ThemeBoard, count: Int): List<ThemeSummary> =
-        HotThemeSelector.select(board.themes, board.market, count)
+    fun select(board: ThemeBoard, count: Int): List<ThemeSummary> {
+        val candidates = HotThemeSelector.candidates(board.themes, board.market)
+        if (candidates.isEmpty()) return emptyList()
+        val members = themeStock.findTickers(candidates.map { ThemeId(it.id) })
+            .mapKeys { (id, _) -> id.value }
+        return HotThemeSelector.select(board.themes, board.market, count, members)
+    }
 }

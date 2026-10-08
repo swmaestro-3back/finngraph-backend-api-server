@@ -9,20 +9,48 @@ object HotThemeSelector {
 
     const val MIN_PRICED_STOCKS = 5
     const val MIN_PRICED_PERCENT = 70
+    const val MAX_OVERLAP_PERCENT = 50
 
     val MIN_COVERAGE: BigDecimal = BigDecimal("0.8")
     val MIN_EXCESS: BigDecimal = BigDecimal("0.5")
 
-    fun select(themes: List<ThemeSummary>, market: MarketStats, count: Int): List<ThemeSummary> {
-        val annotated = annotate(themes, market)
-        val median = market.medianChange ?: return emptyList()
+    fun select(
+        themes: List<ThemeSummary>,
+        market: MarketStats,
+        count: Int,
+        members: Map<Long, Collection<String>> = emptyMap(),
+    ): List<ThemeSummary> {
+        val annotated = candidates(themes, market)
         val ups = annotated
             .filter { it.hotSide == HotSide.UP }
-            .sortedByDescending { requireNotNull(it.changeLower).subtract(median) }
+            .sortedByDescending { requireNotNull(it.change) }
         val downs = annotated
             .filter { it.hotSide == HotSide.DOWN }
-            .sortedBy { requireNotNull(it.changeUpper).subtract(median) }
-        return ups.take((count + 1) / 2) + downs.take(count / 2)
+            .sortedBy { requireNotNull(it.change) }
+        return withoutOverlap(ups, (count + 1) / 2, members) + withoutOverlap(downs, count / 2, members)
+    }
+
+    fun candidates(themes: List<ThemeSummary>, market: MarketStats): List<ThemeSummary> =
+        annotate(themes, market).filter { it.hotSide != null }
+
+    fun overlaps(a: Set<String>, b: Set<String>): Boolean {
+        val smaller = minOf(a.size, b.size)
+        if (smaller == 0) return false
+        return a.count { it in b } * 100 > smaller * MAX_OVERLAP_PERCENT
+    }
+
+    private fun withoutOverlap(
+        ranked: List<ThemeSummary>,
+        quota: Int,
+        members: Map<Long, Collection<String>>,
+    ): List<ThemeSummary> {
+        val picked = mutableListOf<Pair<ThemeSummary, Set<String>>>()
+        for (theme in ranked) {
+            if (picked.size >= quota) break
+            val stocks = members[theme.id].orEmpty().toSet()
+            if (picked.none { (_, taken) -> overlaps(taken, stocks) }) picked += theme to stocks
+        }
+        return picked.map { it.first }
     }
 
     fun annotate(themes: List<ThemeSummary>, market: MarketStats): List<ThemeSummary> =

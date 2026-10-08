@@ -2,6 +2,7 @@ package com.finngraph.theme.port
 
 import com.finngraph.theme.model.PricingBasis
 import com.finngraph.theme.model.ThemeId
+import com.finngraph.theme.model.ThemeNameMatch
 import com.finngraph.theme.model.ThemeStockView
 
 interface ThemeStockPort {
@@ -13,4 +14,6 @@ interface ThemeStockPort {
     fun findTickers(id: ThemeId): List<String>
 
     fun findTickers(ids: List<ThemeId>): Map<ThemeId, List<String>>
+
+    fun findTickersByName(query: String): ThemeNameMatch
 }

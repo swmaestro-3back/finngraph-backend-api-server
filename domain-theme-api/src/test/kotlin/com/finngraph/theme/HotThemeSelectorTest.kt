@@ -13,7 +13,7 @@ class HotThemeSelectorTest {
     private val market = market(priced = 100, up = 60, down = 35, median = "0.5", coverage = "0.95")
 
     @Test
-    fun `상승은 하한 초과분 내림차순 하락은 상한 초과분 오름차순으로 뽑는다`() {
+    fun `상승은 등락률 내림차순 하락은 등락률 오름차순으로 뽑는다`() {
         val themes = listOf(
             summary("완만상승", "1.5", lower = "1.1", upper = "1.9"),
             summary("급등", "5.0", lower = "3.0", upper = "7.0"),
@@ -135,7 +135,7 @@ class HotThemeSelectorTest {
     fun `동률이면 입력 순서를 유지한다`() {
         val themes = listOf(
             summary("먼저", "2.0", lower = "1.0", upper = "3.0"),
-            summary("나중", "3.0", lower = "1.0", upper = "5.0"),
+            summary("나중", "2.0", lower = "1.5", upper = "2.5"),
             summary("하락", "-2.0", lower = "-3.0", upper = "-1.0"),
         )
 

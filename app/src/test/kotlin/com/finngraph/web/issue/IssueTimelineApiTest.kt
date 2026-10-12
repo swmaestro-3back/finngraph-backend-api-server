@@ -29,15 +29,19 @@ class IssueTimelineApiTest {
     lateinit var mapper: ObjectMapper
 
     @Test
-    fun `부모를 따라 요청 이슈부터 과거 순으로 주고 노드가 못 되는 이슈는 건너뛰며 끝까지 따라간다`() {
+    fun `후속 이슈부터 요청 이슈와 과거 순으로 주고 노드가 못 되는 이슈는 건너뛰며 끝까지 따라간다`() {
         val timeline = timeline(IssueTimelineSeed.CURRENT)
         val nodes = timeline.nodes()
 
         assertEquals(IssueTimelineSeed.CURRENT, timeline.long("issueId"))
-        assertEquals(listOf(IssueTimelineSeed.CURRENT, IssueTimelineSeed.MIDDLE, IssueTimelineSeed.ROOT), nodes.ids())
-        assertEquals(listOf(true, false, false), nodes.map { it["current"] })
+        assertEquals(
+            listOf(IssueTimelineSeed.LATER, IssueTimelineSeed.CURRENT, IssueTimelineSeed.MIDDLE, IssueTimelineSeed.ROOT),
+            nodes.ids(),
+        )
+        assertEquals(listOf(false, true, false, false), nodes.map { it["current"] })
         assertEquals(
             listOf(
+                listOf(IssueTimelineSeed.LATER),
                 listOf(IssueTimelineSeed.DUPLICATE, IssueTimelineSeed.CURRENT),
                 listOf(IssueTimelineSeed.MIDDLE),
                 listOf(IssueTimelineSeed.ROOT),
@@ -57,7 +61,7 @@ class IssueTimelineApiTest {
 
     @Test
     fun `노드의 제목은 클러스터 제목이고 보도 시각은 이슈 상세처럼 합친 이슈들의 공개 기사로만 센다`() {
-        val node = timeline(IssueTimelineSeed.CURRENT).nodes().first()
+        val node = timeline(IssueTimelineSeed.CURRENT).nodes().single { it["current"] == true }
         val current = fetch("/api/v1/issues/${IssueTimelineSeed.CURRENT}")["data"] as Map<*, *>
 
         assertEquals("마이크론 4분기 실적 발표", node["title"])
@@ -70,7 +74,7 @@ class IssueTimelineApiTest {
 
     @Test
     fun `날짜는 첫 공개 기사 보도 시각의 KST 날짜다`() {
-        val root = timeline(IssueTimelineSeed.ROOT).nodes().single()
+        val root = timeline(IssueTimelineSeed.ROOT).nodes().single { it["current"] == true }
 
         assertEquals(true, root["current"])
         assertEquals("2025-09-30", root["date"])
@@ -102,9 +106,12 @@ class IssueTimelineApiTest {
     @Test
     fun `same_event 로 이어진 이슈는 한 노드로 합치고 편입 기사 수가 많은 이슈가 대표다`() {
         val nodes = timeline(IssueTimelineSeed.DUPLICATE).nodes()
-        val merged = nodes.first()
+        val merged = nodes.single { it["current"] == true }
 
-        assertEquals(listOf(IssueTimelineSeed.CURRENT, IssueTimelineSeed.MIDDLE, IssueTimelineSeed.ROOT), nodes.ids())
+        assertEquals(
+            listOf(IssueTimelineSeed.LATER, IssueTimelineSeed.CURRENT, IssueTimelineSeed.MIDDLE, IssueTimelineSeed.ROOT),
+            nodes.ids(),
+        )
         assertEquals(true, merged["current"])
         assertEquals(listOf(IssueTimelineSeed.DUPLICATE, IssueTimelineSeed.CURRENT), merged.longs("mergedIssueIds"))
         assertEquals("마이크론 4분기 실적 발표", merged["title"])
@@ -112,7 +119,7 @@ class IssueTimelineApiTest {
         assertEquals("2025-12-17", merged["date"])
         assertEquals("2025-12-17T09:00:00+09:00", merged["firstPublishedAt"])
         assertEquals("2025-12-18T10:00:00+09:00", merged["lastPublishedAt"])
-        assertEquals(merged, timeline(IssueTimelineSeed.CURRENT).nodes().first())
+        assertEquals(merged, timeline(IssueTimelineSeed.CURRENT).nodes().single { it["current"] == true })
     }
 
     @Test
@@ -179,7 +186,7 @@ class IssueTimelineApiTest {
     }
 
     @Test
-    fun `연결 전 이슈는 자기 하나이고 제목 없는 이슈는 자기 노드 없이 앞선 노드만 준다`() {
+    fun `연결 전 이슈는 자기 하나이고 제목 없는 이슈는 자기 노드 없이 앞뒤 노드만 준다`() {
         val unlinked = timeline(IssueTimelineSeed.UNLINKED).nodes().single()
         assertEquals(IssueTimelineSeed.UNLINKED, unlinked.long("issueId"))
         assertEquals(true, unlinked["current"])
@@ -188,7 +195,10 @@ class IssueTimelineApiTest {
         assertEquals(emptyList(), timeline(IssueTimelineSeed.UNLINKED_UNTITLED).nodes())
 
         val untitled = timeline(IssueTimelineSeed.UNTITLED).nodes()
-        assertEquals(listOf(IssueTimelineSeed.MIDDLE, IssueTimelineSeed.ROOT), untitled.ids())
+        assertEquals(
+            listOf(IssueTimelineSeed.LATER, IssueTimelineSeed.CURRENT, IssueTimelineSeed.MIDDLE, IssueTimelineSeed.ROOT),
+            untitled.ids(),
+        )
         assertTrue(untitled.none { it["current"] == true })
     }
 

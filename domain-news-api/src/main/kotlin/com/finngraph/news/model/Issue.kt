@@ -7,6 +7,7 @@ data class IssueCluster(
     val title: String?,
     val keywords: List<String>,
     val representativeNewsId: Long?,
+    val kind: String? = null,
 )
 
 data class IssueArticle(
@@ -48,4 +49,10 @@ data class IssueChainLink(
 data class IssueDescendant(
     val link: IssueChainLink,
     val parentId: Long,
+)
+
+data class IssueChainStep(
+    val clusterId: Long,
+    val relation: IssueLinkRelation?,
+    val event: Boolean,
 )

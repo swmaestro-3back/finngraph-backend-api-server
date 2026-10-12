@@ -23,6 +23,8 @@ data class IssueSummary(
     val summary: String?,
     val representativeNewsId: Long,
     val companies: List<IssueCompany>,
+    val kind: String? = null,
+    val timelinePosition: Int = 1,
 )
 
 data class IssueArticleView(

@@ -2,6 +2,7 @@ package com.finngraph.composition.issue
 
 import com.finngraph.news.model.IssueArticle
 import com.finngraph.news.model.IssueChainLink
+import com.finngraph.news.model.IssueChainStep
 import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueLinkRelation
 import com.finngraph.news.model.IssueMention
@@ -152,6 +153,21 @@ object IssueRules {
         return groups.values
             .map { it.sortedWith(EVENT_LATEST_FIRST) }
             .sortedWith(compareByDescending<List<IssueChainLink>> { group -> group.minOf { it.startedAt } }.thenByDescending { it.first().clusterId })
+    }
+
+    fun timelinePosition(steps: List<IssueChainStep>): Int {
+        val opener = steps.indexOfFirst { it.relation != IssueLinkRelation.SAME_EVENT }
+        if (opener < 0) return 1
+        var position = 1
+        var event = false
+        for (step in steps.drop(opener + 1)) {
+            event = event || step.event
+            if (step.relation != IssueLinkRelation.SAME_EVENT) {
+                if (event) position++
+                event = false
+            }
+        }
+        return position
     }
 
     fun timelineLeadOrder(members: List<TimelineMember>): List<TimelineMember> = members.sortedWith(TIMELINE_LEAD)

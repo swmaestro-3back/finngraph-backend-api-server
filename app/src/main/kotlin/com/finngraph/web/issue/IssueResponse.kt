@@ -61,6 +61,10 @@ data class IssueSummaryResponse(
     val representativeNewsId: Long,
     @Schema(description = "공개 기사에 언급된 상장 종목. mentionCount 내림차순, 목록은 최대 5개")
     val companies: List<IssueCompanyResponse>,
+    @Schema(description = "이슈 성격. event: 회사에 일어난 사건, market_reaction: 외부 요인·테마에 따른 주가 반응, null: 아직 분류 전", allowableValues = ["event", "market_reaction"])
+    val kind: String?,
+    @Schema(description = "이어진 이슈 흐름에서 이 이슈가 몇 번째인지(앞선 이슈 노드 수 + 1, same_event로 이어진 이슈는 같은 노드). 연결 전이거나 흐름의 첫 이슈면 1")
+    val timelinePosition: Int,
 ) {
     companion object {
         fun from(issue: IssueSummary) = IssueSummaryResponse(
@@ -75,6 +79,8 @@ data class IssueSummaryResponse(
             summary = issue.summary,
             representativeNewsId = issue.representativeNewsId,
             companies = issue.companies.map(IssueCompanyResponse::from),
+            kind = issue.kind,
+            timelinePosition = issue.timelinePosition,
         )
     }
 }
@@ -115,6 +121,10 @@ data class IssueDetailResponse(
     val companies: List<IssueCompanyResponse>,
     @Schema(description = "공개 기사 전부. publishedAt 오름차순")
     val articles: List<IssueArticleResponse>,
+    @Schema(description = "이슈 성격. event: 회사에 일어난 사건, market_reaction: 외부 요인·테마에 따른 주가 반응, null: 아직 분류 전", allowableValues = ["event", "market_reaction"])
+    val kind: String?,
+    @Schema(description = "이어진 이슈 흐름에서 이 이슈가 몇 번째인지(앞선 이슈 노드 수 + 1, same_event로 이어진 이슈는 같은 노드). 연결 전이거나 흐름의 첫 이슈면 1")
+    val timelinePosition: Int,
 ) {
     companion object {
         fun from(detail: IssueDetail) = with(IssueSummaryResponse.from(detail.issue)) {
@@ -132,6 +142,8 @@ data class IssueDetailResponse(
                 summaryPoints = detail.summaryPoints.map { SummaryPointResponse(it.kind, it.text) },
                 companies = companies,
                 articles = detail.articles.map(IssueArticleResponse::from),
+                kind = kind,
+                timelinePosition = timelinePosition,
             )
         }
     }
@@ -185,6 +197,10 @@ data class StockIssueResponse(
     val companies: List<IssueCompanyResponse>,
     @Schema(description = "이 이슈에서 이 종목을 언급한 공개 기사 수")
     val mentionCount: Int,
+    @Schema(description = "이슈 성격. event: 회사에 일어난 사건, market_reaction: 외부 요인·테마에 따른 주가 반응, null: 아직 분류 전", allowableValues = ["event", "market_reaction"])
+    val kind: String?,
+    @Schema(description = "이어진 이슈 흐름에서 이 이슈가 몇 번째인지(앞선 이슈 노드 수 + 1, same_event로 이어진 이슈는 같은 노드). 연결 전이거나 흐름의 첫 이슈면 1")
+    val timelinePosition: Int,
 ) {
     companion object {
         fun from(found: StockIssue) = with(IssueSummaryResponse.from(found.issue)) {
@@ -201,6 +217,8 @@ data class StockIssueResponse(
                 representativeNewsId = representativeNewsId,
                 companies = companies,
                 mentionCount = found.mentionCount,
+                kind = kind,
+                timelinePosition = timelinePosition,
             )
         }
     }

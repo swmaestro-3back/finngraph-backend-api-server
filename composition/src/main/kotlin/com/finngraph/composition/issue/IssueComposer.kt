@@ -36,7 +36,13 @@ class IssueComposer(
         val slice = ranked.pageSlice(page, size)
 
         val mentions = mentions(slice.flatMap { articles[it.id].orEmpty() })
-        val content = slice.map { it.copy(companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT)) }
+        val positions = positions(slice)
+        val content = slice.map {
+            it.copy(
+                companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT),
+                timelinePosition = positions[it.id] ?: 1,
+            )
+        }
 
         val neighbors = issues.findNeighbors(window.start, window.end)
         return IssuePage(
@@ -51,7 +57,11 @@ class IssueComposer(
         val cluster = issues.findById(id) ?: return null
         val articles = issues.findArticles(listOf(id))[id]?.takeIf { it.isNotEmpty() } ?: return null
 
-        val issue = summarize(cluster, articles).copy(companies = mentions(articles).companies(articles, null))
+        val summary = summarize(cluster, articles)
+        val issue = summary.copy(
+            companies = mentions(articles).companies(articles, null),
+            timelinePosition = positions(listOf(summary))[id] ?: 1,
+        )
         return IssueDetail(
             issue = issue,
             summaryPoints = articles.firstOrNull { it.id == issue.representativeNewsId }?.summaryPoints.orEmpty(),
@@ -97,15 +107,22 @@ class IssueComposer(
         }
         val members = themeStock.findTickers(themeIds)
 
-        val themes = themeIds.map { themeId ->
+        val matches = themeIds.associateWith { themeId ->
             val tickers = members[themeId].orEmpty()
-            val matched = ranked.filter { issue -> tickers.any { it in mentioned.getValue(issue.id) } }
+            ranked.filter { issue -> tickers.any { it in mentioned.getValue(issue.id) } }
+        }
+        val positions = positions(matches.values.flatMap { it.take(THEME_ISSUE_LIMIT) }.distinctBy { it.id })
+        val themes = themeIds.map { themeId ->
+            val matched = matches.getValue(themeId)
             ThemeIssues(
                 themeId = themeId.value,
                 issueCount = matched.size,
                 issueIds = matched.map { it.id },
                 issues = matched.take(THEME_ISSUE_LIMIT).map {
-                    it.copy(companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT))
+                    it.copy(
+                        companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT),
+                        timelinePosition = positions[it.id] ?: 1,
+                    )
                 },
             )
         }
@@ -180,12 +197,16 @@ class IssueComposer(
         val articles = issues.findArticles(ids)
         val summaries = summaries(issues.findByIds(ids), articles).associateBy { it.id }
         val mentions = mentions(summaries.keys.flatMap { articles[it].orEmpty() })
+        val positions = positions(summaries.values.toList())
 
         return picks.mapNotNull { pick ->
             val summary = summaries[pick.clusterId] ?: return@mapNotNull null
             val issueArticles = articles[pick.clusterId].orEmpty()
             pick to StockIssue(
-                issue = summary.copy(companies = mentions.companies(issueArticles, LIST_COMPANY_LIMIT)),
+                issue = summary.copy(
+                    companies = mentions.companies(issueArticles, LIST_COMPANY_LIMIT),
+                    timelinePosition = positions[summary.id] ?: 1,
+                ),
                 mentionCount = mentions.mentionCount(issueArticles, pick.ticker),
             )
         }.toMap()
@@ -210,8 +231,13 @@ class IssueComposer(
             summary = representative.summary,
             representativeNewsId = representative.id,
             companies = emptyList(),
+            kind = cluster.kind,
         )
     }
+
+    private fun positions(summaries: List<IssueSummary>): Map<Long, Int> =
+        issues.findChains(summaries.map { it.id }, TIMELINE_MAX_DEPTH)
+            .mapValues { (_, steps) -> IssueRules.timelinePosition(steps) }
 
     private fun mentions(articles: List<IssueArticle>): Mentions {
         val refs = newsCompany.findByNewsIds(articles.map { NewsId(it.id) }.distinct())

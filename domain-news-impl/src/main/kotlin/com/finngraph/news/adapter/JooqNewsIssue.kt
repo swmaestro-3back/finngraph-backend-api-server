@@ -6,6 +6,7 @@ import com.finngraph.news.adapter.jooq.tables.references.NEWS_CLUSTERS
 import com.finngraph.news.adapter.jooq.tables.references.NEWS_COMPANIES
 import com.finngraph.news.model.IssueArticle
 import com.finngraph.news.model.IssueChainLink
+import com.finngraph.news.model.IssueChainStep
 import com.finngraph.news.model.IssueCluster
 import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueLinkRelation
@@ -274,6 +275,61 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             .distinctBy { it.link.clusterId }
     }
 
+    override fun findChains(ids: List<Long>, maxDepth: Int): Map<Long, List<IssueChainStep>> {
+        if (ids.isEmpty()) return emptyMap()
+
+        val parent = NEWS_CLUSTERS.`as`(PARENT)
+        val upStart = DSL.field(DSL.name(UP, UP_START), SQLDataType.BIGINT)
+        val upParent = DSL.field(DSL.name(UP, CHAIN_PARENT_ID), SQLDataType.BIGINT)
+        val upDepth = DSL.field(DSL.name(UP, CHAIN_DEPTH), SQLDataType.INTEGER)
+        val up = DSL.name(UP)
+            .fields(UP_START, CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, UP_EVENT, CHAIN_DEPTH)
+            .`as`(
+                DSL.select(
+                    NEWS_CLUSTERS.ID,
+                    NEWS_CLUSTERS.ID,
+                    NEWS_CLUSTERS.PARENT_CLUSTER_ID,
+                    NEWS_CLUSTERS.LINK_RELATION,
+                    DSL.field(EVENT),
+                    DSL.inline(0, SQLDataType.INTEGER),
+                )
+                    .from(NEWS_CLUSTERS)
+                    .where(NEWS_CLUSTERS.ID.`in`(ids.distinct()))
+                    .unionAll(
+                        DSL.select(
+                            upStart,
+                            parent.ID,
+                            parent.PARENT_CLUSTER_ID,
+                            parent.LINK_RELATION,
+                            DSL.field(parent.TITLE.isNotNull.and(parent.REPRESENTATIVE_NEWS_ID.isNotNull)),
+                            upDepth.plus(1),
+                        )
+                            .from(parent)
+                            .join(DSL.table(DSL.name(UP))).on(parent.ID.eq(upParent))
+                            .where(upDepth.lt(maxDepth)),
+                    ),
+            )
+
+        return dsl.withRecursive(up)
+            .select(
+                up.field(UP_START, SQLDataType.BIGINT),
+                up.field(CHAIN_ID, SQLDataType.BIGINT),
+                up.field(CHAIN_RELATION, SQLDataType.CLOB),
+                up.field(UP_EVENT, SQLDataType.BOOLEAN),
+            )
+            .from(up)
+            .orderBy(up.field(UP_START, SQLDataType.BIGINT), up.field(CHAIN_DEPTH, SQLDataType.INTEGER))
+            .fetch {
+                requireNotNull(it.value1()) to IssueChainStep(
+                    clusterId = requireNotNull(it.value2()),
+                    relation = it.value3()?.let(RELATIONS::get),
+                    event = it.value4() == true,
+                )
+            }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, steps) -> steps.distinctBy { it.clusterId } }
+    }
+
     override fun findChangePoints(newsIds: List<Long>): Map<Long, String> {
         if (newsIds.isEmpty()) return emptyMap()
 
@@ -294,6 +350,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             NEWS_CLUSTERS.TITLE,
             NEWS_CLUSTERS.KEYWORDS,
             NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID,
+            NEWS_CLUSTERS.ISSUE_KIND,
         )
             .from(NEWS_CLUSTERS)
             .where(condition)
@@ -311,6 +368,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         title = get(NEWS_CLUSTERS.TITLE),
         keywords = get(NEWS_CLUSTERS.KEYWORDS)?.filterNotNull().orEmpty(),
         representativeNewsId = get(NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID),
+        kind = get(NEWS_CLUSTERS.ISSUE_KIND),
     )
 
     private companion object {
@@ -329,11 +387,15 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         const val TREE_TOP_ID = "top_id"
         const val CHILD = "child"
         const val DOWN = "down"
+        const val UP = "up"
+        const val UP_START = "start_id"
+        const val UP_EVENT = "is_event"
+        const val FOLLOW_UP = "follow_up"
 
         const val SAME_EVENT = "same_event"
 
         val RELATIONS: Map<String, IssueLinkRelation> = mapOf(
-            "follow_up" to IssueLinkRelation.FOLLOW_UP,
+            FOLLOW_UP to IssueLinkRelation.FOLLOW_UP,
             SAME_EVENT to IssueLinkRelation.SAME_EVENT,
         )
 
@@ -347,7 +409,9 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
 
         val EXTRACTED_NEWS = NEWS.`as`("extracted_news")
 
-        val VISIBLE: Condition = NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID.isNotNull.and(NEWS_CLUSTERS.TITLE.isNotNull)
+        val EVENT: Condition = NEWS_CLUSTERS.TITLE.isNotNull.and(NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID.isNotNull)
+
+        val VISIBLE: Condition = EVENT
             .or(
                 DSL.exists(
                     DSL.selectOne()

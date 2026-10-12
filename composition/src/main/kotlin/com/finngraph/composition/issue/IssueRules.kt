@@ -1,6 +1,8 @@
 package com.finngraph.composition.issue
 
 import com.finngraph.news.model.IssueArticle
+import com.finngraph.news.model.IssueChainLink
+import com.finngraph.news.model.IssueLinkRelation
 import com.finngraph.news.model.IssueMention
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -42,6 +44,15 @@ object IssueRules {
             .then(BY_RECENT)
 
     private val MENTION_BY_RECENT: Comparator<IssueMention> = latestFirst({ it.lastPublishedAt }, { it.clusterId })
+
+    private val EVENT_LATEST_FIRST: Comparator<IssueChainLink> = latestFirst({ it.startedAt }, { it.clusterId })
+
+    private val TIMELINE_LEAD: Comparator<TimelineMember> =
+        compareByDescending<TimelineMember> { it.originalSize }
+            .thenBy(nullsLast()) { it.issue.firstPublishedAt }
+            .thenBy { it.issue.id }
+
+    private val SENTENCE_END = Regex("[.!?]['\"’”)\\]]*(?=\\s|$)")
 
     fun dayWindow(date: LocalDate): DayWindow = window(DateRange(date, date))
 
@@ -98,4 +109,33 @@ object IssueRules {
     }
 
     fun mentionOrder(): Comparator<IssueMention> = MENTION_BY_RECENT
+
+    fun timelineGroups(chain: List<IssueChainLink>): List<List<IssueChainLink>> {
+        val groups = mutableListOf<MutableList<IssueChainLink>>()
+        chain.forEachIndexed { index, link ->
+            if (index > 0 && chain[index - 1].relation == IssueLinkRelation.SAME_EVENT) groups.last().add(link)
+            else groups.add(mutableListOf(link))
+        }
+        return groups
+    }
+
+    fun timelineEvents(
+        groups: List<List<IssueChainLink>>,
+        trees: Map<Long, List<IssueChainLink>>,
+    ): List<List<IssueChainLink>> {
+        val seen = HashSet<Long>()
+        return groups.map { group ->
+            (group + trees[group.last().clusterId].orEmpty())
+                .filter { seen.add(it.clusterId) }
+                .sortedWith(EVENT_LATEST_FIRST)
+        }
+    }
+
+    fun timelineLeadOrder(members: List<TimelineMember>): List<TimelineMember> = members.sortedWith(TIMELINE_LEAD)
+
+    fun firstSentence(text: String?): String? {
+        val trimmed = text?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val end = SENTENCE_END.find(trimmed)?.range?.last ?: return trimmed
+        return trimmed.substring(0, end + 1)
+    }
 }

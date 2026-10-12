@@ -69,3 +69,24 @@ data class ThemeIssueBoard(
     val date: LocalDate?,
     val themes: List<ThemeIssues>,
 )
+
+data class IssueTimeline(
+    val issueId: Long,
+    val nodes: List<IssueTimelineNode>,
+)
+
+data class IssueTimelineNode(
+    val issueId: Long,
+    val title: String,
+    val summary: String?,
+    val date: LocalDate?,
+    val firstPublishedAt: OffsetDateTime?,
+    val lastPublishedAt: OffsetDateTime?,
+    val current: Boolean,
+    val mergedIssueIds: List<Long>,
+)
+
+data class TimelineMember(
+    val issue: IssueSummary,
+    val originalSize: Int,
+)

@@ -1,6 +1,7 @@
 package com.finngraph.news.port
 
 import com.finngraph.news.model.IssueArticle
+import com.finngraph.news.model.IssueChainLink
 import com.finngraph.news.model.IssueCluster
 import com.finngraph.news.model.IssueMention
 import com.finngraph.news.model.IssueNeighbors
@@ -15,4 +16,10 @@ interface NewsIssuePort {
     fun findByIds(ids: List<Long>): List<IssueCluster>
     fun findArticles(clusterIds: List<Long>): Map<Long, List<IssueArticle>>
     fun findMentionedBetween(tickers: Collection<String>, from: OffsetDateTime, until: OffsetDateTime): List<IssueMention>
+
+    fun findChain(id: Long, maxDepth: Int): List<IssueChainLink>
+
+    fun findSameEventTrees(ids: List<Long>, maxDepth: Int): Map<Long, List<IssueChainLink>>
+
+    fun findChangePoints(newsIds: List<Long>): Map<Long, String>
 }

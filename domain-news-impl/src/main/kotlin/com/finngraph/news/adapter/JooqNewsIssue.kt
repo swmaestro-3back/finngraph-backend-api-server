@@ -5,7 +5,9 @@ import com.finngraph.news.adapter.jooq.tables.references.NEWS
 import com.finngraph.news.adapter.jooq.tables.references.NEWS_CLUSTERS
 import com.finngraph.news.adapter.jooq.tables.references.NEWS_COMPANIES
 import com.finngraph.news.model.IssueArticle
+import com.finngraph.news.model.IssueChainLink
 import com.finngraph.news.model.IssueCluster
+import com.finngraph.news.model.IssueLinkRelation
 import com.finngraph.news.model.IssueMention
 import com.finngraph.news.model.IssueNeighbors
 import com.finngraph.news.port.NewsIssuePort
@@ -13,6 +15,7 @@ import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Record
 import org.jooq.impl.DSL
+import org.jooq.impl.SQLDataType
 import org.springframework.stereotype.Component
 import java.time.OffsetDateTime
 
@@ -122,6 +125,115 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             }
     }
 
+    override fun findChain(id: Long, maxDepth: Int): List<IssueChainLink> {
+        val parent = NEWS_CLUSTERS.`as`(PARENT)
+        val chainParentId = DSL.field(DSL.name(CHAIN, CHAIN_PARENT_ID), SQLDataType.BIGINT)
+        val chainDepth = DSL.field(DSL.name(CHAIN, CHAIN_DEPTH), SQLDataType.INTEGER)
+        val chain = DSL.name(CHAIN)
+            .fields(CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, CHAIN_ORIGINAL_SIZE, CHAIN_STARTED_AT, CHAIN_DEPTH)
+            .`as`(
+                DSL.select(
+                    NEWS_CLUSTERS.ID,
+                    NEWS_CLUSTERS.PARENT_CLUSTER_ID,
+                    NEWS_CLUSTERS.LINK_RELATION,
+                    NEWS_CLUSTERS.ORIGINAL_SIZE,
+                    NEWS_CLUSTERS.FIRST_PUBLISHED_AT,
+                    DSL.inline(0, SQLDataType.INTEGER),
+                )
+                    .from(NEWS_CLUSTERS)
+                    .where(NEWS_CLUSTERS.ID.eq(id))
+                    .unionAll(
+                        DSL.select(
+                            parent.ID,
+                            parent.PARENT_CLUSTER_ID,
+                            parent.LINK_RELATION,
+                            parent.ORIGINAL_SIZE,
+                            parent.FIRST_PUBLISHED_AT,
+                            chainDepth.plus(1),
+                        )
+                            .from(parent)
+                            .join(DSL.table(DSL.name(CHAIN))).on(parent.ID.eq(chainParentId))
+                            .where(chainDepth.lt(maxDepth)),
+                    ),
+            )
+
+        return dsl.withRecursive(chain)
+            .select(
+                chain.field(CHAIN_ID, SQLDataType.BIGINT),
+                chain.field(CHAIN_RELATION, SQLDataType.CLOB),
+                chain.field(CHAIN_ORIGINAL_SIZE, SQLDataType.INTEGER),
+                chain.field(CHAIN_STARTED_AT, SQLDataType.TIMESTAMPWITHTIMEZONE),
+            )
+            .from(chain)
+            .orderBy(chain.field(CHAIN_DEPTH, SQLDataType.INTEGER))
+            .fetch { chainLink(it.value1(), it.value2(), it.value3(), it.value4()) }
+            .distinctBy { it.clusterId }
+    }
+
+    override fun findSameEventTrees(ids: List<Long>, maxDepth: Int): Map<Long, List<IssueChainLink>> {
+        if (ids.isEmpty()) return emptyMap()
+
+        val child = NEWS_CLUSTERS.`as`(CHILD)
+        val treeTopId = DSL.field(DSL.name(TREE, TREE_TOP_ID), SQLDataType.BIGINT)
+        val treeId = DSL.field(DSL.name(TREE, CHAIN_ID), SQLDataType.BIGINT)
+        val treeDepth = DSL.field(DSL.name(TREE, CHAIN_DEPTH), SQLDataType.INTEGER)
+        val tree = DSL.name(TREE)
+            .fields(TREE_TOP_ID, CHAIN_ID, CHAIN_RELATION, CHAIN_ORIGINAL_SIZE, CHAIN_STARTED_AT, CHAIN_DEPTH)
+            .`as`(
+                DSL.select(
+                    NEWS_CLUSTERS.ID,
+                    NEWS_CLUSTERS.ID,
+                    NEWS_CLUSTERS.LINK_RELATION,
+                    NEWS_CLUSTERS.ORIGINAL_SIZE,
+                    NEWS_CLUSTERS.FIRST_PUBLISHED_AT,
+                    DSL.inline(0, SQLDataType.INTEGER),
+                )
+                    .from(NEWS_CLUSTERS)
+                    .where(NEWS_CLUSTERS.ID.`in`(ids.distinct()))
+                    .unionAll(
+                        DSL.select(
+                            treeTopId,
+                            child.ID,
+                            child.LINK_RELATION,
+                            child.ORIGINAL_SIZE,
+                            child.FIRST_PUBLISHED_AT,
+                            treeDepth.plus(1),
+                        )
+                            .from(child)
+                            .join(DSL.table(DSL.name(TREE))).on(child.PARENT_CLUSTER_ID.eq(treeId))
+                            .where(child.LINK_RELATION.eq(SAME_EVENT).and(treeDepth.lt(maxDepth))),
+                    ),
+            )
+
+        return dsl.withRecursive(tree)
+            .select(
+                tree.field(TREE_TOP_ID, SQLDataType.BIGINT),
+                tree.field(CHAIN_ID, SQLDataType.BIGINT),
+                tree.field(CHAIN_RELATION, SQLDataType.CLOB),
+                tree.field(CHAIN_ORIGINAL_SIZE, SQLDataType.INTEGER),
+                tree.field(CHAIN_STARTED_AT, SQLDataType.TIMESTAMPWITHTIMEZONE),
+            )
+            .from(tree)
+            .orderBy(tree.field(TREE_TOP_ID, SQLDataType.BIGINT), tree.field(CHAIN_DEPTH, SQLDataType.INTEGER))
+            .fetch { requireNotNull(it.value1()) to chainLink(it.value2(), it.value3(), it.value4(), it.value5()) }
+            .groupBy({ it.first }, { it.second })
+            .mapValues { (_, links) -> links.distinctBy { it.clusterId } }
+    }
+
+    override fun findChangePoints(newsIds: List<Long>): Map<Long, String> {
+        if (newsIds.isEmpty()) return emptyMap()
+
+        return dsl.select(NEWS.ID, CHANGE_POINT)
+            .from(NEWS)
+            .where(NEWS.ID.`in`(newsIds.distinct()))
+            .fetch()
+            .mapNotNull { row ->
+                val text = row.value2()?.trim()?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+                requireNotNull(row.value1()) to text
+            }
+            .toMap()
+    }
+
     private fun selectClusters(condition: Condition): List<IssueCluster> =
         dsl.select(
             NEWS_CLUSTERS.ID,
@@ -133,6 +245,13 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             .where(condition)
             .fetch { it.toCluster() }
 
+    private fun chainLink(id: Long?, relation: String?, originalSize: Int?, startedAt: OffsetDateTime?) = IssueChainLink(
+        clusterId = requireNotNull(id),
+        relation = relation?.let(RELATIONS::get),
+        originalSize = originalSize ?: 0,
+        startedAt = requireNotNull(startedAt),
+    )
+
     private fun Record.toCluster() = IssueCluster(
         id = requireNotNull(get(NEWS_CLUSTERS.ID)),
         title = get(NEWS_CLUSTERS.TITLE),
@@ -142,6 +261,32 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
 
     private companion object {
         const val MENTIONS = "mentions"
+
+        const val CHAIN = "chain"
+        const val CHAIN_ID = "id"
+        const val CHAIN_PARENT_ID = "parent_cluster_id"
+        const val CHAIN_RELATION = "link_relation"
+        const val CHAIN_ORIGINAL_SIZE = "original_size"
+        const val CHAIN_STARTED_AT = "first_published_at"
+        const val CHAIN_DEPTH = "depth"
+        const val PARENT = "parent"
+
+        const val TREE = "tree"
+        const val TREE_TOP_ID = "top_id"
+        const val CHILD = "child"
+
+        const val SAME_EVENT = "same_event"
+
+        val RELATIONS: Map<String, IssueLinkRelation> = mapOf(
+            "follow_up" to IssueLinkRelation.FOLLOW_UP,
+            SAME_EVENT to IssueLinkRelation.SAME_EVENT,
+        )
+
+        val CHANGE_POINT = DSL.field(
+            "jsonb_path_query_first({0}, 'lax $[*] ? (@.kind == \"CHANGE\" && @.text.type() == \"string\").text') #>> '{}'",
+            SQLDataType.CLOB,
+            NEWS.SUMMARY_POINTS,
+        )
 
         val EVENT_CLUSTERS = NEWS_CLUSTERS.`as`("event_clusters")
 

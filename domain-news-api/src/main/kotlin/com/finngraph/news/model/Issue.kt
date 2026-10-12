@@ -35,3 +35,12 @@ data class IssueMention(
     val clusterId: Long,
     val lastPublishedAt: OffsetDateTime?,
 )
+
+enum class IssueLinkRelation { FOLLOW_UP, SAME_EVENT }
+
+data class IssueChainLink(
+    val clusterId: Long,
+    val relation: IssueLinkRelation?,
+    val originalSize: Int,
+    val startedAt: OffsetDateTime,
+)

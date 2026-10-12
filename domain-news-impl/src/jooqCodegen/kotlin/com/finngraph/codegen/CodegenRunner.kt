@@ -65,7 +65,9 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                 Database()
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
-                    .withIncludes("news|news_companies|news_clusters|relation_sources|companies")
+                    .withIncludeExcludeColumns(true)
+                    .withIncludes("(news|news_companies|news_clusters|relation_sources|companies)(\\.\\w+)?")
+                    .withExcludes("news_clusters\\.embedding")
                     .withOutputSchemaToDefault(true),
             )
             .withGenerate(

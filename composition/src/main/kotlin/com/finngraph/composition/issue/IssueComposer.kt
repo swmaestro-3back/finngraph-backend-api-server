@@ -116,7 +116,10 @@ class IssueComposer(
         val chain = issues.findChain(id, TIMELINE_MAX_DEPTH)
         val groups = IssueRules.timelineGroups(chain)
         val trees = issues.findSameEventTrees(groups.map { it.last().clusterId }, TIMELINE_MAX_DEPTH)
-        val events = IssueRules.timelineEvents(groups, trees)
+        val past = IssueRules.timelineEvents(groups, trees)
+        val known = past.flatten().mapTo(HashSet()) { it.clusterId }
+        val current = past.firstOrNull().orEmpty().map { it.clusterId }
+        val events = IssueRules.followUpEvents(known, issues.findDescendants(current, TIMELINE_MAX_DEPTH)) + past
         val ids = events.flatten().map { it.clusterId }
         val articles = issues.findArticles(ids)
         if (articles[id].isNullOrEmpty()) return null
@@ -124,16 +127,33 @@ class IssueComposer(
         val titled = summaries(issues.findByIds(ids), articles)
             .filter { it.titleSource == IssueTitleSource.CLUSTER }
             .associateBy { it.id }
-        val nodes = events
+        val all = events
             .map { event -> event.mapNotNull { link -> titled[link.clusterId]?.let { TimelineMember(it, link.originalSize) } } }
             .filter { it.isNotEmpty() }
-            .take(limit)
+        val center = all.indexOfFirst { node -> node.any { it.issue.id == id } }.takeIf { it >= 0 }
+            ?: all.indexOfFirst { node -> node.all { it.issue.id in known } }.takeIf { it >= 0 }
+            ?: 0
+        val start = (center - (limit - 1) / 2).coerceIn(0, maxOf(0, all.size - limit))
+        val nodes = all.drop(start).take(limit)
 
         val points = issues.findChangePoints(nodes.flatten().map { it.issue.representativeNewsId })
-        return IssueTimeline(id, nodes.map { timelineNode(id, it, points) })
+        val nodeArticles = nodes.map { node -> node.flatMap { articles[it.issue.id].orEmpty() } }
+        val mentions = mentions(nodeArticles.flatten())
+        return IssueTimeline(
+            issueId = id,
+            nodes = nodes.zip(nodeArticles) { node, found -> timelineNode(id, node, found, points, mentions) },
+            companies = IssueRules.companies(nodeArticles.map(mentions::tickers), mentions.names, STORY_COMPANY_LIMIT)
+                .map { IssueStoryCompany(it.ticker, it.name, it.mentionCount) },
+        )
     }
 
-    private fun timelineNode(id: Long, node: List<TimelineMember>, points: Map<Long, String>): IssueTimelineNode {
+    private fun timelineNode(
+        id: Long,
+        node: List<TimelineMember>,
+        articles: List<IssueArticle>,
+        points: Map<Long, String>,
+        mentions: Mentions,
+    ): IssueTimelineNode {
         val byLead = IssueRules.timelineLeadOrder(node)
         val lead = byLead.first().issue
         val members = node.map { it.issue }
@@ -147,6 +167,9 @@ class IssueComposer(
             lastPublishedAt = members.mapNotNull { it.lastPublishedAt }.maxOrNull(),
             current = members.any { it.id == id },
             mergedIssueIds = members.map { it.id },
+            articleCount = articles.size,
+            mediaCount = IssueRules.mediaCount(articles),
+            companies = mentions.companies(articles, LIST_COMPANY_LIMIT),
         )
     }
 
@@ -202,10 +225,13 @@ class IssueComposer(
 
     private class Mentions(
         private val tickersByArticle: Map<Long, List<String>>,
-        private val names: Map<String, String>,
+        val names: Map<String, String>,
     ) {
         fun companies(articles: List<IssueArticle>, limit: Int?): List<IssueCompany> =
             IssueRules.companies(articles.map { tickersByArticle[it.id].orEmpty() }, names, limit)
+
+        fun tickers(articles: List<IssueArticle>): Set<String> =
+            articles.flatMapTo(HashSet()) { tickersByArticle[it.id].orEmpty() }
 
         fun mentionCount(articles: List<IssueArticle>, ticker: String): Int =
             companies(articles, null).firstOrNull { it.ticker == ticker }?.mentionCount ?: 0
@@ -231,5 +257,6 @@ class IssueComposer(
         const val THEME_ISSUE_LIMIT = 3
         const val TIMELINE_MAX_LIMIT = 20
         const val TIMELINE_MAX_DEPTH = 100
+        const val STORY_COMPANY_LIMIT = 5
     }
 }

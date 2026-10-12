@@ -7,6 +7,7 @@ import com.finngraph.news.adapter.jooq.tables.references.NEWS_COMPANIES
 import com.finngraph.news.model.IssueArticle
 import com.finngraph.news.model.IssueChainLink
 import com.finngraph.news.model.IssueCluster
+import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueLinkRelation
 import com.finngraph.news.model.IssueMention
 import com.finngraph.news.model.IssueNeighbors
@@ -220,6 +221,59 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             .mapValues { (_, links) -> links.distinctBy { it.clusterId } }
     }
 
+    override fun findDescendants(ids: List<Long>, maxDepth: Int): List<IssueDescendant> {
+        if (ids.isEmpty()) return emptyList()
+
+        val child = NEWS_CLUSTERS.`as`(CHILD)
+        val downId = DSL.field(DSL.name(DOWN, CHAIN_ID), SQLDataType.BIGINT)
+        val downDepth = DSL.field(DSL.name(DOWN, CHAIN_DEPTH), SQLDataType.INTEGER)
+        val down = DSL.name(DOWN)
+            .fields(CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, CHAIN_ORIGINAL_SIZE, CHAIN_STARTED_AT, CHAIN_DEPTH)
+            .`as`(
+                DSL.select(
+                    NEWS_CLUSTERS.ID,
+                    NEWS_CLUSTERS.PARENT_CLUSTER_ID,
+                    NEWS_CLUSTERS.LINK_RELATION,
+                    NEWS_CLUSTERS.ORIGINAL_SIZE,
+                    NEWS_CLUSTERS.FIRST_PUBLISHED_AT,
+                    DSL.inline(1, SQLDataType.INTEGER),
+                )
+                    .from(NEWS_CLUSTERS)
+                    .where(NEWS_CLUSTERS.PARENT_CLUSTER_ID.`in`(ids.distinct()))
+                    .unionAll(
+                        DSL.select(
+                            child.ID,
+                            child.PARENT_CLUSTER_ID,
+                            child.LINK_RELATION,
+                            child.ORIGINAL_SIZE,
+                            child.FIRST_PUBLISHED_AT,
+                            downDepth.plus(1),
+                        )
+                            .from(child)
+                            .join(DSL.table(DSL.name(DOWN))).on(child.PARENT_CLUSTER_ID.eq(downId))
+                            .where(downDepth.lt(maxDepth)),
+                    ),
+            )
+
+        return dsl.withRecursive(down)
+            .select(
+                down.field(CHAIN_ID, SQLDataType.BIGINT),
+                down.field(CHAIN_PARENT_ID, SQLDataType.BIGINT),
+                down.field(CHAIN_RELATION, SQLDataType.CLOB),
+                down.field(CHAIN_ORIGINAL_SIZE, SQLDataType.INTEGER),
+                down.field(CHAIN_STARTED_AT, SQLDataType.TIMESTAMPWITHTIMEZONE),
+            )
+            .from(down)
+            .orderBy(down.field(CHAIN_DEPTH, SQLDataType.INTEGER))
+            .fetch {
+                IssueDescendant(
+                    link = chainLink(it.value1(), it.value3(), it.value4(), it.value5()),
+                    parentId = requireNotNull(it.value2()),
+                )
+            }
+            .distinctBy { it.link.clusterId }
+    }
+
     override fun findChangePoints(newsIds: List<Long>): Map<Long, String> {
         if (newsIds.isEmpty()) return emptyMap()
 
@@ -274,6 +328,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         const val TREE = "tree"
         const val TREE_TOP_ID = "top_id"
         const val CHILD = "child"
+        const val DOWN = "down"
 
         const val SAME_EVENT = "same_event"
 

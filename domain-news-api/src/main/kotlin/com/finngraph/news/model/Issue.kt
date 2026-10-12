@@ -44,3 +44,8 @@ data class IssueChainLink(
     val originalSize: Int,
     val startedAt: OffsetDateTime,
 )
+
+data class IssueDescendant(
+    val link: IssueChainLink,
+    val parentId: Long,
+)

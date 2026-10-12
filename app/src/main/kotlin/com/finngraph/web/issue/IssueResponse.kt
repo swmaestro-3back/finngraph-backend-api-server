@@ -4,6 +4,7 @@ import com.finngraph.composition.issue.IssueArticleView
 import com.finngraph.composition.issue.IssueCompany
 import com.finngraph.composition.issue.IssueDetail
 import com.finngraph.composition.issue.IssuePage
+import com.finngraph.composition.issue.IssueStoryCompany
 import com.finngraph.composition.issue.IssueSummary
 import com.finngraph.composition.issue.IssueTimeline
 import com.finngraph.composition.issue.IssueTimelineNode
@@ -218,14 +219,28 @@ data class LatestStockIssueResponse(
 data class IssueTimelineResponse(
     @Schema(description = "요청 이슈 id")
     val issueId: Long,
-    @Schema(description = "요청 이슈 쪽부터 부모를 따라 과거로")
+    @Schema(description = "후속 이슈부터 요청 이슈, 앞선 이슈 순(최신순)")
     val nodes: List<IssueTimelineNodeResponse>,
+    @Schema(description = "노드 공개 기사에 언급된 상장 종목. issueCount(언급된 노드 수) 내림차순, 최대 5개")
+    val companies: List<IssueStoryCompanyResponse>,
 ) {
     companion object {
         fun from(timeline: IssueTimeline) = IssueTimelineResponse(
             issueId = timeline.issueId,
             nodes = timeline.nodes.map(IssueTimelineNodeResponse::from),
+            companies = timeline.companies.map(IssueStoryCompanyResponse::from),
         )
+    }
+}
+
+data class IssueStoryCompanyResponse(
+    val ticker: String,
+    val name: String,
+    @Schema(description = "이 종목이 언급된 노드 수")
+    val issueCount: Int,
+) {
+    companion object {
+        fun from(company: IssueStoryCompany) = IssueStoryCompanyResponse(company.ticker, company.name, company.issueCount)
     }
 }
 
@@ -246,6 +261,12 @@ data class IssueTimelineNodeResponse(
     val current: Boolean,
     @Schema(description = "이 노드로 합친 이슈 id 전부(대표 포함). 사슬 밖에서 같은 사건으로 갈라진 이슈도 든다. 클러스터 첫 기사 시각 최신순")
     val mergedIssueIds: List<Long>,
+    @Schema(description = "합친 이슈 전체의 공개 기사 수")
+    val articleCount: Int,
+    @Schema(description = "합친 이슈 전체의 공개 기사 URL 호스트(소문자, www. 제거)로 센 고유 매체 수")
+    val mediaCount: Int,
+    @Schema(description = "합친 이슈 전체의 공개 기사에 언급된 상장 종목. mentionCount 내림차순, 최대 5개")
+    val companies: List<IssueCompanyResponse>,
 ) {
     companion object {
         fun from(node: IssueTimelineNode) = IssueTimelineNodeResponse(
@@ -257,6 +278,9 @@ data class IssueTimelineNodeResponse(
             lastPublishedAt = node.lastPublishedAt,
             current = node.current,
             mergedIssueIds = node.mergedIssueIds,
+            articleCount = node.articleCount,
+            mediaCount = node.mediaCount,
+            companies = node.companies.map(IssueCompanyResponse::from),
         )
     }
 }

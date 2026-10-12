@@ -2,6 +2,7 @@ package com.finngraph.composition.issue
 
 import com.finngraph.news.model.IssueArticle
 import com.finngraph.news.model.IssueChainLink
+import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueLinkRelation
 import com.finngraph.news.model.IssueMention
 import java.time.LocalDate
@@ -129,6 +130,28 @@ object IssueRules {
                 .filter { seen.add(it.clusterId) }
                 .sortedWith(EVENT_LATEST_FIRST)
         }
+    }
+
+    fun followUpEvents(known: Set<Long>, descendants: List<IssueDescendant>): List<List<IssueChainLink>> {
+        val anchors = HashMap<Long, Long>()
+        val groups = LinkedHashMap<Long, MutableList<IssueChainLink>>()
+        for (descendant in descendants) {
+            val id = descendant.link.clusterId
+            if (id in known || id in anchors) continue
+            val parentAnchor = anchors[descendant.parentId]
+            if (descendant.link.relation == IssueLinkRelation.SAME_EVENT && parentAnchor != null) {
+                anchors[id] = parentAnchor
+                groups.getValue(parentAnchor).add(descendant.link)
+            } else if (descendant.link.relation == IssueLinkRelation.SAME_EVENT && descendant.parentId in known) {
+                continue
+            } else {
+                anchors[id] = id
+                groups[id] = mutableListOf(descendant.link)
+            }
+        }
+        return groups.values
+            .map { it.sortedWith(EVENT_LATEST_FIRST) }
+            .sortedWith(compareByDescending<List<IssueChainLink>> { group -> group.minOf { it.startedAt } }.thenByDescending { it.first().clusterId })
     }
 
     fun timelineLeadOrder(members: List<TimelineMember>): List<TimelineMember> = members.sortedWith(TIMELINE_LEAD)

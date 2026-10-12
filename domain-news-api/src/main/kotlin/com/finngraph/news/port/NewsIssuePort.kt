@@ -3,6 +3,7 @@ package com.finngraph.news.port
 import com.finngraph.news.model.IssueArticle
 import com.finngraph.news.model.IssueChainLink
 import com.finngraph.news.model.IssueCluster
+import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueMention
 import com.finngraph.news.model.IssueNeighbors
 import java.time.OffsetDateTime
@@ -20,6 +21,8 @@ interface NewsIssuePort {
     fun findChain(id: Long, maxDepth: Int): List<IssueChainLink>
 
     fun findSameEventTrees(ids: List<Long>, maxDepth: Int): Map<Long, List<IssueChainLink>>
+
+    fun findDescendants(ids: List<Long>, maxDepth: Int): List<IssueDescendant>
 
     fun findChangePoints(newsIds: List<Long>): Map<Long, String>
 }

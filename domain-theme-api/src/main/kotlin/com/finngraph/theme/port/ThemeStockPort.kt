@@ -1,6 +1,7 @@
 package com.finngraph.theme.port
 
 import com.finngraph.theme.model.PricingBasis
+import com.finngraph.theme.model.PrimaryTheme
 import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeNameMatch
 import com.finngraph.theme.model.ThemeStockView
@@ -16,4 +17,6 @@ interface ThemeStockPort {
     fun findTickers(ids: List<ThemeId>): Map<ThemeId, List<String>>
 
     fun findTickersByName(query: String): ThemeNameMatch
+
+    fun findThemesByName(query: String): List<PrimaryTheme>
 }

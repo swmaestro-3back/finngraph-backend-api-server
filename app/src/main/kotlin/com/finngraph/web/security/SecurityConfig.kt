@@ -117,6 +117,7 @@ class SecurityConfig {
         const val ARGON2_ITERATIONS = 2
 
         val PUBLIC_GET = arrayOf(
+            "/api/v1/search",
             "/api/v1/themes",
             "/api/v1/themes/hot",
             "/api/v1/themes/market",

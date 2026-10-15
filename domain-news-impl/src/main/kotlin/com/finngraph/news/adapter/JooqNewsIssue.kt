@@ -63,6 +63,29 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         return selectClusters(NEWS_CLUSTERS.ID.`in`(ids.distinct()).and(VISIBLE))
     }
 
+    override fun search(query: String, limit: Int): List<IssueCluster> {
+        val titled = DSL.exists(
+            DSL.selectOne()
+                .from(NEWS)
+                .where(NEWS.CLUSTER_ID.eq(NEWS_CLUSTERS.ID).and(NEWS.TITLE.containsIgnoreCase(query))),
+        )
+        val keyword = DSL.condition("lower({0}) = any(select lower(k) from unnest({1}) k)", DSL.`val`(query), NEWS_CLUSTERS.KEYWORDS)
+        return dsl.select(
+            NEWS_CLUSTERS.ID,
+            NEWS_CLUSTERS.TITLE,
+            NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID,
+            NEWS_CLUSTERS.KEYWORDS,
+            NEWS_CLUSTERS.ISSUE_KIND,
+            NEWS_CLUSTERS.STORY_ROOT_ID,
+        )
+            .from(NEWS_CLUSTERS)
+            .where(VISIBLE)
+            .and(NEWS_CLUSTERS.TITLE.containsIgnoreCase(query).or(keyword).or(titled))
+            .orderBy(NEWS_CLUSTERS.LAST_PUBLISHED_AT.desc(), NEWS_CLUSTERS.ID.desc())
+            .limit(limit)
+            .fetch { it.toCluster() }
+    }
+
     override fun findArticles(clusterIds: List<Long>): Map<Long, List<IssueArticle>> {
         if (clusterIds.isEmpty()) return emptyMap()
 

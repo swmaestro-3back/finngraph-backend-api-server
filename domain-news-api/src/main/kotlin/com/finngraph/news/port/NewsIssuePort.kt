@@ -28,4 +28,6 @@ interface NewsIssuePort {
     fun findChains(ids: List<Long>, maxDepth: Int): Map<Long, List<IssueChainStep>>
 
     fun findChangePoints(newsIds: List<Long>): Map<Long, String>
+
+    fun search(query: String, limit: Int): List<IssueCluster>
 }

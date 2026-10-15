@@ -113,6 +113,20 @@ class IssueComposer(
             )
     }
 
+    fun search(query: String, limit: Int): List<IssueSummary> {
+        val clusters = issues.search(query, limit)
+        val articles = issues.findArticles(clusters.map { it.id })
+        val found = summaries(clusters, articles)
+        val mentions = mentions(found.flatMap { articles[it.id].orEmpty() })
+        val positions = positions(found)
+        return found.map {
+            it.copy(
+                companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT),
+                timelinePosition = positions[it.id] ?: 1,
+            )
+        }
+    }
+
     fun latestByStocks(tickers: List<String>): List<LatestStockIssue> {
         val active = stockQuery.findNamesByTickers(tickers.map(::Ticker)).keys.map { it.value }
         val window = IssueRules.window(IssueRules.latestRange(LocalDate.now(clock)))

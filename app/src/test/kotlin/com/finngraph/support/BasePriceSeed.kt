@@ -16,11 +16,18 @@ object BasePriceSeed {
 
     fun seed() = execute(
         """
-        INSERT INTO stocks (id, name, ticker, market, standard_code, source) VALUES
-            (9901, '기준가시드', '$BASED_TICKER', 'KOSPI', 'KR7990101000', 'TEST'),
-            (9902, '기준가없음시드', '$PLAIN_TICKER', 'KOSDAQ', 'KR7990102008', 'TEST'),
-            (9903, '기준가재개시드', '$RESUMED_TICKER', 'KOSPI', 'KR7990103006', 'TEST'),
-            (9904, '기준가첫봉시드', '$FIRST_TICKER', 'KOSDAQ', 'KR7990104004', 'TEST');
+        INSERT INTO companies (id, name, ticker, is_listed, country) VALUES
+            (9901, '기준가시드', '$BASED_TICKER', true, 'KR'),
+            (9902, '기준가없음시드', '$PLAIN_TICKER', true, 'KR'),
+            (9903, '기준가재개시드', '$RESUMED_TICKER', true, 'KR'),
+            (9904, '기준가첫봉시드', '$FIRST_TICKER', true, 'KR');
+        INSERT INTO service_companies (company_id, name) VALUES
+            (9901, '기준가시드'), (9902, '기준가없음시드'), (9903, '기준가재개시드'), (9904, '기준가첫봉시드');
+        INSERT INTO stocks (id, company_id, name, ticker, market, standard_code, source) VALUES
+            (9901, 9901, '기준가시드', '$BASED_TICKER', 'KOSPI', 'KR7990101000', 'TEST'),
+            (9902, 9902, '기준가없음시드', '$PLAIN_TICKER', 'KOSDAQ', 'KR7990102008', 'TEST'),
+            (9903, 9903, '기준가재개시드', '$RESUMED_TICKER', 'KOSPI', 'KR7990103006', 'TEST'),
+            (9904, 9904, '기준가첫봉시드', '$FIRST_TICKER', 'KOSDAQ', 'KR7990104004', 'TEST');
         INSERT INTO themes (id, name) VALUES ($THEME_ID, '기준가시드테마');
         INSERT INTO theme_stocks (theme_id, stock_id) VALUES ($THEME_ID, 9901), ($THEME_ID, 9902), ($THEME_ID, 9903);
         INSERT INTO stock_candles_daily (stock_id, trade_date, open, high, low, close, volume, trade_value, source, base_price) VALUES
@@ -41,6 +48,7 @@ object BasePriceSeed {
         DELETE FROM themes WHERE id = $THEME_ID;
         DELETE FROM stock_candles_daily WHERE stock_id BETWEEN 9901 AND 9904;
         DELETE FROM stocks WHERE id BETWEEN 9901 AND 9904;
+        DELETE FROM companies WHERE id BETWEEN 9901 AND 9904;
         """.trimIndent(),
     )
 

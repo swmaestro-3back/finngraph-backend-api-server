@@ -22,6 +22,7 @@ object FinancialsSeed {
             INSERT INTO stocks (id, company_id, name, ticker, market, standard_code, source, is_active) VALUES
                 (9801, 9801, '시드혼합', '$MIXED_TICKER', 'KOSPI', 'KR7980001009', 'TEST', true),
                 (9802, 9802, '시드지연', '$STALE_TICKER', 'KOSDAQ', 'KR7980002007', 'TEST', true);
+            INSERT INTO service_companies (company_id, name) VALUES (9801, '시드혼합'), (9802, '시드지연');
             INSERT INTO company_financials
                 (company_id, source, fiscal_yymm, period_type, fs_div, disclosed_at, rcept_no, revenue, net_income, roe, total_equity) VALUES
                 (9801, 'DART', '202512', 'A', 'CFS', '2026-03-10', '20260310000001', $DART_REVENUE_2025, 450000000000, NULL, 4300000000000),

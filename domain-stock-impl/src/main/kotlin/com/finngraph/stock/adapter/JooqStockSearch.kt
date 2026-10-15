@@ -27,7 +27,7 @@ class JooqStockSearch(private val dsl: DSLContext) : StockSearchPort {
                 STOCK_VALUATIONS_DAILY.LISTING_ID.eq(STOCKS.ID)
                     .and(STOCK_VALUATIONS_DAILY.TRADE_DATE.eq(DSL.`val`(dates.valuation, SQLDataType.LOCALDATE))),
             )
-            .where(STOCKS.IS_ACTIVE.eq(true))
+            .where(STOCKS.IS_ACTIVE.eq(true).and(StockPricing.serviced(STOCKS.COMPANY_ID)))
             .and(
                 STOCKS.NAME.containsIgnoreCase(query)
                     .or(STOCKS.TICKER.startsWith(query))

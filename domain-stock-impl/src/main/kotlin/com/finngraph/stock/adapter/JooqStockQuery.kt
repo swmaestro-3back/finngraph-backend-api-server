@@ -50,7 +50,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
     override fun findAll(): List<StockListView> {
         val dates = StockPricing.dates(dsl)
         val ranges = week52Ranges(dates.price, DSL.noCondition())
-        return fetchStocks(ACTIVE, dates).map { it.toListView(ranges[it.get(STOCKS.ID)]) }
+        return fetchStocks(SERVICED, dates).map { it.toListView(ranges[it.get(STOCKS.ID)]) }
     }
 
     override fun findByTicker(ticker: Ticker): StockDetailView? {
@@ -520,7 +520,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
         private val EMPTY_PROFILE = CompanyProfile(null, null, null, null, null, null, null, null)
 
-        private val ACTIVE: (Stocks) -> Condition = { s -> s.IS_ACTIVE.eq(true) }
+        private val SERVICED: (Stocks) -> Condition = { s -> s.IS_ACTIVE.eq(true).and(StockPricing.serviced(s.COMPANY_ID)) }
 
         private val FOREIGN_RATIO_FIELD: Field<BigDecimal?> = DSL.field(DSL.name(FOREIGN_RATIO), SQLDataType.NUMERIC)
 

@@ -1,9 +1,11 @@
 package com.finngraph.stock.adapter
 
+import com.finngraph.stock.adapter.jooq.tables.references.SERVICE_COMPANIES
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.DailyCandleCount
 import com.finngraph.stock.model.PriceCalendar
+import org.jooq.Condition
 import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.impl.DSL
@@ -13,6 +15,9 @@ import java.time.LocalDate
 internal data class PriceDates(val price: LocalDate?, val valuation: LocalDate?)
 
 internal object StockPricing {
+
+    fun serviced(companyId: Field<Long?>): Condition =
+        DSL.exists(DSL.selectOne().from(SERVICE_COMPANIES).where(SERVICE_COMPANIES.COMPANY_ID.eq(companyId)))
 
     private const val CANDLE_WINDOW_DAYS = 60L
     private const val CHANGE_SCALE = 4

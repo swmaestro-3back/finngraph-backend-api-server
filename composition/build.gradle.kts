@@ -10,7 +10,6 @@ dependencies {
     api(project(":domain-user-api"))
     api(project(":domain-favorite-api"))
     api(project(":domain-auth-api"))
-    api(project(":domain-briefing-api"))
     api(project(":domain-calendar-api"))
 
     implementation("org.springframework:spring-context")

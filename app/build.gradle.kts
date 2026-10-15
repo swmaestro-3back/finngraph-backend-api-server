@@ -7,7 +7,6 @@ plugins {
     id("io.spring.dependency-management")
 }
 
-val koogVersion = "1.3.0"
 val awsSdkVersion = "2.55.10"
 
 tasks.named<BootRun>("bootRun") {
@@ -42,8 +41,6 @@ dependencies {
     implementation(project(":domain-auth-api"))
     runtimeOnly(project(":domain-auth-impl"))
 
-    implementation(project(":domain-briefing-api"))
-    runtimeOnly(project(":domain-briefing-impl"))
 
     implementation(project(":domain-calendar-api"))
     runtimeOnly(project(":domain-calendar-impl"))
@@ -64,9 +61,6 @@ dependencies {
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.0")
 
-    implementation("ai.koog:prompt-executor-bedrock-client:$koogVersion")
-    implementation("ai.koog:prompt-executor-model:$koogVersion")
-    implementation("ai.koog:prompt-structure:$koogVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json")
 

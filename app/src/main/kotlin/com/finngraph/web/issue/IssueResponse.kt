@@ -10,6 +10,7 @@ import com.finngraph.composition.issue.IssueTimeline
 import com.finngraph.composition.issue.IssueTimelineNode
 import com.finngraph.composition.issue.LatestStockIssue
 import com.finngraph.composition.issue.StockIssue
+import com.finngraph.composition.issue.StockIssueFlow
 import com.finngraph.composition.issue.ThemeIssueBoard
 import com.finngraph.composition.issue.ThemeIssues
 import com.finngraph.web.common.Pagination
@@ -90,9 +91,14 @@ data class IssueCompanyResponse(
     val name: String,
     @Schema(description = "이 종목을 언급한 공개 기사 수")
     val mentionCount: Int,
+    @Schema(
+        description = "이 이슈 기사에서 뽑은 관계 근거 문장 중 이 종목이 나온 한 문장(이 종목이 주어인 것 → 대표 기사 → 최신 순). " +
+            "언급 많은 종목부터 고르며 앞 종목이 이미 쓴 문장은 다른 후보가 있으면 피한다. 이슈 상세에서만 채우고 목록·타임라인에서는 null",
+    )
+    val role: String? = null,
 ) {
     companion object {
-        fun from(company: IssueCompany) = IssueCompanyResponse(company.ticker, company.name, company.mentionCount)
+        fun from(company: IssueCompany) = IssueCompanyResponse(company.ticker, company.name, company.mentionCount, company.role)
     }
 }
 
@@ -160,6 +166,8 @@ data class IssueArticleResponse(
     val summary: String?,
     @Schema(description = "관계 추출 결과. 공개 기사만 내므로 항상 true")
     val tripleExtracted: Boolean,
+    @Schema(description = "이 기사에 언급된 상장 종목코드(중복 제거). 이슈 상세에서만 채우고 그 밖에서는 빈 배열")
+    val tickers: List<String> = emptyList(),
 ) {
     companion object {
         fun from(article: IssueArticleView) = IssueArticleResponse(
@@ -170,6 +178,7 @@ data class IssueArticleResponse(
             publishedAt = article.publishedAt,
             summary = article.summary,
             tripleExtracted = article.tripleExtracted,
+            tickers = article.tickers,
         )
     }
 }
@@ -201,6 +210,10 @@ data class StockIssueResponse(
     val kind: String?,
     @Schema(description = "이어진 이슈 흐름에서 이 이슈가 몇 번째인지(앞선 이슈 노드 수 + 1, same_event로 이어진 이슈는 같은 노드). 연결 전이거나 흐름의 첫 이슈면 1")
     val timelinePosition: Int,
+    @Schema(description = "이 이슈가 속한 흐름의 첫 이슈 id(news_clusters.story_root_id, 흐름 첫 이슈는 자기 id). ETL 연결 판정 전이면 null")
+    val storyRootId: Long?,
+    @Schema(description = "흐름 첫 이슈의 클러스터 제목. 이 이슈가 흐름의 첫 이슈(storyRootId = id)이거나, 첫 이슈가 공개 이슈가 아니거나 제목이 없으면 null")
+    val storyTitle: String?,
 ) {
     companion object {
         fun from(found: StockIssue) = with(IssueSummaryResponse.from(found.issue)) {
@@ -219,6 +232,46 @@ data class StockIssueResponse(
                 mentionCount = found.mentionCount,
                 kind = kind,
                 timelinePosition = timelinePosition,
+                storyRootId = found.issue.storyRootId,
+                storyTitle = found.storyTitle,
+            )
+        }
+    }
+}
+
+data class StockIssueFlowResponse(
+    @Schema(description = "흐름 id. 이어진 흐름의 첫 이슈(news_clusters.story_root_id)")
+    val id: Long,
+    @Schema(description = "흐름 이름. 흐름 첫 이슈(story_root_id)의 클러스터 제목, 없으면 이 종목이 나온 가장 이른 이슈의 제목")
+    val title: String?,
+    @Schema(description = "흐름 안에서 이 종목이 나온 이슈 수(2 이상)")
+    val issueCount: Int,
+    @Schema(description = "흐름 안 이슈들의 공개 기사 보도 시각 최솟값")
+    val firstPublishedAt: OffsetDateTime?,
+    @Schema(description = "흐름 안 이슈들의 공개 기사 보도 시각 최댓값")
+    val lastPublishedAt: OffsetDateTime?,
+    @Schema(description = "흐름 첫 이슈의 매체 수")
+    val firstMediaCount: Int,
+    @Schema(description = "흐름 마지막 이슈의 매체 수")
+    val lastMediaCount: Int,
+    @Schema(description = "가장 최근 공개 기사 보도 시각 기준 7일 안에 보도가 있으면 true")
+    val ongoing: Boolean,
+    @Schema(description = "흐름 안에서 이 종목이 나온 이슈. 처음 보도 시각 오름차순")
+    val issues: List<StockIssueResponse>,
+) {
+    companion object {
+        fun from(flow: StockIssueFlow): StockIssueFlowResponse {
+            val issues = flow.issues.map(StockIssueResponse::from)
+            return StockIssueFlowResponse(
+                id = flow.id,
+                title = flow.title ?: issues.first().title,
+                issueCount = issues.size,
+                firstPublishedAt = issues.mapNotNull { it.firstPublishedAt }.minOrNull(),
+                lastPublishedAt = issues.mapNotNull { it.lastPublishedAt }.maxOrNull(),
+                firstMediaCount = issues.first().mediaCount,
+                lastMediaCount = issues.last().mediaCount,
+                ongoing = flow.ongoing,
+                issues = issues,
             )
         }
     }
@@ -285,6 +338,8 @@ data class IssueTimelineNodeResponse(
     val mediaCount: Int,
     @Schema(description = "합친 이슈 전체의 공개 기사에 언급된 상장 종목. mentionCount 내림차순, 최대 5개")
     val companies: List<IssueCompanyResponse>,
+    @Schema(description = "합친 이슈 전체의 공개 기사에 언급된 상장 종목 수(companies는 5개로 잘림)")
+    val companyCount: Int,
 ) {
     companion object {
         fun from(node: IssueTimelineNode) = IssueTimelineNodeResponse(
@@ -299,6 +354,7 @@ data class IssueTimelineNodeResponse(
             articleCount = node.articleCount,
             mediaCount = node.mediaCount,
             companies = node.companies.map(IssueCompanyResponse::from),
+            companyCount = node.companyCount,
         )
     }
 }

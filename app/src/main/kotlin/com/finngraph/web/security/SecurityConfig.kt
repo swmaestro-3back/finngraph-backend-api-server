@@ -137,6 +137,7 @@ class SecurityConfig {
             "/api/v1/stocks/{ticker}/news",
             "/api/v1/stocks/{ticker}/contracts",
             "/api/v1/stocks/{ticker}/issues",
+            "/api/v1/stocks/{ticker}/issue-flows",
             "/api/v1/stocks/{ticker}/themes",
             "/api/v1/stocks/{ticker}/financials/quarterly",
             "/api/v1/stocks/{ticker}/themes/{themeId}/compare",

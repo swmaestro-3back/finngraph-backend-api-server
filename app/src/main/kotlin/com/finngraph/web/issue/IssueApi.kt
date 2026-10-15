@@ -129,6 +129,31 @@ interface IssueApi {
     ): PageResponse<StockIssueResponse>
 
     @Operation(
+        summary = "종목 이슈 흐름",
+        description = "그 종목이 나온 이슈 중 from~to(KST, 양끝 포함)에 보도된 것을 이어진 흐름(story_root_id)별로 묶는다. " +
+            "이 종목이 나온 이슈가 2개 이상인 흐름만 주고, 마지막 보도 시각 내림차순이다. to를 빼면 오늘(KST), from을 빼면 to − 90일",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공. 흐름이 없으면 data가 빈 배열"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 가 공백이거나 20자를 초과, from·to가 YYYY-MM-DD가 아님, to < from, from이 to(없으면 오늘)보다 366일 넘게 앞섬",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 종목",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/api/v1/stocks/{ticker}/issue-flows")
+    fun stockIssueFlows(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+        @Parameter(description = "시작일 YYYY-MM-DD(KST, 포함). 생략하면 to − 90일. to보다 최대 366일 앞까지") @RequestParam(required = false) from: String?,
+        @Parameter(description = "종료일 YYYY-MM-DD(KST, 포함). 생략하면 오늘") @RequestParam(required = false) to: String?,
+    ): DataResponse<List<StockIssueFlowResponse>>
+
+    @Operation(
         summary = "종목별 최근 이슈 하나",
         description = "종목마다 최근 30일(KST 오늘 − 30일 ~ 오늘, 양끝 포함)에 보도된 공개 기사가 있는 이슈 중 lastPublishedAt이 가장 늦은 이슈. " +
             "항목은 종목이 나온 이슈 항목과 같다. 요청 순서대로 중복 없이 내고, 이슈가 없거나 활성 종목이 아니면 issue가 null",

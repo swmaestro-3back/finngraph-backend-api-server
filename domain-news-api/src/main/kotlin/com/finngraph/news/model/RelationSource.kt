@@ -19,4 +19,5 @@ data class RelationSource(
     val subjectImpact: String?,
     val objectImpact: String?,
     val mentionedAt: LocalDate,
+    val evidence: String? = null,
 )

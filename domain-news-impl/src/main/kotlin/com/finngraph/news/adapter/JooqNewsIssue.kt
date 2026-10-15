@@ -351,6 +351,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             NEWS_CLUSTERS.KEYWORDS,
             NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID,
             NEWS_CLUSTERS.ISSUE_KIND,
+            NEWS_CLUSTERS.STORY_ROOT_ID,
         )
             .from(NEWS_CLUSTERS)
             .where(condition)
@@ -369,6 +370,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         keywords = get(NEWS_CLUSTERS.KEYWORDS)?.filterNotNull().orEmpty(),
         representativeNewsId = get(NEWS_CLUSTERS.REPRESENTATIVE_NEWS_ID),
         kind = get(NEWS_CLUSTERS.ISSUE_KIND),
+        storyRootId = get(NEWS_CLUSTERS.STORY_ROOT_ID),
     )
 
     private companion object {

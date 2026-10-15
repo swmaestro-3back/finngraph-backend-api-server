@@ -6,6 +6,7 @@ import com.finngraph.news.model.IssueChainStep
 import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueLinkRelation
 import com.finngraph.news.model.IssueMention
+import com.finngraph.news.model.RelationSource
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -28,6 +29,10 @@ object IssueRules {
 
     const val STOCK_RANGE_DAYS = 365L
     const val LATEST_RANGE_DAYS = 30L
+    const val FLOW_RANGE_DAYS = 90L
+    const val FLOW_MAX_RANGE_DAYS = 366L
+    const val ONGOING_DAYS = 7L
+    const val MIN_FLOW_ISSUES = 2
 
     private val HOST = Regex("^[A-Za-z][A-Za-z0-9+.-]*://(?:[^/?#@]*@)?([^/?#:]+)")
     private const val WWW = "www."
@@ -68,6 +73,14 @@ object IssueRules {
 
     fun latestRange(today: LocalDate): DateRange = DateRange(today.minusDays(LATEST_RANGE_DAYS), today)
 
+    fun flowRange(from: LocalDate?, to: LocalDate?, today: LocalDate): DateRange {
+        val end = to ?: today
+        return DateRange(from ?: end.minusDays(FLOW_RANGE_DAYS), end)
+    }
+
+    fun ongoing(lastPublishedAt: OffsetDateTime?, latest: OffsetDateTime?): Boolean =
+        lastPublishedAt != null && latest != null && !lastPublishedAt.isBefore(latest.minusDays(ONGOING_DAYS))
+
     fun kstDate(at: OffsetDateTime): LocalDate = at.atZoneSameInstant(KST).toLocalDate()
 
     fun adjacentDate(nearestPublishedAt: OffsetDateTime?): LocalDate? = nearestPublishedAt?.let(::kstDate)
@@ -103,6 +116,24 @@ object IssueRules {
             .mapNotNull { (ticker, count) -> names[ticker]?.let { IssueCompany(ticker, it, count) } }
             .sortedWith(compareByDescending<IssueCompany> { it.mentionCount }.thenBy { it.ticker })
         return if (limit == null) ranked else ranked.take(limit)
+    }
+
+    fun roles(tickers: List<String>, sources: List<RelationSource>, representativeNewsId: Long): Map<String, String> {
+        val used = HashSet<String>()
+        return tickers.mapNotNull { ticker ->
+            val candidates = sources
+                .filter { (it.subjectCode == ticker || it.objectCode == ticker) && !it.evidence.isNullOrBlank() }
+                .sortedWith(
+                    compareBy<RelationSource> { if (it.subjectCode == ticker) 0 else 1 }
+                        .thenBy { if (it.newsId == representativeNewsId) 0 else 1 }
+                        .thenByDescending { it.mentionedAt }
+                        .thenByDescending { it.id },
+                )
+                .map { requireNotNull(it.evidence).trim() }
+            val picked = candidates.firstOrNull { it !in used } ?: candidates.firstOrNull() ?: return@mapNotNull null
+            used.add(picked)
+            ticker to picked
+        }.toMap()
     }
 
     fun order(sort: IssueSort): Comparator<IssueSummary> = when (sort) {

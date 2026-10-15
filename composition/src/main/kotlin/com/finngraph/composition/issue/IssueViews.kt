@@ -9,6 +9,7 @@ data class IssueCompany(
     val ticker: String,
     val name: String,
     val mentionCount: Int,
+    val role: String? = null,
 )
 
 data class IssueSummary(
@@ -25,6 +26,7 @@ data class IssueSummary(
     val companies: List<IssueCompany>,
     val kind: String? = null,
     val timelinePosition: Int = 1,
+    val storyRootId: Long? = null,
 )
 
 data class IssueArticleView(
@@ -35,6 +37,7 @@ data class IssueArticleView(
     val publishedAt: OffsetDateTime?,
     val summary: String?,
     val tripleExtracted: Boolean,
+    val tickers: List<String> = emptyList(),
 )
 
 data class IssueDetail(
@@ -53,6 +56,14 @@ data class IssuePage(
 data class StockIssue(
     val issue: IssueSummary,
     val mentionCount: Int,
+    val storyTitle: String? = null,
+)
+
+data class StockIssueFlow(
+    val id: Long,
+    val title: String?,
+    val issues: List<StockIssue>,
+    val ongoing: Boolean,
 )
 
 data class LatestStockIssue(
@@ -96,6 +107,7 @@ data class IssueTimelineNode(
     val articleCount: Int,
     val mediaCount: Int,
     val companies: List<IssueCompany>,
+    val companyCount: Int = companies.size,
 )
 
 data class TimelineMember(

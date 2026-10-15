@@ -8,6 +8,7 @@ data class IssueCluster(
     val keywords: List<String>,
     val representativeNewsId: Long?,
     val kind: String? = null,
+    val storyRootId: Long? = null,
 )
 
 data class IssueArticle(

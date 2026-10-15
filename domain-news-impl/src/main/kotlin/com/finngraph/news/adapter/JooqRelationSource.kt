@@ -1,5 +1,6 @@
 package com.finngraph.news.adapter
 
+import com.finngraph.news.adapter.jooq.tables.records.RelationSourcesRecord
 import com.finngraph.news.adapter.jooq.tables.references.NEWS
 import com.finngraph.news.adapter.jooq.tables.references.RELATION_SOURCES
 import com.finngraph.news.model.RelationEvidence
@@ -10,35 +11,37 @@ import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Component
-import java.time.LocalDate
 
 @Component
 class JooqRelationSource(private val dsl: DSLContext) : RelationSourcePort {
 
-    override fun findMentionedBetween(fromExclusive: LocalDate, toInclusive: LocalDate): List<RelationSource> =
-        dsl.selectFrom(RELATION_SOURCES)
-            .where(RELATION_SOURCES.MENTIONED_AT.gt(fromExclusive).and(RELATION_SOURCES.MENTIONED_AT.le(toInclusive)))
-            .orderBy(RELATION_SOURCES.MENTIONED_AT.desc(), RELATION_SOURCES.ID.asc())
-            .fetch {
-                RelationSource(
-                    id = requireNotNull(it.id),
-                    sourceType = requireNotNull(it.sourceType),
-                    newsId = it.newsId,
-                    rceptNo = it.rceptNo,
-                    subjectName = requireNotNull(it.subjectName),
-                    subjectCode = it.subjectCode,
-                    relation = requireNotNull(it.relation),
-                    objectName = requireNotNull(it.objectName),
-                    objectCode = it.objectCode,
-                    item = it.item,
-                    sourceSentence = it.sourceSentence,
-                    polarity = it.polarity,
-                    tense = it.tense,
-                    subjectImpact = it.subjectImpact,
-                    objectImpact = it.objectImpact,
-                    mentionedAt = requireNotNull(it.mentionedAt),
-                )
-            }
+    override fun findByNews(newsIds: Collection<Long>): List<RelationSource> {
+        if (newsIds.isEmpty()) return emptyList()
+        return dsl.selectFrom(RELATION_SOURCES)
+            .where(RELATION_SOURCES.NEWS_ID.`in`(newsIds))
+            .orderBy(RELATION_SOURCES.MENTIONED_AT.desc(), RELATION_SOURCES.ID.desc())
+            .fetch { it.toSource() }
+    }
+
+    private fun RelationSourcesRecord.toSource() = RelationSource(
+        id = requireNotNull(id),
+        sourceType = requireNotNull(sourceType),
+        newsId = newsId,
+        rceptNo = rceptNo,
+        subjectName = requireNotNull(subjectName),
+        subjectCode = subjectCode,
+        relation = requireNotNull(relation),
+        objectName = requireNotNull(objectName),
+        objectCode = objectCode,
+        item = item,
+        sourceSentence = sourceSentence,
+        polarity = polarity,
+        tense = tense,
+        subjectImpact = subjectImpact,
+        objectImpact = objectImpact,
+        mentionedAt = requireNotNull(mentionedAt),
+        evidence = evidence,
+    )
 
     override fun findBetween(a: String, b: String, relation: String?): List<RelationEvidence> {
         val forward = subject(a).and(objectOf(b))

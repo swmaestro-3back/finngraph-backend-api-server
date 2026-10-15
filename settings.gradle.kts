@@ -19,8 +19,6 @@ include(
     "domain-user-impl",
     "domain-auth-api",
     "domain-auth-impl",
-    "domain-briefing-api",
-    "domain-briefing-impl",
     "domain-calendar-api",
     "domain-calendar-impl",
 )

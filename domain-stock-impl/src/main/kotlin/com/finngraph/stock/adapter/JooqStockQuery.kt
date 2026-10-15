@@ -9,13 +9,16 @@ import com.finngraph.stock.adapter.jooq.tables.references.STOCK_INVESTOR_FLOWS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.CompanyDescription
 import com.finngraph.stock.model.CompanyProfile
+import com.finngraph.stock.model.DailyCandleCount
 import com.finngraph.stock.model.PeerComparison
 import com.finngraph.stock.model.PeerMetric
+import com.finngraph.stock.model.PriceCalendar
 import com.finngraph.stock.model.StockDetailView
 import com.finngraph.stock.model.StockFlags
 import com.finngraph.stock.model.StockListView
 import com.finngraph.stock.model.StockPriceView
 import com.finngraph.stock.model.Ticker
+import com.finngraph.stock.model.TradeValueAverage
 import com.finngraph.stock.model.Week52Range
 import com.finngraph.stock.port.StockQueryPort
 import org.jooq.Condition
@@ -52,11 +55,30 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
 
     override fun findByTicker(ticker: Ticker): StockDetailView? {
         val filter: (Stocks) -> Condition = { s -> s.TICKER.eq(ticker.value).and(s.IS_ACTIVE.eq(true)) }
-        val dates = StockPricing.dates(dsl)
+        val counts = StockPricing.recentCounts(dsl)
+        val dates = PriceCalendar.priceDate(counts)?.let { StockPricing.dates(dsl, it) } ?: PriceDates(null, null)
         val row = fetchStocks(filter, dates).firstOrNull() ?: return null
         val stockId = requireNotNull(row.get(STOCKS.ID))
         val week52 = week52Ranges(dates.price, STOCK_CANDLES_DAILY.STOCK_ID.eq(stockId))[stockId]
         return row.toDetailView(revenueYoY(filter), companyDescription(filter), companyProfile(filter), dates, week52)
+            .copy(tradeValueAverage = tradeValueAverage(stockId, dates.price, counts))
+    }
+
+    private fun tradeValueAverage(stockId: Long, baseDate: LocalDate?, counts: List<DailyCandleCount>): TradeValueAverage? {
+        if (baseDate == null) return null
+        val dates = PriceCalendar.tradingDatesBefore(baseDate, counts)
+        if (dates.isEmpty()) return null
+        val row = dsl.select(DSL.avg(STOCK_CANDLES_DAILY.TRADE_VALUE), DSL.count(STOCK_CANDLES_DAILY.TRADE_VALUE))
+            .from(STOCK_CANDLES_DAILY)
+            .where(
+                STOCK_CANDLES_DAILY.STOCK_ID.eq(stockId)
+                    .and(STOCK_CANDLES_DAILY.TRADE_DATE.`in`(dates))
+                    .and(STOCK_CANDLES_DAILY.VOLUME.gt(0L)),
+            )
+            .fetchOne() ?: return null
+        val days = row.value2()
+        val average = row.value1()?.takeIf { days >= TRADE_VALUE_MIN_DAYS } ?: return null
+        return TradeValueAverage(average.setScale(0, RoundingMode.HALF_UP).toLong(), days)
     }
 
     override fun findByTickers(tickers: List<Ticker>, asOf: LocalDate?): Map<Ticker, StockPriceView> {
@@ -442,6 +464,7 @@ class JooqStockQuery(private val dsl: DSLContext) : StockQueryPort {
     )
 
     companion object {
+        private const val TRADE_VALUE_MIN_DAYS = 5
         private const val ANNUAL = "A"
         private const val CONSOLIDATED = "CFS"
         private const val KIS = "KIS"

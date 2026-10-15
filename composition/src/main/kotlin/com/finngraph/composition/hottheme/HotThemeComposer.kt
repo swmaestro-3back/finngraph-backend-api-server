@@ -26,8 +26,6 @@ class HotThemeComposer(
 
     fun hot(count: Int): List<ThemeSummary> = select(themeQuery.board(), count)
 
-    fun settledBoard(): ThemeBoard = themeQuery.board(themeQuery.pricingBasis().settled())
-
     fun hotForEtl(count: Int): HotThemeSnapshot {
         val board = themeQuery.board()
         val selected = select(board, count)

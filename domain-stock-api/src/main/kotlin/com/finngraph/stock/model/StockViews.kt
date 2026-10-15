@@ -1,6 +1,7 @@
 package com.finngraph.stock.model
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 
 data class StockListView(
@@ -43,6 +44,23 @@ data class StockDetailView(
     val description: CompanyDescription?,
     val profile: CompanyProfile,
     val valuationDate: LocalDate? = baseDate,
+    val tradeValueAverage: TradeValueAverage? = null,
+) {
+    val tradeValueRatio: BigDecimal?
+        get() {
+            val average = tradeValueAverage?.value?.takeIf { it > 0 } ?: return null
+            val today = tradeValue ?: return null
+            return BigDecimal(today).divide(BigDecimal(average), RATIO_SCALE, RoundingMode.HALF_UP)
+        }
+
+    companion object {
+        const val RATIO_SCALE = 2
+    }
+}
+
+data class TradeValueAverage(
+    val value: Long,
+    val days: Int,
 )
 
 data class Week52Range(
@@ -129,4 +147,19 @@ data class AnnualFinancials(
     val pbr: BigDecimal?,
     val dps: BigDecimal?,
     val payoutRatio: BigDecimal?,
+    val bps: BigDecimal? = null,
+)
+
+data class QuarterlyFinancials(
+    val year: Int,
+    val quarter: Int,
+    val periodEnd: String,
+    val fsDiv: String?,
+    val revenue: Long?,
+    val operatingProfit: Long?,
+    val netIncome: Long?,
+    val operatingMargin: BigDecimal?,
+    val bps: BigDecimal?,
+    val revenueYoY: BigDecimal?,
+    val operatingProfitYoY: BigDecimal?,
 )

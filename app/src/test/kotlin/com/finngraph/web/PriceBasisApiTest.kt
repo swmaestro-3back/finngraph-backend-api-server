@@ -1,7 +1,5 @@
 package com.finngraph.web
 
-import com.finngraph.composition.briefing.BriefingAssembly
-import com.finngraph.composition.briefing.BriefingComposer
 import com.finngraph.composition.hottheme.HotThemeComposer
 import com.finngraph.support.HotThemeSeed
 import com.finngraph.support.IntradaySeed
@@ -32,9 +30,6 @@ class PriceBasisApiTest {
 
     @Autowired
     lateinit var hotThemes: HotThemeComposer
-
-    @Autowired
-    lateinit var briefing: BriefingComposer
 
     @BeforeEach
     fun reset() = IntradaySeed.clear()
@@ -130,16 +125,6 @@ class PriceBasisApiTest {
         assertEquals(
             listOf(HotThemeSeed.SURGE_THEME, HotThemeSeed.BOUNDARY_THEME, HotThemeSeed.FALL_THEME),
             snapshot.themes.map { it.id },
-        )
-    }
-
-    @Test
-    fun `브리핑은 장중에도 마감 기준일을 쓴다`() {
-        IntradaySeed.load()
-
-        assertEquals(
-            BriefingAssembly.DateMismatch(LocalDate.parse(IntradaySeed.TODAY), LocalDate.parse(HotThemeSeed.BASE_DATE)),
-            briefing.assemble(LocalDate.parse(IntradaySeed.TODAY)),
         )
     }
 

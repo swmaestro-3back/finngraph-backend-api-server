@@ -61,14 +61,17 @@ class JooqThemeStock(private val dsl: DSLContext) : ThemeStockPort {
     }
 
     override fun findTickersByName(query: String): ThemeNameMatch {
-        val themes = dsl.select(THEMES.ID, THEMES.NAME)
-            .from(THEMES)
-            .where(THEMES.NAME.containsIgnoreCase(query))
-            .orderBy(THEMES.NAME.asc(), THEMES.ID.asc())
-            .fetch { PrimaryTheme(requireNotNull(it.value1()), requireNotNull(it.value2())) }
+        val themes = findThemesByName(query)
         if (themes.isEmpty()) return ThemeNameMatch(emptyList(), emptyList())
 
         val tickers = findTickers(themes.map { ThemeId(it.id) }).values.flatten().distinct().sorted()
         return ThemeNameMatch(themes, tickers)
     }
+
+    override fun findThemesByName(query: String): List<PrimaryTheme> =
+        dsl.select(THEMES.ID, THEMES.NAME)
+            .from(THEMES)
+            .where(THEMES.NAME.containsIgnoreCase(query))
+            .orderBy(THEMES.NAME.asc(), THEMES.ID.asc())
+            .fetch { PrimaryTheme(requireNotNull(it.value1()), requireNotNull(it.value2())) }
 }

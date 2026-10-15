@@ -7,6 +7,7 @@ import com.finngraph.news.model.NewsId
 import com.finngraph.news.model.PageResult
 import com.finngraph.news.port.NewsCompanyPort
 import com.finngraph.news.port.NewsIssuePort
+import com.finngraph.news.port.RelationSourcePort
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockQueryPort
 import com.finngraph.theme.model.ThemeId
@@ -21,6 +22,7 @@ class IssueComposer(
     private val newsCompany: NewsCompanyPort,
     private val stockQuery: StockQueryPort,
     private val themeStock: ThemeStockPort,
+    private val relationSources: RelationSourcePort,
     private val clock: Clock = Clock.system(IssueRules.KST),
 ) {
 
@@ -36,7 +38,13 @@ class IssueComposer(
         val slice = ranked.pageSlice(page, size)
 
         val mentions = mentions(slice.flatMap { articles[it.id].orEmpty() })
-        val content = slice.map { it.copy(companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT)) }
+        val positions = positions(slice)
+        val content = slice.map {
+            it.copy(
+                companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT),
+                timelinePosition = positions[it.id] ?: 1,
+            )
+        }
 
         val neighbors = issues.findNeighbors(window.start, window.end)
         return IssuePage(
@@ -51,11 +59,19 @@ class IssueComposer(
         val cluster = issues.findById(id) ?: return null
         val articles = issues.findArticles(listOf(id))[id]?.takeIf { it.isNotEmpty() } ?: return null
 
-        val issue = summarize(cluster, articles).copy(companies = mentions(articles).companies(articles, null))
+        val summary = summarize(cluster, articles)
+        val sources = relationSources.findByNews(articles.map { it.id })
+        val mentions = mentions(articles)
+        val companies = mentions.companies(articles, null)
+        val roles = IssueRules.roles(companies.map { it.ticker }, sources, summary.representativeNewsId)
+        val issue = summary.copy(
+            companies = companies.map { it.copy(role = roles[it.ticker]) },
+            timelinePosition = positions(listOf(summary))[id] ?: 1,
+        )
         return IssueDetail(
             issue = issue,
             summaryPoints = articles.firstOrNull { it.id == issue.representativeNewsId }?.summaryPoints.orEmpty(),
-            articles = articles.map { it.toView() },
+            articles = articles.map { it.toView().copy(tickers = mentions.listed(it)) },
         )
     }
 
@@ -69,6 +85,46 @@ class IssueComposer(
         val built = stockIssues(slice)
 
         return PageResult(slice.mapNotNull(built::get), page, size, ranked.size.toLong())
+    }
+
+    fun stockFlows(ticker: Ticker, from: LocalDate?, to: LocalDate?): List<StockIssueFlow>? {
+        if (!stockQuery.exists(ticker)) return null
+
+        val window = IssueRules.window(IssueRules.flowRange(from, to, LocalDate.now(clock)))
+        val mentioned = issues.findMentionedBetween(listOf(ticker.value), window.start, window.end)
+        val rootOf = issues.findByIds(mentioned.map { it.clusterId }.distinct()).associate { it.id to (it.storyRootId ?: it.id) }
+        val flowing = rootOf.values.groupingBy { it }.eachCount().filterValues { it >= IssueRules.MIN_FLOW_ISSUES }.keys
+        val built = stockIssues(mentioned.filter { rootOf[it.clusterId] in flowing }).values
+        val latest = issues.findLatestPublishedAt()
+        return built
+            .groupBy { it.issue.storyRootId ?: it.issue.id }
+            .filterValues { it.size >= IssueRules.MIN_FLOW_ISSUES }
+            .map { (root, found) ->
+                val ordered = found.sortedWith(
+                    compareBy(nullsLast()) { it: StockIssue -> it.issue.firstPublishedAt }.thenBy { it.issue.id },
+                )
+                val last = ordered.mapNotNull { it.issue.lastPublishedAt }.maxOrNull()
+                StockIssueFlow(root, ordered.firstNotNullOfOrNull { it.storyTitle }, ordered, IssueRules.ongoing(last, latest))
+            }
+            .sortedWith(
+                compareByDescending(nullsLast()) { flow: StockIssueFlow ->
+                    flow.issues.mapNotNull { it.issue.lastPublishedAt }.maxOrNull()
+                }.thenByDescending { it.id },
+            )
+    }
+
+    fun search(query: String, limit: Int): List<IssueSummary> {
+        val clusters = issues.search(query, limit)
+        val articles = issues.findArticles(clusters.map { it.id })
+        val found = summaries(clusters, articles)
+        val mentions = mentions(found.flatMap { articles[it.id].orEmpty() })
+        val positions = positions(found)
+        return found.map {
+            it.copy(
+                companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT),
+                timelinePosition = positions[it.id] ?: 1,
+            )
+        }
     }
 
     fun latestByStocks(tickers: List<String>): List<LatestStockIssue> {
@@ -97,15 +153,22 @@ class IssueComposer(
         }
         val members = themeStock.findTickers(themeIds)
 
-        val themes = themeIds.map { themeId ->
+        val matches = themeIds.associateWith { themeId ->
             val tickers = members[themeId].orEmpty()
-            val matched = ranked.filter { issue -> tickers.any { it in mentioned.getValue(issue.id) } }
+            ranked.filter { issue -> tickers.any { it in mentioned.getValue(issue.id) } }
+        }
+        val positions = positions(matches.values.flatMap { it.take(THEME_ISSUE_LIMIT) }.distinctBy { it.id })
+        val themes = themeIds.map { themeId ->
+            val matched = matches.getValue(themeId)
             ThemeIssues(
                 themeId = themeId.value,
                 issueCount = matched.size,
                 issueIds = matched.map { it.id },
                 issues = matched.take(THEME_ISSUE_LIMIT).map {
-                    it.copy(companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT))
+                    it.copy(
+                        companies = mentions.companies(articles[it.id].orEmpty(), LIST_COMPANY_LIMIT),
+                        timelinePosition = positions[it.id] ?: 1,
+                    )
                 },
             )
         }
@@ -170,6 +233,7 @@ class IssueComposer(
             articleCount = articles.size,
             mediaCount = IssueRules.mediaCount(articles),
             companies = mentions.companies(articles, LIST_COMPANY_LIMIT),
+            companyCount = mentions.companies(articles, null).size,
         )
     }
 
@@ -180,13 +244,20 @@ class IssueComposer(
         val articles = issues.findArticles(ids)
         val summaries = summaries(issues.findByIds(ids), articles).associateBy { it.id }
         val mentions = mentions(summaries.keys.flatMap { articles[it].orEmpty() })
+        val positions = positions(summaries.values.toList())
+        val roots = summaries.values.mapNotNull { summary -> summary.storyRootId?.takeIf { it != summary.id } }.distinct()
+        val storyTitles = if (roots.isEmpty()) emptyMap() else issues.findByIds(roots).mapNotNull { root -> root.title?.let { root.id to it } }.toMap()
 
         return picks.mapNotNull { pick ->
             val summary = summaries[pick.clusterId] ?: return@mapNotNull null
             val issueArticles = articles[pick.clusterId].orEmpty()
             pick to StockIssue(
-                issue = summary.copy(companies = mentions.companies(issueArticles, LIST_COMPANY_LIMIT)),
+                issue = summary.copy(
+                    companies = mentions.companies(issueArticles, LIST_COMPANY_LIMIT),
+                    timelinePosition = positions[summary.id] ?: 1,
+                ),
                 mentionCount = mentions.mentionCount(issueArticles, pick.ticker),
+                storyTitle = summary.storyRootId?.takeIf { it != summary.id }?.let(storyTitles::get),
             )
         }.toMap()
     }
@@ -210,8 +281,14 @@ class IssueComposer(
             summary = representative.summary,
             representativeNewsId = representative.id,
             companies = emptyList(),
+            kind = cluster.kind,
+            storyRootId = cluster.storyRootId,
         )
     }
+
+    private fun positions(summaries: List<IssueSummary>): Map<Long, Int> =
+        issues.findChains(summaries.map { it.id }, TIMELINE_MAX_DEPTH)
+            .mapValues { (_, steps) -> IssueRules.timelinePosition(steps) }
 
     private fun mentions(articles: List<IssueArticle>): Mentions {
         val refs = newsCompany.findByNewsIds(articles.map { NewsId(it.id) }.distinct())
@@ -235,6 +312,9 @@ class IssueComposer(
 
         fun mentionCount(articles: List<IssueArticle>, ticker: String): Int =
             companies(articles, null).firstOrNull { it.ticker == ticker }?.mentionCount ?: 0
+
+        fun listed(article: IssueArticle): List<String> =
+            tickersByArticle[article.id].orEmpty().filter(names::containsKey).distinct()
     }
 
     private fun <T> List<T>.pageSlice(page: Int, size: Int): List<T> {

@@ -2,6 +2,7 @@ package com.finngraph.news.port
 
 import com.finngraph.news.model.IssueArticle
 import com.finngraph.news.model.IssueChainLink
+import com.finngraph.news.model.IssueChainStep
 import com.finngraph.news.model.IssueCluster
 import com.finngraph.news.model.IssueDescendant
 import com.finngraph.news.model.IssueMention
@@ -24,5 +25,9 @@ interface NewsIssuePort {
 
     fun findDescendants(ids: List<Long>, maxDepth: Int): List<IssueDescendant>
 
+    fun findChains(ids: List<Long>, maxDepth: Int): Map<Long, List<IssueChainStep>>
+
     fun findChangePoints(newsIds: List<Long>): Map<Long, String>
+
+    fun search(query: String, limit: Int): List<IssueCluster>
 }

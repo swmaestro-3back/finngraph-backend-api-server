@@ -1,6 +1,7 @@
 package com.finngraph.web.issue
 
 import com.finngraph.composition.issue.IssueComposer
+import com.finngraph.composition.issue.IssueRules
 import com.finngraph.composition.issue.IssueSort
 import com.finngraph.stock.model.Ticker
 import com.finngraph.theme.model.ThemeId
@@ -58,6 +59,32 @@ class IssueController(
 
     override fun stockIssues(ticker: String, from: String?, to: String?, page: Int, size: Int): PageResponse<StockIssueResponse> {
         val target = toTicker(ticker)
+        val (start, end) = dateRange(from, to)
+        validatePaging(page, size)
+        val found = composer.stockPage(target, start, end, page, size)
+            ?: throw ResourceNotFoundException(ErrorCode.STOCK_NOT_FOUND, "종목을 찾을 수 없습니다: $ticker")
+        return PageResponse(
+            data = found.content.map(StockIssueResponse::from),
+            pagination = Pagination(found.page, found.size, found.totalElements, found.totalPages),
+        )
+    }
+
+    override fun stockIssueFlows(ticker: String, from: String?, to: String?): DataResponse<List<StockIssueFlowResponse>> {
+        val target = toTicker(ticker)
+        val (start, end) = dateRange(from, to)
+        val until = end ?: LocalDate.now(IssueRules.KST)
+        if (start != null && start.isBefore(until.minusDays(IssueRules.FLOW_MAX_RANGE_DAYS))) {
+            throw InvalidParameterException(
+                "종목 이슈 파라미터가 올바르지 않습니다",
+                mapOf("from" to "range must be at most ${IssueRules.FLOW_MAX_RANGE_DAYS} days"),
+            )
+        }
+        val found = composer.stockFlows(target, start, end)
+            ?: throw ResourceNotFoundException(ErrorCode.STOCK_NOT_FOUND, "종목을 찾을 수 없습니다: $ticker")
+        return DataResponse(found.map(StockIssueFlowResponse::from))
+    }
+
+    private fun dateRange(from: String?, to: String?): Pair<LocalDate?, LocalDate?> {
         val start = parseDate(from)
         val end = parseDate(to)
         val errors = buildMap {
@@ -68,13 +95,7 @@ class IssueController(
         if (errors.isNotEmpty()) {
             throw InvalidParameterException("종목 이슈 파라미터가 올바르지 않습니다", errors)
         }
-        validatePaging(page, size)
-        val found = composer.stockPage(target, start, end, page, size)
-            ?: throw ResourceNotFoundException(ErrorCode.STOCK_NOT_FOUND, "종목을 찾을 수 없습니다: $ticker")
-        return PageResponse(
-            data = found.content.map(StockIssueResponse::from),
-            pagination = Pagination(found.page, found.size, found.totalElements, found.totalPages),
-        )
+        return start to end
     }
 
     override fun latestStockIssues(tickers: String?): DataResponse<List<LatestStockIssueResponse>> {

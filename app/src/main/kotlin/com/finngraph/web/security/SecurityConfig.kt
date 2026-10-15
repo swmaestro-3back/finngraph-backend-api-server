@@ -117,6 +117,7 @@ class SecurityConfig {
         const val ARGON2_ITERATIONS = 2
 
         val PUBLIC_GET = arrayOf(
+            "/api/v1/search",
             "/api/v1/themes",
             "/api/v1/themes/hot",
             "/api/v1/themes/market",
@@ -137,13 +138,12 @@ class SecurityConfig {
             "/api/v1/stocks/{ticker}/news",
             "/api/v1/stocks/{ticker}/contracts",
             "/api/v1/stocks/{ticker}/issues",
+            "/api/v1/stocks/{ticker}/issue-flows",
             "/api/v1/stocks/{ticker}/themes",
+            "/api/v1/stocks/{ticker}/financials/quarterly",
             "/api/v1/stocks/{ticker}/themes/{themeId}/compare",
             "/api/v1/stocks/issues/latest",
             "/api/v1/contracts/recent",
-            "/api/v1/briefings",
-            "/api/v1/briefings/latest",
-            "/api/v1/briefings/{date}",
             "/api/v1/news",
             "/api/v1/news/{id}",
             "/api/v1/news/{id}/companies",

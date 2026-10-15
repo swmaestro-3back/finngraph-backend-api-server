@@ -5,6 +5,7 @@ import com.finngraph.stock.adapter.jooq.tables.references.STOCK_DIVIDENDS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
 import com.finngraph.stock.model.AnnualFinancials
+import com.finngraph.stock.model.QuarterlyFinancials
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockFinancialsPort
 import org.jooq.DSLContext
@@ -33,13 +34,14 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
 
         val valuations = yearEndValuations(stockId)
         val dividends = annualDps(stockId)
-        val reportedRoe = reportedRoe(companyId)
+        val reported = reportedAnnual(companyId)
 
         return statements.keys.sorted().map { year ->
             val perFsDiv = statements.getValue(year)
             val body = perFsDiv.consolidated ?: perFsDiv.separate
             val valuation = valuations[year]
-            val eps = body?.eps ?: valuation?.eps
+            val kis = reported[year]
+            val eps = body?.eps ?: kis?.eps ?: valuation?.eps
             val dps = dividends[year]
 
             AnnualFinancials(
@@ -48,7 +50,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
                 operatingProfit = body?.operatingIncome,
                 netIncome = body?.netIncome,
                 operatingMargin = percentage(body?.operatingIncome?.toDecimal(), body?.revenue?.toDecimal()),
-                roe = body?.roe ?: reportedRoe[year],
+                roe = body?.roe ?: kis?.roe,
                 debtRatio = percentage(body?.totalLiabilities?.toDecimal(), body?.totalEquity?.toDecimal()),
                 totalAssets = body?.totalAssets,
                 separateAssets = perFsDiv.separate?.totalAssets,
@@ -59,8 +61,77 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
                 pbr = valuation?.pbr,
                 dps = dps,
                 payoutRatio = if (eps != null && eps.signum() > 0) percentage(dps, eps) else null,
+                bps = body?.bps ?: kis?.bps,
             )
         }
+    }
+
+    override fun findQuarterly(ticker: Ticker, limit: Int): List<QuarterlyFinancials> {
+        val companyId = dsl.select(STOCKS.COMPANY_ID)
+            .from(STOCKS)
+            .where(STOCKS.TICKER.eq(ticker.value).and(STOCKS.IS_ACTIVE.eq(true)))
+            .fetchOne()
+            ?.value1() ?: return emptyList()
+
+        val rows = dsl.select(
+            COMPANY_FINANCIALS.FISCAL_YYMM,
+            COMPANY_FINANCIALS.FS_DIV,
+            COMPANY_FINANCIALS.REVENUE,
+            COMPANY_FINANCIALS.OPERATING_INCOME,
+            COMPANY_FINANCIALS.NET_INCOME,
+            COMPANY_FINANCIALS.BPS,
+        )
+            .from(COMPANY_FINANCIALS)
+            .where(COMPANY_FINANCIALS.COMPANY_ID.eq(companyId))
+            .and(COMPANY_FINANCIALS.PERIOD_TYPE.eq(QUARTER))
+            .orderBy(
+                COMPANY_FINANCIALS.FISCAL_YYMM.asc(),
+                COMPANY_FINANCIALS.DISCLOSED_AT.desc().nullsLast(),
+                COMPANY_FINANCIALS.UPDATED_AT.desc().nullsLast(),
+            )
+            .fetch()
+
+        val periods = rows
+            .mapNotNull { record ->
+                val yymm = record.get(COMPANY_FINANCIALS.FISCAL_YYMM)?.takeIf { it.length == YYMM_LENGTH } ?: return@mapNotNull null
+                QuarterRow(
+                    year = yymm.take(4).toInt(),
+                    quarter = (yymm.takeLast(2).toInt() - 1) / MONTHS_PER_QUARTER + 1,
+                    periodEnd = "${yymm.take(4)}-${yymm.takeLast(2)}",
+                    fsDiv = record.get(COMPANY_FINANCIALS.FS_DIV),
+                    revenue = record.get(COMPANY_FINANCIALS.REVENUE),
+                    operatingIncome = record.get(COMPANY_FINANCIALS.OPERATING_INCOME),
+                    netIncome = record.get(COMPANY_FINANCIALS.NET_INCOME),
+                    bps = record.get(COMPANY_FINANCIALS.BPS),
+                )
+            }
+            .groupBy { it.year to it.quarter }
+            .mapValues { (_, found) -> found.firstOrNull { it.fsDiv == CONSOLIDATED } ?: found.first() }
+
+        return periods.values
+            .sortedWith(compareBy({ it.year }, { it.quarter }))
+            .takeLast(limit)
+            .map { row ->
+                val lastYear = periods[row.year - 1 to row.quarter]
+                QuarterlyFinancials(
+                    year = row.year,
+                    quarter = row.quarter,
+                    periodEnd = row.periodEnd,
+                    fsDiv = row.fsDiv,
+                    revenue = row.revenue,
+                    operatingProfit = row.operatingIncome,
+                    netIncome = row.netIncome,
+                    operatingMargin = percentage(row.operatingIncome?.toDecimal(), row.revenue?.toDecimal()),
+                    bps = row.bps,
+                    revenueYoY = growth(row.revenue, lastYear?.revenue),
+                    operatingProfitYoY = growth(row.operatingIncome, lastYear?.operatingIncome),
+                )
+            }
+    }
+
+    private fun growth(current: Long?, previous: Long?): BigDecimal? {
+        if (current == null || previous == null || previous <= 0) return null
+        return percentage((current - previous).toDecimal(), previous.toDecimal())
     }
 
     private fun annualStatements(companyId: Long): Map<Int, YearStatements> {
@@ -82,6 +153,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
             COMPANY_FINANCIALS.NET_INCOME,
             COMPANY_FINANCIALS.ROE,
             COMPANY_FINANCIALS.EPS,
+            COMPANY_FINANCIALS.BPS,
             COMPANY_FINANCIALS.TOTAL_ASSETS,
             COMPANY_FINANCIALS.TOTAL_LIABILITIES,
             COMPANY_FINANCIALS.TOTAL_EQUITY,
@@ -99,6 +171,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
         val netIncomeColumn = ranked.column(COMPANY_FINANCIALS.NET_INCOME)
         val roeColumn = ranked.column(COMPANY_FINANCIALS.ROE)
         val epsColumn = ranked.column(COMPANY_FINANCIALS.EPS)
+        val bpsColumn = ranked.column(COMPANY_FINANCIALS.BPS)
         val totalAssetsColumn = ranked.column(COMPANY_FINANCIALS.TOTAL_ASSETS)
         val totalLiabilitiesColumn = ranked.column(COMPANY_FINANCIALS.TOTAL_LIABILITIES)
         val totalEquityColumn = ranked.column(COMPANY_FINANCIALS.TOTAL_EQUITY)
@@ -114,6 +187,7 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
                     netIncome = record.get(netIncomeColumn),
                     roe = record.get(roeColumn),
                     eps = record.get(epsColumn),
+                    bps = record.get(bpsColumn),
                     totalAssets = record.get(totalAssetsColumn),
                     totalLiabilities = record.get(totalLiabilitiesColumn),
                     totalEquity = record.get(totalEquityColumn),
@@ -128,19 +202,27 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
             }
     }
 
-    private fun reportedRoe(companyId: Long): Map<Int, BigDecimal> =
-        dsl.select(COMPANY_FINANCIALS.FISCAL_YYMM, COMPANY_FINANCIALS.ROE)
+    private fun reportedAnnual(companyId: Long): Map<Int, ReportedAnnual> =
+        dsl.select(COMPANY_FINANCIALS.FISCAL_YYMM, COMPANY_FINANCIALS.ROE, COMPANY_FINANCIALS.BPS, COMPANY_FINANCIALS.EPS)
             .from(COMPANY_FINANCIALS)
             .where(COMPANY_FINANCIALS.COMPANY_ID.eq(companyId))
             .and(COMPANY_FINANCIALS.PERIOD_TYPE.eq(ANNUAL))
             .and(COMPANY_FINANCIALS.SOURCE.eq(KIS))
-            .and(COMPANY_FINANCIALS.ROE.isNotNull)
-            .orderBy(COMPANY_FINANCIALS.FISCAL_YYMM.asc())
+            .orderBy(
+                COMPANY_FINANCIALS.FISCAL_YYMM.asc(),
+                DSL.case_().`when`(COMPANY_FINANCIALS.FS_DIV.eq(CONSOLIDATED), 1).otherwise(0).asc(),
+            )
             .fetch()
-            .associate { record ->
-                requireNotNull(record.get(COMPANY_FINANCIALS.FISCAL_YYMM)).take(4).toInt() to
-                    requireNotNull(record.get(COMPANY_FINANCIALS.ROE))
+            .groupBy { requireNotNull(it.get(COMPANY_FINANCIALS.FISCAL_YYMM)).take(4).toInt() }
+            .mapValues { (_, rows) ->
+                ReportedAnnual(
+                    roe = rows.lastNotNullOf { it.get(COMPANY_FINANCIALS.ROE) },
+                    bps = rows.lastNotNullOf { it.get(COMPANY_FINANCIALS.BPS) },
+                    eps = rows.lastNotNullOf { it.get(COMPANY_FINANCIALS.EPS) },
+                )
             }
+
+    private fun <T, R : Any> List<T>.lastNotNullOf(pick: (T) -> R?): R? = asReversed().firstNotNullOfOrNull(pick)
 
     private fun yearEndValuations(stockId: Long): Map<Int, Valuation> {
         val tradeYear = DSL.extract(STOCK_VALUATIONS_DAILY.TRADE_DATE, DatePart.YEAR)
@@ -211,9 +293,27 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
         val netIncome: Long?,
         val roe: BigDecimal?,
         val eps: BigDecimal?,
+        val bps: BigDecimal?,
         val totalAssets: Long?,
         val totalLiabilities: Long?,
         val totalEquity: Long?,
+    )
+
+    private data class ReportedAnnual(
+        val roe: BigDecimal?,
+        val bps: BigDecimal?,
+        val eps: BigDecimal?,
+    )
+
+    private data class QuarterRow(
+        val year: Int,
+        val quarter: Int,
+        val periodEnd: String,
+        val fsDiv: String?,
+        val revenue: Long?,
+        val operatingIncome: Long?,
+        val netIncome: Long?,
+        val bps: BigDecimal?,
     )
 
     private data class YearStatements(
@@ -229,6 +329,9 @@ class JooqStockFinancials(private val dsl: DSLContext) : StockFinancialsPort {
 
     private companion object {
         const val ANNUAL = "A"
+        const val QUARTER = "Q"
+        const val YYMM_LENGTH = 6
+        const val MONTHS_PER_QUARTER = 3
         const val CONSOLIDATED = "CFS"
         const val SEPARATE = "OFS"
         const val KIS = "KIS"

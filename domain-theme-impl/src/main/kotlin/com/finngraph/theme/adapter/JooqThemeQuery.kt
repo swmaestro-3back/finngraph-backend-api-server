@@ -40,8 +40,6 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
     override fun board(ids: List<ThemeId>): ThemeBoard =
         board(THEMES.ID.`in`(ids.map { it.value }.distinct()), ThemeQuerySupport.pricingBasis(dsl))
 
-    override fun board(basis: PricingBasis): ThemeBoard = board(DSL.noCondition(), basis)
-
     override fun findAll(): List<ThemeSummary> = board().themes
 
     override fun findById(id: ThemeId): ThemeSummary? = findByIds(listOf(id))[id]

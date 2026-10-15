@@ -41,6 +41,7 @@ data class NewsDetailResponse(
     val originalUrl: String?,
     val publishedAt: OffsetDateTime?,
     val collectedAt: OffsetDateTime?,
+    val tripleExtracted: Boolean,
 ) {
     companion object {
         fun from(detail: NewsDetail) = NewsDetailResponse(
@@ -51,6 +52,7 @@ data class NewsDetailResponse(
             originalUrl = detail.originalUrl,
             publishedAt = detail.publishedAt,
             collectedAt = detail.collectedAt,
+            tripleExtracted = detail.tripleExtracted == true,
         )
     }
 }

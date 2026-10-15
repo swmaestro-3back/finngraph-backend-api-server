@@ -31,6 +31,7 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
             NEWS.ORIGINALLINK,
             NEWS.PUBLISHED_AT,
             NEWS.COLLECTED_AT,
+            NEWS.TRIPLE_EXTRACTED,
         )
             .from(NEWS)
             .where(NEWS.ID.`in`(ids.map { it.value }).and(PROCESSED))
@@ -97,6 +98,7 @@ class JooqNewsQuery(private val dsl: DSLContext) : NewsQueryPort {
         originalUrl = get(NEWS.ORIGINALLINK),
         publishedAt = get(NEWS.PUBLISHED_AT),
         collectedAt = get(NEWS.COLLECTED_AT),
+        tripleExtracted = get(NEWS.TRIPLE_EXTRACTED),
     )
 
     companion object {

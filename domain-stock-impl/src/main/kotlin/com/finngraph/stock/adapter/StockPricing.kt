@@ -35,18 +35,19 @@ internal object StockPricing {
     private fun changeBase(basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
         DSL.nullif(DSL.coalesce(basePrice, prevClose), BigDecimal.ZERO)
 
-    fun priceDate(dsl: DSLContext): LocalDate? {
+    fun priceDate(dsl: DSLContext): LocalDate? = PriceCalendar.priceDate(recentCounts(dsl))
+
+    fun recentCounts(dsl: DSLContext): List<DailyCandleCount> {
         val latest = dsl.select(DSL.max(STOCK_CANDLES_DAILY.TRADE_DATE))
             .from(STOCK_CANDLES_DAILY)
             .fetchOne()
             ?.value1()
-            ?: return null
-        val counts = dsl.select(STOCK_CANDLES_DAILY.TRADE_DATE, DSL.count())
+            ?: return emptyList()
+        return dsl.select(STOCK_CANDLES_DAILY.TRADE_DATE, DSL.count())
             .from(STOCK_CANDLES_DAILY)
             .where(STOCK_CANDLES_DAILY.TRADE_DATE.between(latest.minusDays(CANDLE_WINDOW_DAYS), latest))
             .groupBy(STOCK_CANDLES_DAILY.TRADE_DATE)
             .fetch { DailyCandleCount(requireNotNull(it.value1()), it.value2()) }
-        return PriceCalendar.priceDate(counts)
     }
 
     fun dates(dsl: DSLContext, asOf: LocalDate? = null): PriceDates {

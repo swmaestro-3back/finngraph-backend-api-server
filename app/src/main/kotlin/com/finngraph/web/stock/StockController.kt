@@ -73,6 +73,13 @@ class StockController(
         return DataResponse(stockFinancials.findAnnual(target).map(AnnualFinancialsResponse::from))
     }
 
+    override fun quarterlyFinancials(ticker: String, limit: Int): DataResponse<List<QuarterlyFinancialsResponse>> {
+        val target = toTicker(ticker)
+        validateLimit(limit, MAX_QUARTER_LIMIT)
+        requireStock(target, ticker)
+        return DataResponse(stockFinancials.findQuarterly(target, limit).map(QuarterlyFinancialsResponse::from))
+    }
+
     override fun news(ticker: String, page: Int, size: Int): PageResponse<NewsResponse> {
         val target = toTicker(ticker)
         validatePaging(page, size)
@@ -163,6 +170,7 @@ class StockController(
     private companion object {
         const val MAX_TICKER_LENGTH = 20
         const val MAX_FLOW_LIMIT = 250
+        const val MAX_QUARTER_LIMIT = 40
         const val MAX_CONTRACT_LIMIT = 200
         const val DIVIDEND_CANDLES = 800
     }

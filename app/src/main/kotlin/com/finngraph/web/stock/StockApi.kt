@@ -128,6 +128,30 @@ interface StockApi {
     ): DataResponse<List<AnnualFinancialsResponse>>
 
     @Operation(
+        summary = "종목 분기 실적",
+        description = "분기 단독 매출액·영업이익·순이익과 영업이익률, 분기 말 BPS, 1년 전 같은 분기 대비 증감률. " +
+            "연결 재무제표를 우선하고 없으면 별도. 오래된 분기부터 최근 limit개",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공. 분기 실적이 없으면 빈 배열"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ticker 검증 실패, limit 이 1~40 범위 밖",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+        ApiResponse(
+            responseCode = "404",
+            description = "존재하지 않는 종목",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/{ticker}/financials/quarterly")
+    fun quarterlyFinancials(
+        @Parameter(description = "종목코드") @PathVariable ticker: String,
+        @Parameter(description = "분기 수 (최대 40)") @RequestParam(required = false, defaultValue = "8") limit: Int,
+    ): DataResponse<List<QuarterlyFinancialsResponse>>
+
+    @Operation(
         summary = "종목별 뉴스",
         description = "종목이 언급된 뉴스 전체",
     )

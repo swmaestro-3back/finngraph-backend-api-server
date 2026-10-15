@@ -91,21 +91,21 @@ class StockIssueApiTest {
     }
 
     @Test
-    fun `항목은 이슈 목록 항목과 같고 mentionCount 만 더한다`() {
+    fun `항목은 이슈 목록 항목에 mentionCount와 흐름 정보만 더한다`() {
         val stockItem = fetch("/api/v1/stocks/${IssueMentionSeed.TICKER_A}/issues").items()
             .single { it.long("id") == IssueMentionSeed.RECENT }
         val listItem = fetch("/api/v1/issues?date=${day(0)}").items()
             .single { it.long("id") == IssueMentionSeed.RECENT }
 
-        assertEquals(listItem, stockItem - "mentionCount")
+        assertEquals(listItem, stockItem - setOf("mentionCount", "storyRootId", "storyTitle"))
         assertEquals("가상 최근 이슈", stockItem["title"])
         assertEquals(3, stockItem["articleCount"])
         assertEquals(3, stockItem["mediaCount"])
         assertEquals("${day(0)}T09:00:00+09:00", stockItem["lastPublishedAt"])
         assertEquals(
             listOf(
-                mapOf("ticker" to IssueMentionSeed.TICKER_A, "name" to "가상종목1", "mentionCount" to 2),
-                mapOf("ticker" to IssueMentionSeed.TICKER_B, "name" to "가상종목2", "mentionCount" to 2),
+                mapOf("ticker" to IssueMentionSeed.TICKER_A, "name" to "가상종목1", "mentionCount" to 2, "role" to null),
+                mapOf("ticker" to IssueMentionSeed.TICKER_B, "name" to "가상종목2", "mentionCount" to 2, "role" to null),
             ),
             stockItem["companies"],
         )

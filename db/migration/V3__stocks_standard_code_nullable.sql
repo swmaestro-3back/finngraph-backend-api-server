@@ -1,0 +1,1 @@
+ALTER TABLE stocks ALTER COLUMN standard_code DROP NOT NULL;

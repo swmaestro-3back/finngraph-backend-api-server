@@ -1,0 +1,9 @@
+CREATE ROLE finngraph_app_runtime LOGIN PASSWORD 'app';
+
+GRANT USAGE ON SCHEMA public TO finngraph_app_runtime;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO finngraph_app_runtime;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT USAGE, SELECT ON SEQUENCES TO finngraph_app_runtime;

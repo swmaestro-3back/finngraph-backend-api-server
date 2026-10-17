@@ -78,7 +78,11 @@ replay_pid*
 
 ### Claude Code ###
 .claude/
-CLAUDE.MD
+CLAUDE.md
 
 ### bkit ###
 .bkit/
+.superpowers/
+db/seed/
+api-spec/
+scripts/

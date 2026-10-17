@@ -1,0 +1,129 @@
+package com.finngraph.web.theme
+
+import com.finngraph.composition.ThemeNewsComposer
+import com.finngraph.composition.hottheme.HotThemeComposer
+import com.finngraph.news.model.NewsView
+import com.finngraph.news.model.PageResult
+import com.finngraph.theme.model.IndexPeriod
+import com.finngraph.theme.model.ThemeId
+import com.finngraph.theme.port.ThemeIndexPort
+import com.finngraph.theme.port.ThemeQueryPort
+import com.finngraph.theme.port.ThemeStockPort
+import com.finngraph.web.common.CandleInterval
+import com.finngraph.web.common.DataResponse
+import com.finngraph.web.common.ErrorCode
+import com.finngraph.web.common.InvalidParameterException
+import com.finngraph.web.common.PageResponse
+import com.finngraph.web.common.Pagination
+import com.finngraph.web.common.ResourceNotFoundException
+import com.finngraph.web.common.validateCandleQuery
+import com.finngraph.web.common.validatePaging
+import com.finngraph.web.news.NewsResponse
+import org.springframework.web.bind.annotation.RestController
+
+@RestController
+class ThemeController(
+    private val themeQuery: ThemeQueryPort,
+    private val themeStock: ThemeStockPort,
+    private val themeIndex: ThemeIndexPort,
+    private val themeNewsComposer: ThemeNewsComposer,
+    private val hotThemeComposer: HotThemeComposer,
+) : ThemeApi {
+
+    override fun list(): DataResponse<List<ThemeSummaryResponse>> =
+        DataResponse(hotThemeComposer.all().map(ThemeSummaryResponse::from))
+
+    override fun hot(count: Int): DataResponse<List<ThemeSummaryResponse>> {
+        validateCount(count)
+        return DataResponse(hotThemeComposer.hot(count).map(ThemeSummaryResponse::from))
+    }
+
+    override fun market(): DataResponse<ThemeMarketResponse> =
+        DataResponse(ThemeMarketResponse.from(themeQuery.marketStats()))
+
+    override fun tickers(q: String?): DataResponse<ThemeTickersResponse> {
+        val query = q?.trim().orEmpty()
+        if (query.isEmpty() || query.length > MAX_QUERY_LENGTH) {
+            throw InvalidParameterException(
+                "q는 1자 이상 ${MAX_QUERY_LENGTH}자 이하여야 합니다",
+                mapOf("q" to "must be 1..$MAX_QUERY_LENGTH characters"),
+            )
+        }
+        return DataResponse(ThemeTickersResponse.from(query, themeStock.findTickersByName(query)))
+    }
+
+    override fun detail(id: Long): DataResponse<ThemeSummaryResponse> {
+        val target = toThemeId(id)
+        val found = hotThemeComposer.detail(target) ?: throw notFound(id)
+        return DataResponse(ThemeSummaryResponse.from(found))
+    }
+
+    override fun stocks(id: Long): DataResponse<List<ThemeStockResponse>> {
+        val target = toThemeId(id)
+        requireTheme(target, id)
+        return DataResponse(themeStock.findStocks(target).map(ThemeStockResponse::from))
+    }
+
+    override fun news(id: Long, page: Int, size: Int): PageResponse<NewsResponse> {
+        val target = toThemeId(id)
+        validatePaging(page, size)
+        requireTheme(target, id)
+        return themeNewsComposer.newsPage(target, page, size).toResponse()
+    }
+
+    override fun candles(id: Long, period: String, limit: Int?): DataResponse<List<ThemeIndexCandleResponse>> {
+        val target = toThemeId(id)
+        val query = validateCandleQuery(period, limit)
+        requireTheme(target, id)
+        return DataResponse(
+            themeIndex.findCandles(target, query.interval.toIndexPeriod(), query.limit).map(ThemeIndexCandleResponse::from),
+        )
+    }
+
+    override fun index(id: Long): DataResponse<ThemeIndexResponse?> {
+        val target = toThemeId(id)
+        requireTheme(target, id)
+        return DataResponse(themeIndex.findSummary(target)?.let(ThemeIndexResponse::from))
+    }
+
+    private fun toThemeId(raw: Long): ThemeId = try {
+        ThemeId(raw)
+    } catch (e: IllegalArgumentException) {
+        throw InvalidParameterException(
+            e.message ?: "id가 올바르지 않습니다",
+            mapOf("id" to "must be positive"),
+        )
+    }
+
+    private fun requireTheme(target: ThemeId, raw: Long) {
+        if (!themeQuery.exists(target)) throw notFound(raw)
+    }
+
+    private fun notFound(raw: Long) =
+        ResourceNotFoundException(ErrorCode.THEME_NOT_FOUND, "테마를 찾을 수 없습니다: $raw")
+
+    private fun validateCount(count: Int) {
+        if (count !in HOT_COUNTS) {
+            throw InvalidParameterException(
+                "count는 10, 20, 30 중 하나여야 합니다",
+                mapOf("count" to "must be one of 10, 20, 30"),
+            )
+        }
+    }
+
+    private fun CandleInterval.toIndexPeriod(): IndexPeriod = when (this) {
+        CandleInterval.D -> IndexPeriod.D
+        CandleInterval.W -> IndexPeriod.W
+        CandleInterval.M -> IndexPeriod.M
+    }
+
+    private fun PageResult<NewsView>.toResponse() = PageResponse(
+        data = content.map(NewsResponse::from),
+        pagination = Pagination(page, size, totalElements, totalPages),
+    )
+
+    private companion object {
+        const val MAX_QUERY_LENGTH = 30
+        val HOT_COUNTS = setOf(10, 20, 30)
+    }
+}

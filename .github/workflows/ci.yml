@@ -1,0 +1,238 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: ./gradlew build
+
+      - uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: test results
+          path: '**/build/test-results/test/TEST-*.xml'
+          reporter: java-junit
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/test'
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: app-jar
+          path: |
+            app/build/libs/*.jar
+            !app/build/libs/*-plain.jar
+          if-no-files-found: error
+          retention-days: 1
+
+  flyway-migrate:
+    if: github.event_name != 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      app-db:
+        image: postgres:17
+        env:
+          POSTGRES_DB: finngraph_app
+          POSTGRES_USER: finngraph_app
+          POSTGRES_PASSWORD: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finngraph_app -d finngraph_app"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: ./gradlew flywayMigrate
+        env:
+          FLYWAY_URL: jdbc:postgresql://localhost:5432/finngraph_app
+          FLYWAY_USER: finngraph_app
+          FLYWAY_PASSWORD: app
+
+  dependency-graph:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/dependency-submission@v4
+
+  deliver:
+    needs: [build, flyway-migrate]
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    uses: swmaestro-3back/github-actions/.github/workflows/docker.delivery.yaml@main
+    with:
+      image_name: finngraph/backend-api
+      dockerfile: docker/app.Dockerfile
+      build_artifact: app-jar
+      build_artifact_path: app/build/libs
+    secrets:
+      oidc_role_arn: ${{ secrets.OIDC_ROLE_ARN }}
+
+  deploy:
+    needs: deliver
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: AWS 자격 증명 설정
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          role-session-name: gha-${{ github.run_id }}-${{ github.run_attempt }}
+          aws-region: ap-northeast-2
+          mask-aws-account-id: true
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: deploy
+
+      - name: 배포
+        uses: swmaestro-3back/github-actions/actions/ssm-deploy@main
+        with:
+          instance_id: ${{ secrets.DEPLOY_INSTANCE_ID }}
+          compose_dir: /home/ubuntu/finngraph
+          compose_file: compose.yaml
+          compose_source: deploy/dev/compose.yaml
+          service: app
+          image_env_var: BACKEND_IMAGE
+          image_name: finngraph/backend-api
+          image_digest: ${{ needs.deliver.outputs.image_digest }}
+          health_url: http://127.0.0.1:8080/actuator/health
+
+  release:
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-24.04-arm
+    environment: prod
+    concurrency:
+      group: release-prod
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: main 포함 여부 확인
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...main" --jq .status)
+          case "$status" in
+            ahead|identical) ;;
+            *) echo "::error::릴리스 커밋이 main 에 없다 ($status)"; exit 1 ;;
+          esac
+
+      - name: AWS 자격 증명 설정
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          role-session-name: gha-${{ github.run_id }}-${{ github.run_attempt }}
+          aws-region: ap-northeast-2
+          mask-aws-account-id: true
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: deploy
+
+      - name: 커밋 태그
+        id: commit
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: 릴리스 태그 추가
+        id: tag
+        uses: swmaestro-3back/github-actions/actions/ecr-tag@main
+        with:
+          image_name: finngraph/backend-api
+          source_tag: ${{ steps.commit.outputs.short_sha }}
+          tags: ${{ github.event.release.tag_name }}
+
+      - name: app-a 배포
+        uses: swmaestro-3back/github-actions/actions/ssm-deploy@main
+        with:
+          instance_id: ${{ secrets.DEPLOY_INSTANCE_ID_A }}
+          compose_dir: /home/ubuntu/finngraph-backend
+          compose_file: compose.yaml
+          compose_source: deploy/prod/compose.yaml
+          env_ssm_prefix: /finngraph/prod/app/backend
+          env_file: backend.env
+          env_required_keys: SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD APP_DATASOURCE_URL APP_DATASOURCE_USERNAME APP_DATASOURCE_PASSWORD SPRING_DATA_REDIS_HOST JWT_SIGNING_KEY JWT_PUBLIC_KEY INTERNAL_API_TOKEN MAIL_FROM KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_ADMIN_KEY
+          service: app
+          image_env_var: BACKEND_IMAGE
+          image_name: finngraph/backend-api
+          image_digest: ${{ steps.tag.outputs.image_digest }}
+          health_url: http://127.0.0.1:8080/actuator/health
+
+      - name: app-b 배포
+        uses: swmaestro-3back/github-actions/actions/ssm-deploy@main
+        with:
+          instance_id: ${{ secrets.DEPLOY_INSTANCE_ID_B }}
+          compose_dir: /home/ubuntu/finngraph-backend
+          compose_file: compose.yaml
+          compose_source: deploy/prod/compose.yaml
+          env_ssm_prefix: /finngraph/prod/app/backend
+          env_file: backend.env
+          env_required_keys: SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD APP_DATASOURCE_URL APP_DATASOURCE_USERNAME APP_DATASOURCE_PASSWORD SPRING_DATA_REDIS_HOST JWT_SIGNING_KEY JWT_PUBLIC_KEY INTERNAL_API_TOKEN MAIL_FROM KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_ADMIN_KEY
+          service: app
+          image_env_var: BACKEND_IMAGE
+          image_name: finngraph/backend-api
+          image_digest: ${{ steps.tag.outputs.image_digest }}
+          health_url: http://127.0.0.1:8080/actuator/health

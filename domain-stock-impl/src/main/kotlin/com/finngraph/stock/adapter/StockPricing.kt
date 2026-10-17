@@ -1,0 +1,67 @@
+package com.finngraph.stock.adapter
+
+import com.finngraph.stock.adapter.jooq.tables.references.SERVICE_COMPANIES
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_DAILY
+import com.finngraph.stock.adapter.jooq.tables.references.STOCK_VALUATIONS_DAILY
+import com.finngraph.stock.model.DailyCandleCount
+import com.finngraph.stock.model.PriceCalendar
+import org.jooq.Condition
+import org.jooq.DSLContext
+import org.jooq.Field
+import org.jooq.impl.DSL
+import java.math.BigDecimal
+import java.time.LocalDate
+
+internal data class PriceDates(val price: LocalDate?, val valuation: LocalDate?)
+
+internal object StockPricing {
+
+    fun serviced(companyId: Field<Long?>): Condition =
+        DSL.exists(DSL.selectOne().from(SERVICE_COMPANIES).where(SERVICE_COMPANIES.COMPANY_ID.eq(companyId)))
+
+    private const val CANDLE_WINDOW_DAYS = 60L
+    private const val CHANGE_SCALE = 4
+
+    private val HUNDRED: BigDecimal = BigDecimal("100")
+
+    fun dailyChange(close: Field<BigDecimal?>, basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> {
+        val base = changeBase(basePrice, prevClose)
+        return DSL.round(close.minus(base).div(base).times(HUNDRED), CHANGE_SCALE)
+    }
+
+    fun dailyChangeAmount(close: Field<BigDecimal?>, basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
+        close.minus(changeBase(basePrice, prevClose))
+
+    fun periodChange(close: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> {
+        val base = DSL.nullif(prevClose, BigDecimal.ZERO)
+        return DSL.round(close.minus(base).div(base).times(HUNDRED), CHANGE_SCALE)
+    }
+
+    private fun changeBase(basePrice: Field<BigDecimal?>, prevClose: Field<BigDecimal?>): Field<BigDecimal?> =
+        DSL.nullif(DSL.coalesce(basePrice, prevClose), BigDecimal.ZERO)
+
+    fun priceDate(dsl: DSLContext): LocalDate? = PriceCalendar.priceDate(recentCounts(dsl))
+
+    fun recentCounts(dsl: DSLContext): List<DailyCandleCount> {
+        val latest = dsl.select(DSL.max(STOCK_CANDLES_DAILY.TRADE_DATE))
+            .from(STOCK_CANDLES_DAILY)
+            .fetchOne()
+            ?.value1()
+            ?: return emptyList()
+        return dsl.select(STOCK_CANDLES_DAILY.TRADE_DATE, DSL.count())
+            .from(STOCK_CANDLES_DAILY)
+            .where(STOCK_CANDLES_DAILY.TRADE_DATE.between(latest.minusDays(CANDLE_WINDOW_DAYS), latest))
+            .groupBy(STOCK_CANDLES_DAILY.TRADE_DATE)
+            .fetch { DailyCandleCount(requireNotNull(it.value1()), it.value2()) }
+    }
+
+    fun dates(dsl: DSLContext, asOf: LocalDate? = null): PriceDates {
+        val price = asOf ?: priceDate(dsl) ?: return PriceDates(null, null)
+        val valuation = dsl.select(DSL.max(STOCK_VALUATIONS_DAILY.TRADE_DATE))
+            .from(STOCK_VALUATIONS_DAILY)
+            .where(STOCK_VALUATIONS_DAILY.TRADE_DATE.le(price))
+            .fetchOne()
+            ?.value1()
+        return PriceDates(price, valuation)
+    }
+}

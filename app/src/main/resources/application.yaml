@@ -1,0 +1,114 @@
+spring:
+  application:
+    name: backend-server
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    maximum-pool-size: 10
+
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 2s
+
+app:
+  datasource:
+    url: ${APP_DATASOURCE_URL}
+    username: ${APP_DATASOURCE_USERNAME}
+    password: ${APP_DATASOURCE_PASSWORD}
+    maximum-pool-size: 5
+
+  jwt:
+    signing-key: ${JWT_SIGNING_KEY}
+    public-key: ${JWT_PUBLIC_KEY}
+    access-ttl: 30m
+    refresh-ttl: 14d
+
+  internal:
+    token: ${INTERNAL_API_TOKEN:}
+
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+    admin-key: ${KAKAO_ADMIN_KEY:}
+    redirect-uri: ${KAKAO_REDIRECT_URI:}
+    token-uri: https://kauth.kakao.com/oauth/token
+    user-uri: https://kapi.kakao.com/v2/user/me
+    unlink-uri: https://kapi.kakao.com/v1/user/unlink
+
+  mail:
+    provider: ${MAIL_PROVIDER:log}
+    from: ${MAIL_FROM:}
+    timeout: 5s
+    region: ${MAIL_SES_REGION:ap-northeast-2}
+
+  verification:
+    code-ttl: 5m
+    verified-ttl: 30m
+    max-attempts: 5
+    send:
+      cooldown: 60s
+      email-max: 5
+      global-max: 200
+      window: 1h
+    confirm:
+      ip-max: 60
+      window: 1h
+
+  password-attempt:
+    max: 5
+    window: 15m
+
+server:
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 2048
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+app:
+  jwt:
+    secure-cookie: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

@@ -1,0 +1,42 @@
+name: finngraph-backend
+
+services:
+  app:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE 를 .env 에 지정하세요}
+    platform: linux/arm64
+    container_name: finngraph-backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - path: backend.env
+        required: true
+    environment:
+      TZ: Asia/Seoul
+      SPRING_PROFILES_ACTIVE: prod
+      MAIL_PROVIDER: ses
+      KAKAO_REDIRECT_URI: https://finngraph.com/auth/kakao/callback
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: unless-stopped
+    stop_grace_period: 40s

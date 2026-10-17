@@ -3,7 +3,9 @@ name: ci
 on:
   pull_request:
   push:
-    branches: [develop]
+    branches: [main, develop]
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -14,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -47,7 +50,7 @@ jobs:
           retention-days: 7
 
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        if: github.event_name == 'push'
         with:
           name: app-jar
           path: |
@@ -57,6 +60,7 @@ jobs:
           retention-days: 1
 
   flyway-migrate:
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -110,7 +114,7 @@ jobs:
 
   deliver:
     needs: [build, flyway-migrate]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'push'
     permissions:
       contents: read
       id-token: write
@@ -125,6 +129,7 @@ jobs:
 
   deploy:
     needs: deliver
+    if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
@@ -153,4 +158,81 @@ jobs:
           image_env_var: BACKEND_IMAGE
           image_name: finngraph/backend-api
           image_digest: ${{ needs.deliver.outputs.image_digest }}
+          health_url: http://127.0.0.1:8080/actuator/health
+
+  release:
+    if: github.event_name == 'release' && !github.event.release.prerelease
+    runs-on: ubuntu-24.04-arm
+    environment: prod
+    concurrency:
+      group: release-prod
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: main 포함 여부 확인
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...main" --jq .status)
+          case "$status" in
+            ahead|identical) ;;
+            *) echo "::error::릴리스 커밋이 main 에 없다 ($status)"; exit 1 ;;
+          esac
+
+      - name: AWS 자격 증명 설정
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_ARN }}
+          role-session-name: gha-${{ github.run_id }}-${{ github.run_attempt }}
+          aws-region: ap-northeast-2
+          mask-aws-account-id: true
+
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: deploy
+
+      - name: 커밋 태그
+        id: commit
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: 릴리스 태그 추가
+        id: tag
+        uses: swmaestro-3back/github-actions/actions/ecr-tag@main
+        with:
+          image_name: finngraph/backend-api
+          source_tag: ${{ steps.commit.outputs.short_sha }}
+          tags: ${{ github.event.release.tag_name }}
+
+      - name: app-a 배포
+        uses: swmaestro-3back/github-actions/actions/ssm-deploy@main
+        with:
+          instance_id: ${{ secrets.DEPLOY_INSTANCE_ID_A }}
+          compose_dir: /home/ubuntu/finngraph-backend
+          compose_file: compose.yaml
+          compose_source: deploy/prod/compose.yaml
+          env_ssm_prefix: /finngraph/prod/app/backend
+          env_file: backend.env
+          env_required_keys: SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD APP_DATASOURCE_URL APP_DATASOURCE_USERNAME APP_DATASOURCE_PASSWORD SPRING_DATA_REDIS_HOST JWT_SIGNING_KEY JWT_PUBLIC_KEY INTERNAL_API_TOKEN MAIL_FROM KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_ADMIN_KEY
+          service: app
+          image_env_var: BACKEND_IMAGE
+          image_name: finngraph/backend-api
+          image_digest: ${{ steps.tag.outputs.image_digest }}
+          health_url: http://127.0.0.1:8080/actuator/health
+
+      - name: app-b 배포
+        uses: swmaestro-3back/github-actions/actions/ssm-deploy@main
+        with:
+          instance_id: ${{ secrets.DEPLOY_INSTANCE_ID_B }}
+          compose_dir: /home/ubuntu/finngraph-backend
+          compose_file: compose.yaml
+          compose_source: deploy/prod/compose.yaml
+          env_ssm_prefix: /finngraph/prod/app/backend
+          env_file: backend.env
+          env_required_keys: SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD APP_DATASOURCE_URL APP_DATASOURCE_USERNAME APP_DATASOURCE_PASSWORD SPRING_DATA_REDIS_HOST JWT_SIGNING_KEY JWT_PUBLIC_KEY INTERNAL_API_TOKEN MAIL_FROM KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_ADMIN_KEY
+          service: app
+          image_env_var: BACKEND_IMAGE
+          image_name: finngraph/backend-api
+          image_digest: ${{ steps.tag.outputs.image_digest }}
           health_url: http://127.0.0.1:8080/actuator/health

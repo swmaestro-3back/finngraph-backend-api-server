@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import java.util.concurrent.CopyOnWriteArrayList
 
-data class CapturedMail(val to: String, val subject: String, val body: String)
+data class CapturedMail(val to: String, val subject: String, val body: String, val html: String)
 
 class CapturingMailSender : MailSenderPort {
 
@@ -16,12 +16,12 @@ class CapturingMailSender : MailSenderPort {
     @Volatile
     var failNext: Boolean = false
 
-    override fun send(to: String, subject: String, body: String) {
+    override fun send(to: String, subject: String, text: String, html: String) {
         if (failNext) {
             failNext = false
             throw MailDeliveryFailedException(IllegalStateException("테스트 발송 실패"))
         }
-        sent += CapturedMail(to, subject, body)
+        sent += CapturedMail(to, subject, text, html)
     }
 
     fun lastTo(to: String): CapturedMail = sent.last { it.to == to }

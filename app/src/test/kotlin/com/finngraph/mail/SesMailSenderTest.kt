@@ -9,7 +9,6 @@ import software.amazon.awssdk.services.sesv2.model.SendEmailRequest
 import software.amazon.awssdk.services.sesv2.model.SendEmailResponse
 import software.amazon.awssdk.services.sesv2.model.SesV2Exception
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SesMailSenderTest {
@@ -32,10 +31,11 @@ class SesMailSenderTest {
     }
 
     @Test
-    fun `발신자·수신자·제목·본문을 UTF-8 텍스트 메일로 담는다`() {
+    fun `발신자·수신자·제목·본문을 UTF-8 텍스트와 HTML로 함께 담는다`() {
         val client = RecordingSesClient()
 
-        SesMailSender(client, "noreply@finngraph.com").send("u@x.com", "[finngraph] 인증 코드", "본문 https://finngraph.com/verify")
+        SesMailSender(client, "noreply@finngraph.com")
+            .send("u@x.com", "[finngraph] 인증 코드", "본문 https://finngraph.com/verify", "<p>본문</p>")
 
         val request = client.requests.single()
         assertEquals("noreply@finngraph.com", request.fromEmailAddress())
@@ -45,7 +45,8 @@ class SesMailSenderTest {
         assertEquals("UTF-8", simple.subject().charset())
         assertEquals("본문 https://finngraph.com/verify", simple.body().text().data())
         assertEquals("UTF-8", simple.body().text().charset())
-        assertNull(simple.body().html())
+        assertEquals("<p>본문</p>", simple.body().html().data())
+        assertEquals("UTF-8", simple.body().html().charset())
     }
 
     @Test
@@ -55,7 +56,7 @@ class SesMailSenderTest {
 
         listOf(rejected, unreachable).forEach { failure ->
             val thrown = assertThrows(MailDeliveryFailedException::class.java) {
-                SesMailSender(RecordingSesClient(failure), "noreply@finngraph.com").send("u@x.com", "제목", "본문")
+                SesMailSender(RecordingSesClient(failure), "noreply@finngraph.com").send("u@x.com", "제목", "본문", "<p>본문</p>")
             }
             assertEquals(failure, thrown.cause)
         }

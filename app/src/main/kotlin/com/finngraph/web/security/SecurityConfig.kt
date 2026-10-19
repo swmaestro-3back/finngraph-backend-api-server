@@ -92,6 +92,7 @@ class SecurityConfig {
             .authorizeHttpRequests { registry ->
                 registry.requestMatchers(HttpMethod.GET, *PUBLIC_GET).permitAll()
                 registry.requestMatchers(HttpMethod.POST, *PUBLIC_POST).permitAll()
+                registry.requestMatchers(HttpMethod.GET, *METRICS).permitAll()
                 if (environment.acceptsProfiles(Profiles.of("local"))) {
                     registry.requestMatchers(HttpMethod.GET, *LOCAL_DOCS).permitAll()
                     registry.requestMatchers(HttpMethod.GET, *LOCAL_ACTUATOR).permitAll()
@@ -161,6 +162,9 @@ class SecurityConfig {
         val LOCAL_ACTUATOR = arrayOf(
             "/actuator/metrics",
             "/actuator/metrics/*",
+        )
+
+        val METRICS = arrayOf(
             "/actuator/prometheus",
         )
 

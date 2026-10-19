@@ -316,7 +316,7 @@ data class IssueStoryCompanyResponse(
 }
 
 data class IssueTimelineNodeResponse(
-    @Schema(description = "노드 대표 이슈 id. 같은 사건으로 합친 이슈 중 편입 기사 수(original_size)가 가장 많은 이슈")
+    @Schema(description = "노드 대표 이슈 id. 같은 사건으로 합친 이슈 중 편입 기사 수(member_count)가 가장 많은 이슈")
     val issueId: Long,
     @Schema(description = "대표 이슈의 클러스터 제목")
     val title: String,

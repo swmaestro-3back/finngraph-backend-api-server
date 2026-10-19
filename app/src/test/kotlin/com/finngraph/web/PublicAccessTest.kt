@@ -73,6 +73,19 @@ class PublicAccessTest {
     }
 
     @Test
+    fun `prometheus 지표는 무토큰으로 수집할 수 있다`() {
+        val response = get("/actuator/prometheus")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertTrue(response.body.orEmpty().contains("jvm_memory_used_bytes"))
+    }
+
+    @Test
+    fun `prometheus 외의 actuator 지표는 공개하지 않는다`() {
+        assertTrue(get("/actuator/metrics").statusCode.isAuthFailure())
+    }
+
+    @Test
     fun `internal 경로는 토큰 미설정이면 전면 거부`() {
         val headers = HttpHeaders().apply { add("X-Internal-Token", "anything") }
 

@@ -42,7 +42,8 @@ class LoggingMailSenderTest {
 
     @Test
     fun `INFO에는 수신자·제목만 남기고 본문은 DEBUG로 내린다`() {
-        LoggingMailSender(MockEnvironment()).send("u@x.com", "[finngraph] 이메일 인증 코드", "인증 코드는 123456 입니다.")
+        LoggingMailSender(MockEnvironment())
+            .send("u@x.com", "[finngraph] 이메일 인증 코드", "인증 코드는 123456 입니다.", "<p>123456</p>")
 
         val info = appender.list.single { it.level == Level.INFO }.formattedMessage
         assertTrue(info.contains("u@x.com"), info)

@@ -155,13 +155,13 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         val chainParentId = DSL.field(DSL.name(CHAIN, CHAIN_PARENT_ID), SQLDataType.BIGINT)
         val chainDepth = DSL.field(DSL.name(CHAIN, CHAIN_DEPTH), SQLDataType.INTEGER)
         val chain = DSL.name(CHAIN)
-            .fields(CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, CHAIN_ORIGINAL_SIZE, CHAIN_STARTED_AT, CHAIN_DEPTH)
+            .fields(CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, CHAIN_MEMBER_COUNT, CHAIN_STARTED_AT, CHAIN_DEPTH)
             .`as`(
                 DSL.select(
                     NEWS_CLUSTERS.ID,
                     NEWS_CLUSTERS.PARENT_CLUSTER_ID,
                     NEWS_CLUSTERS.LINK_RELATION,
-                    NEWS_CLUSTERS.ORIGINAL_SIZE,
+                    NEWS_CLUSTERS.MEMBER_COUNT,
                     NEWS_CLUSTERS.FIRST_PUBLISHED_AT,
                     DSL.inline(0, SQLDataType.INTEGER),
                 )
@@ -172,7 +172,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                             parent.ID,
                             parent.PARENT_CLUSTER_ID,
                             parent.LINK_RELATION,
-                            parent.ORIGINAL_SIZE,
+                            parent.MEMBER_COUNT,
                             parent.FIRST_PUBLISHED_AT,
                             chainDepth.plus(1),
                         )
@@ -186,7 +186,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             .select(
                 chain.field(CHAIN_ID, SQLDataType.BIGINT),
                 chain.field(CHAIN_RELATION, SQLDataType.CLOB),
-                chain.field(CHAIN_ORIGINAL_SIZE, SQLDataType.INTEGER),
+                chain.field(CHAIN_MEMBER_COUNT, SQLDataType.INTEGER),
                 chain.field(CHAIN_STARTED_AT, SQLDataType.TIMESTAMPWITHTIMEZONE),
             )
             .from(chain)
@@ -203,13 +203,13 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         val treeId = DSL.field(DSL.name(TREE, CHAIN_ID), SQLDataType.BIGINT)
         val treeDepth = DSL.field(DSL.name(TREE, CHAIN_DEPTH), SQLDataType.INTEGER)
         val tree = DSL.name(TREE)
-            .fields(TREE_TOP_ID, CHAIN_ID, CHAIN_RELATION, CHAIN_ORIGINAL_SIZE, CHAIN_STARTED_AT, CHAIN_DEPTH)
+            .fields(TREE_TOP_ID, CHAIN_ID, CHAIN_RELATION, CHAIN_MEMBER_COUNT, CHAIN_STARTED_AT, CHAIN_DEPTH)
             .`as`(
                 DSL.select(
                     NEWS_CLUSTERS.ID,
                     NEWS_CLUSTERS.ID,
                     NEWS_CLUSTERS.LINK_RELATION,
-                    NEWS_CLUSTERS.ORIGINAL_SIZE,
+                    NEWS_CLUSTERS.MEMBER_COUNT,
                     NEWS_CLUSTERS.FIRST_PUBLISHED_AT,
                     DSL.inline(0, SQLDataType.INTEGER),
                 )
@@ -220,7 +220,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                             treeTopId,
                             child.ID,
                             child.LINK_RELATION,
-                            child.ORIGINAL_SIZE,
+                            child.MEMBER_COUNT,
                             child.FIRST_PUBLISHED_AT,
                             treeDepth.plus(1),
                         )
@@ -235,7 +235,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                 tree.field(TREE_TOP_ID, SQLDataType.BIGINT),
                 tree.field(CHAIN_ID, SQLDataType.BIGINT),
                 tree.field(CHAIN_RELATION, SQLDataType.CLOB),
-                tree.field(CHAIN_ORIGINAL_SIZE, SQLDataType.INTEGER),
+                tree.field(CHAIN_MEMBER_COUNT, SQLDataType.INTEGER),
                 tree.field(CHAIN_STARTED_AT, SQLDataType.TIMESTAMPWITHTIMEZONE),
             )
             .from(tree)
@@ -252,13 +252,13 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         val downId = DSL.field(DSL.name(DOWN, CHAIN_ID), SQLDataType.BIGINT)
         val downDepth = DSL.field(DSL.name(DOWN, CHAIN_DEPTH), SQLDataType.INTEGER)
         val down = DSL.name(DOWN)
-            .fields(CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, CHAIN_ORIGINAL_SIZE, CHAIN_STARTED_AT, CHAIN_DEPTH)
+            .fields(CHAIN_ID, CHAIN_PARENT_ID, CHAIN_RELATION, CHAIN_MEMBER_COUNT, CHAIN_STARTED_AT, CHAIN_DEPTH)
             .`as`(
                 DSL.select(
                     NEWS_CLUSTERS.ID,
                     NEWS_CLUSTERS.PARENT_CLUSTER_ID,
                     NEWS_CLUSTERS.LINK_RELATION,
-                    NEWS_CLUSTERS.ORIGINAL_SIZE,
+                    NEWS_CLUSTERS.MEMBER_COUNT,
                     NEWS_CLUSTERS.FIRST_PUBLISHED_AT,
                     DSL.inline(1, SQLDataType.INTEGER),
                 )
@@ -269,7 +269,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                             child.ID,
                             child.PARENT_CLUSTER_ID,
                             child.LINK_RELATION,
-                            child.ORIGINAL_SIZE,
+                            child.MEMBER_COUNT,
                             child.FIRST_PUBLISHED_AT,
                             downDepth.plus(1),
                         )
@@ -284,7 +284,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
                 down.field(CHAIN_ID, SQLDataType.BIGINT),
                 down.field(CHAIN_PARENT_ID, SQLDataType.BIGINT),
                 down.field(CHAIN_RELATION, SQLDataType.CLOB),
-                down.field(CHAIN_ORIGINAL_SIZE, SQLDataType.INTEGER),
+                down.field(CHAIN_MEMBER_COUNT, SQLDataType.INTEGER),
                 down.field(CHAIN_STARTED_AT, SQLDataType.TIMESTAMPWITHTIMEZONE),
             )
             .from(down)
@@ -380,10 +380,10 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
             .where(condition)
             .fetch { it.toCluster() }
 
-    private fun chainLink(id: Long?, relation: String?, originalSize: Int?, startedAt: OffsetDateTime?) = IssueChainLink(
+    private fun chainLink(id: Long?, relation: String?, memberCount: Int?, startedAt: OffsetDateTime?) = IssueChainLink(
         clusterId = requireNotNull(id),
         relation = relation?.let(RELATIONS::get),
-        originalSize = originalSize ?: 0,
+        originalSize = memberCount ?: 0,
         startedAt = requireNotNull(startedAt),
     )
 
@@ -403,7 +403,7 @@ class JooqNewsIssue(private val dsl: DSLContext) : NewsIssuePort {
         const val CHAIN_ID = "id"
         const val CHAIN_PARENT_ID = "parent_cluster_id"
         const val CHAIN_RELATION = "link_relation"
-        const val CHAIN_ORIGINAL_SIZE = "original_size"
+        const val CHAIN_MEMBER_COUNT = "member_count"
         const val CHAIN_STARTED_AT = "first_published_at"
         const val CHAIN_DEPTH = "depth"
         const val PARENT = "parent"

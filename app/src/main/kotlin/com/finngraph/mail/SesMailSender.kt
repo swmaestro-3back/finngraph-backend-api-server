@@ -16,7 +16,7 @@ class SesMailSender(
     private val from: String,
 ) : MailSenderPort, AutoCloseable {
 
-    override fun send(to: String, subject: String, body: String) {
+    override fun send(to: String, subject: String, text: String, html: String) {
         val request = SendEmailRequest.builder()
             .fromEmailAddress(from)
             .destination(Destination.builder().toAddresses(to).build())
@@ -25,7 +25,7 @@ class SesMailSender(
                     .simple(
                         Message.builder()
                             .subject(utf8(subject))
-                            .body(Body.builder().text(utf8(body)).build())
+                            .body(Body.builder().text(utf8(text)).html(utf8(html)).build())
                             .build(),
                     )
                     .build(),

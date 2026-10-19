@@ -13,9 +13,9 @@ class LoggingMailSender(environment: Environment) : MailSenderPort {
         require(!environment.acceptsProfiles(Profiles.of(PROD))) { "prod 프로파일에서는 LoggingMailSender를 쓸 수 없습니다" }
     }
 
-    override fun send(to: String, subject: String, body: String) {
+    override fun send(to: String, subject: String, text: String, html: String) {
         log.info("mail not sent (provider=log): to={}, subject={}", to, subject)
-        log.debug("mail body:\n{}", body)
+        log.debug("mail body:\n{}", text)
     }
 
     private companion object {

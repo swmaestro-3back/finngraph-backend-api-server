@@ -32,10 +32,7 @@ class IssueComposer(
 
         val window = IssueRules.dayWindow(day)
         val events = sameEvents(issues.findPublishedBetween(window.start, window.end))
-        val found = issues.findArticles(events.flatMap { it.memberIds })
-        val articles = events.associate { event ->
-            event.lead.id to IssueRules.mergeArticles(event.memberIds.map { found[it].orEmpty() })
-        }
+        val articles = mergedArticles(events)
 
         val ranked = summaries(events.map { it.lead }, articles).sortedWith(IssueRules.order(sort))
         val slice = ranked.pageSlice(page, size)
@@ -85,10 +82,11 @@ class IssueComposer(
         if (!stockQuery.exists(ticker)) return null
 
         val window = IssueRules.window(IssueRules.stockRange(from, to, LocalDate.now(clock)))
-        val ranked = issues.findMentionedBetween(listOf(ticker.value), window.start, window.end)
-            .sortedWith(IssueRules.mentionOrder())
+        val mentioned = issues.findMentionedBetween(listOf(ticker.value), window.start, window.end)
+        val events = eventsOf(mentioned.map { it.clusterId })
+        val ranked = byEvent(mentioned, events).sortedWith(IssueRules.mentionOrder())
         val slice = ranked.pageSlice(page, size)
-        val built = stockIssues(slice)
+        val built = stockIssues(slice, events)
 
         return PageResult(slice.mapNotNull(built::get), page, size, ranked.size.toLong())
     }
@@ -98,9 +96,14 @@ class IssueComposer(
 
         val window = IssueRules.window(IssueRules.flowRange(from, to, LocalDate.now(clock)))
         val mentioned = issues.findMentionedBetween(listOf(ticker.value), window.start, window.end)
-        val rootOf = issues.findByIds(mentioned.map { it.clusterId }.distinct()).associate { it.id to (it.storyRootId ?: it.id) }
+        val events = eventsOf(mentioned.map { it.clusterId })
+        val picks = byEvent(mentioned, events)
+        val rootOf = picks.associate { pick ->
+            val lead = events.getValue(pick.clusterId).lead
+            pick.clusterId to (lead.storyRootId ?: lead.id)
+        }
         val flowing = rootOf.values.groupingBy { it }.eachCount().filterValues { it >= IssueRules.MIN_FLOW_ISSUES }.keys
-        val built = stockIssues(mentioned.filter { rootOf[it.clusterId] in flowing }).values
+        val built = stockIssues(picks.filter { rootOf[it.clusterId] in flowing }, events).values
         val latest = issues.findLatestPublishedAt()
         return built
             .groupBy { it.issue.storyRootId ?: it.issue.id }
@@ -120,9 +123,9 @@ class IssueComposer(
     }
 
     fun search(query: String, limit: Int): List<IssueSummary> {
-        val clusters = issues.search(query, limit)
-        val articles = issues.findArticles(clusters.map { it.id })
-        val found = summaries(clusters, articles)
+        val events = sameEvents(issues.search(query, limit))
+        val articles = mergedArticles(events)
+        val found = summaries(events.map { it.lead }, articles)
         val mentions = mentions(found.flatMap { articles[it.id].orEmpty() })
         val positions = positions(found)
         return found.map {
@@ -136,10 +139,12 @@ class IssueComposer(
     fun latestByStocks(tickers: List<String>): List<LatestStockIssue> {
         val active = stockQuery.findNamesByTickers(tickers.map(::Ticker)).keys.map { it.value }
         val window = IssueRules.window(IssueRules.latestRange(LocalDate.now(clock)))
-        val picks = issues.findMentionedBetween(active, window.start, window.end)
+        val mentioned = issues.findMentionedBetween(active, window.start, window.end)
+        val events = eventsOf(mentioned.map { it.clusterId })
+        val picks = byEvent(mentioned, events)
             .groupBy { it.ticker }
             .mapValues { (_, found) -> found.minWith(IssueRules.mentionOrder()) }
-        val built = stockIssues(picks.values.toList())
+        val built = stockIssues(picks.values.toList(), events)
 
         return tickers.map { ticker -> LatestStockIssue(ticker, picks[ticker]?.let(built::get)) }
     }
@@ -149,9 +154,9 @@ class IssueComposer(
             ?: return ThemeIssueBoard(null, themeIds.map { ThemeIssues(it.value, 0, emptyList(), emptyList()) })
 
         val window = IssueRules.dayWindow(day)
-        val clusters = issues.findPublishedBetween(window.start, window.end)
-        val articles = issues.findArticles(clusters.map { it.id })
-        val ranked = summaries(clusters, articles).sortedWith(IssueRules.order(IssueSort.MEDIA))
+        val events = sameEvents(issues.findPublishedBetween(window.start, window.end))
+        val articles = mergedArticles(events)
+        val ranked = summaries(events.map { it.lead }, articles).sortedWith(IssueRules.order(IssueSort.MEDIA))
 
         val mentions = mentions(ranked.flatMap { articles[it.id].orEmpty() })
         val mentioned = ranked.associate { issue ->
@@ -245,10 +250,10 @@ class IssueComposer(
 
     private fun latestDay(): LocalDate? = issues.findLatestPublishedAt()?.let(IssueRules::kstDate)
 
-    private fun stockIssues(picks: List<IssueMention>): Map<IssueMention, StockIssue> {
-        val ids = picks.map { it.clusterId }.distinct()
-        val articles = issues.findArticles(ids)
-        val summaries = summaries(issues.findByIds(ids), articles).associateBy { it.id }
+    private fun stockIssues(picks: List<IssueMention>, events: Map<Long, SameEvent>): Map<IssueMention, StockIssue> {
+        val chosen = picks.mapNotNull { events[it.clusterId] }.distinctBy { it.lead.id }
+        val articles = mergedArticles(chosen)
+        val summaries = summaries(chosen.map { it.lead }, articles).associateBy { it.id }
         val mentions = mentions(summaries.keys.flatMap { articles[it].orEmpty() })
         val positions = positions(summaries.values.toList())
         val roots = summaries.values.mapNotNull { summary -> summary.storyRootId?.takeIf { it != summary.id } }.distinct()
@@ -310,6 +315,22 @@ class IssueComposer(
             }
             .groupBy { it.lead.id }
             .map { (_, same) -> SameEvent(same.first().lead, same.flatMap { it.memberIds }.distinct()) }
+    }
+
+    private fun eventsOf(ids: List<Long>): Map<Long, SameEvent> =
+        sameEvents(issues.findByIds(ids.distinct()))
+            .flatMap { event -> event.memberIds.map { it to event } }
+            .toMap()
+
+    private fun byEvent(mentions: List<IssueMention>, events: Map<Long, SameEvent>): List<IssueMention> =
+        mentions
+            .mapNotNull { mention -> events[mention.clusterId]?.let { mention.copy(clusterId = it.lead.id) } }
+            .groupBy { it.ticker to it.clusterId }
+            .map { (_, same) -> same.minWith(IssueRules.mentionOrder()) }
+
+    private fun mergedArticles(events: Collection<SameEvent>): Map<Long, List<IssueArticle>> {
+        val found = issues.findArticles(events.flatMap { it.memberIds }.distinct())
+        return events.associate { event -> event.lead.id to IssueRules.mergeArticles(event.memberIds.map { found[it].orEmpty() }) }
     }
 
     private fun eventMembers(id: Long): List<Long> {

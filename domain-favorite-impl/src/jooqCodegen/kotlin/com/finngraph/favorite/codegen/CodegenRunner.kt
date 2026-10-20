@@ -52,7 +52,7 @@ private fun configuration(postgres: PostgreSQLContainer, outputDir: String) = Co
                 Database()
                     .withName("org.jooq.meta.postgres.PostgresDatabase")
                     .withInputSchema("public")
-                    .withIncludes("favorites")
+                    .withIncludes("favorites|favorite_folders|favorite_folder_items")
                     .withOutputSchemaToDefault(true),
             )
             .withGenerate(

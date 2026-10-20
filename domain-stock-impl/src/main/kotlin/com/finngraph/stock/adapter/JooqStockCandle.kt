@@ -5,6 +5,7 @@ import com.finngraph.stock.adapter.jooq.tables.references.STOCKS
 import com.finngraph.stock.adapter.jooq.tables.references.STOCK_CANDLES_PERIOD
 import com.finngraph.stock.model.Candle
 import com.finngraph.stock.model.CandlePeriod
+import com.finngraph.stock.model.DailyClose
 import com.finngraph.stock.model.Ticker
 import com.finngraph.stock.port.StockCandlePort
 import org.jooq.DSLContext
@@ -29,6 +30,28 @@ class JooqStockCandle(private val dsl: DSLContext) : StockCandlePort {
         }
 
         return rows.reversed()
+    }
+
+    override fun findRecentDailyCloses(tickers: List<Ticker>, days: Long): Map<Ticker, List<DailyClose>> {
+        if (tickers.isEmpty()) return emptyMap()
+        val priceDate = StockPricing.priceDate(dsl) ?: return emptyMap()
+        return dsl.select(STOCKS.TICKER, STOCK_CANDLES_DAILY.TRADE_DATE, STOCK_CANDLES_DAILY.CLOSE)
+            .from(STOCK_CANDLES_DAILY)
+            .join(STOCKS).on(STOCKS.ID.eq(STOCK_CANDLES_DAILY.STOCK_ID))
+            .where(STOCKS.TICKER.`in`(tickers.map { it.value }.distinct()))
+            .and(STOCKS.IS_ACTIVE.eq(true))
+            .and(STOCK_CANDLES_DAILY.TRADE_DATE.between(priceDate.minusDays(days), priceDate))
+            .orderBy(STOCKS.TICKER, STOCK_CANDLES_DAILY.TRADE_DATE)
+            .fetch()
+            .groupBy(
+                { Ticker(requireNotNull(it[STOCKS.TICKER])) },
+                {
+                    DailyClose(
+                        date = requireNotNull(it[STOCK_CANDLES_DAILY.TRADE_DATE]),
+                        close = requireNotNull(it[STOCK_CANDLES_DAILY.CLOSE]),
+                    )
+                },
+            )
     }
 
     private fun periodCandles(

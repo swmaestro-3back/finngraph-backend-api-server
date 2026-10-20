@@ -31,10 +31,13 @@ class IssueComposer(
             ?: return IssuePage(null, null, null, PageResult(emptyList(), page, size, 0))
 
         val window = IssueRules.dayWindow(day)
-        val clusters = issues.findPublishedBetween(window.start, window.end)
-        val articles = issues.findArticles(clusters.map { it.id })
+        val events = sameEvents(issues.findPublishedBetween(window.start, window.end))
+        val found = issues.findArticles(events.flatMap { it.memberIds })
+        val articles = events.associate { event ->
+            event.lead.id to IssueRules.mergeArticles(event.memberIds.map { found[it].orEmpty() })
+        }
 
-        val ranked = summaries(clusters, articles).sortedWith(IssueRules.order(sort))
+        val ranked = summaries(events.map { it.lead }, articles).sortedWith(IssueRules.order(sort))
         val slice = ranked.pageSlice(page, size)
 
         val mentions = mentions(slice.flatMap { articles[it.id].orEmpty() })
@@ -57,7 +60,10 @@ class IssueComposer(
 
     fun detail(id: Long): IssueDetail? {
         val cluster = issues.findById(id) ?: return null
-        val articles = issues.findArticles(listOf(id))[id]?.takeIf { it.isNotEmpty() } ?: return null
+        val memberIds = eventMembers(id)
+        val found = issues.findArticles(memberIds)
+        if (found[id].isNullOrEmpty()) return null
+        val articles = IssueRules.mergeArticles(memberIds.map { found[it].orEmpty() })
 
         val summary = summarize(cluster, articles)
         val sources = relationSources.findByNews(articles.map { it.id })
@@ -284,6 +290,34 @@ class IssueComposer(
             kind = cluster.kind,
             storyRootId = cluster.storyRootId,
         )
+    }
+
+    private data class SameEvent(val lead: IssueCluster, val memberIds: List<Long>)
+
+    private fun sameEvents(clusters: List<IssueCluster>): List<SameEvent> {
+        if (clusters.isEmpty()) return emptyList()
+        val chains = issues.findChains(clusters.map { it.id }, TIMELINE_MAX_DEPTH)
+        val roots = clusters.associate { it.id to IssueRules.sameEventRoot(it.id, chains[it.id].orEmpty()) }
+        val trees = issues.findSameEventTrees(roots.values.distinct(), TIMELINE_MAX_DEPTH)
+        val known = clusters.associateBy { it.id }
+        val outside = trees.values.flatten().map { it.clusterId }.filterNot(known::containsKey).distinct()
+        val visible = known + issues.findByIds(outside).associateBy { it.id }
+        return clusters.groupBy { roots.getValue(it.id) }
+            .map { (root, own) ->
+                val links = trees[root].orEmpty().filter { it.clusterId in visible }
+                val leadId = IssueRules.eventLead(links) { !visible[it]?.title.isNullOrBlank() } ?: own.first().id
+                SameEvent(visible.getValue(leadId), (links.map { it.clusterId } + own.map { it.id }).distinct())
+            }
+            .groupBy { it.lead.id }
+            .map { (_, same) -> SameEvent(same.first().lead, same.flatMap { it.memberIds }.distinct()) }
+    }
+
+    private fun eventMembers(id: Long): List<Long> {
+        val steps = issues.findChains(listOf(id), TIMELINE_MAX_DEPTH)[id].orEmpty()
+        val root = IssueRules.sameEventRoot(id, steps)
+        val tree = issues.findSameEventTrees(listOf(root), TIMELINE_MAX_DEPTH)[root].orEmpty().map { it.clusterId }
+        val visible = issues.findByIds(tree).mapTo(HashSet()) { it.id }
+        return (listOf(id) + tree.filter { it in visible }).distinct()
     }
 
     private fun positions(summaries: List<IssueSummary>): Map<Long, Int> =

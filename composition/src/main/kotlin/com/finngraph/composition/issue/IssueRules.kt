@@ -203,6 +203,20 @@ object IssueRules {
 
     fun timelineLeadOrder(members: List<TimelineMember>): List<TimelineMember> = members.sortedWith(TIMELINE_LEAD)
 
+    fun sameEventRoot(id: Long, steps: List<IssueChainStep>): Long =
+        steps.firstOrNull { it.relation != IssueLinkRelation.SAME_EVENT }?.clusterId ?: steps.lastOrNull()?.clusterId ?: id
+
+    fun eventLead(links: List<IssueChainLink>, titled: (Long) -> Boolean): Long? =
+        links.minWithOrNull(
+            compareBy<IssueChainLink> { !titled(it.clusterId) }
+                .thenByDescending { it.originalSize }
+                .thenBy { it.startedAt }
+                .thenBy { it.clusterId },
+        )?.clusterId
+
+    fun mergeArticles(groups: List<List<IssueArticle>>): List<IssueArticle> =
+        groups.flatten().distinctBy { it.id }.sortedWith(EARLIEST)
+
     fun firstSentence(text: String?): String? {
         val trimmed = text?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val end = SENTENCE_END.find(trimmed)?.range?.last ?: return trimmed

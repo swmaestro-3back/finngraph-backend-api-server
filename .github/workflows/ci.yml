@@ -127,8 +127,21 @@ jobs:
     secrets:
       oidc_role_arn: ${{ secrets.OIDC_ROLE_ARN }}
 
+  deliver-migrations:
+    needs: flyway-migrate
+    if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
+    uses: swmaestro-3back/github-actions/.github/workflows/docker.delivery.yaml@main
+    with:
+      image_name: finngraph/backend-migrations
+      dockerfile: docker/migrations.Dockerfile
+    secrets:
+      oidc_role_arn: ${{ secrets.OIDC_ROLE_ARN }}
+
   deploy:
-    needs: deliver
+    needs: [deliver, deliver-migrations]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -155,9 +168,11 @@ jobs:
           compose_file: compose.yaml
           compose_source: deploy/dev/compose.yaml
           service: app
+          pre_deploy_service: migrate
           image_env_var: BACKEND_IMAGE
           image_name: finngraph/backend-api
           image_digest: ${{ needs.deliver.outputs.image_digest }}
+          extra_images: MIGRATIONS_IMAGE=finngraph/backend-migrations@${{ needs.deliver-migrations.outputs.image_digest }}
           health_url: http://127.0.0.1:8080/actuator/health
 
   release:
@@ -197,11 +212,40 @@ jobs:
         id: commit
         run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
+      - name: main 빌드 완료 대기
+        env:
+          TAG: ${{ steps.commit.outputs.short_sha }}
+        run: |
+          for _ in $(seq 1 90); do
+            missing=""
+            for repo in finngraph/backend-api finngraph/backend-migrations; do
+              if ! err=$(aws ecr describe-images --repository-name "$repo" --image-ids imageTag="$TAG" 2>&1 >/dev/null); then
+                case "$err" in
+                  *ImageNotFoundException*) missing+=" $repo" ;;
+                  *) echo "::error::$repo 이미지 조회 실패: $err"; exit 1 ;;
+                esac
+              fi
+            done
+            [ -z "$missing" ] && exit 0
+            echo "main CI 빌드 대기:$missing:$TAG"
+            sleep 10
+          done
+          echo "::error::15분 안에 main CI 가 이미지를 만들지 않았습니다:$missing:$TAG"
+          exit 1
+
       - name: 릴리스 태그 추가
         id: tag
         uses: swmaestro-3back/github-actions/actions/ecr-tag@main
         with:
           image_name: finngraph/backend-api
+          source_tag: ${{ steps.commit.outputs.short_sha }}
+          tags: ${{ github.event.release.tag_name }}
+
+      - name: 마이그레이션 릴리스 태그 추가
+        id: migrations
+        uses: swmaestro-3back/github-actions/actions/ecr-tag@main
+        with:
+          image_name: finngraph/backend-migrations
           source_tag: ${{ steps.commit.outputs.short_sha }}
           tags: ${{ github.event.release.tag_name }}
 
@@ -215,10 +259,13 @@ jobs:
           env_ssm_prefix: /finngraph/prod/app/backend
           env_file: backend.env
           env_required_keys: SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD APP_DATASOURCE_URL APP_DATASOURCE_USERNAME APP_DATASOURCE_PASSWORD SPRING_DATA_REDIS_HOST JWT_SIGNING_KEY JWT_PUBLIC_KEY INTERNAL_API_TOKEN MAIL_FROM KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_ADMIN_KEY
+          extra_env: migrate.env=/finngraph/prod/app/backend-migrate
           service: app
+          pre_deploy_service: migrate
           image_env_var: BACKEND_IMAGE
           image_name: finngraph/backend-api
           image_digest: ${{ steps.tag.outputs.image_digest }}
+          extra_images: MIGRATIONS_IMAGE=finngraph/backend-migrations@${{ steps.migrations.outputs.image_digest }}
           health_url: http://127.0.0.1:8080/actuator/health
 
       - name: app-b 배포
@@ -231,8 +278,10 @@ jobs:
           env_ssm_prefix: /finngraph/prod/app/backend
           env_file: backend.env
           env_required_keys: SPRING_DATASOURCE_URL SPRING_DATASOURCE_USERNAME SPRING_DATASOURCE_PASSWORD APP_DATASOURCE_URL APP_DATASOURCE_USERNAME APP_DATASOURCE_PASSWORD SPRING_DATA_REDIS_HOST JWT_SIGNING_KEY JWT_PUBLIC_KEY INTERNAL_API_TOKEN MAIL_FROM KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET KAKAO_ADMIN_KEY
+          extra_env: migrate.env=/finngraph/prod/app/backend-migrate
           service: app
           image_env_var: BACKEND_IMAGE
           image_name: finngraph/backend-api
           image_digest: ${{ steps.tag.outputs.image_digest }}
+          extra_images: MIGRATIONS_IMAGE=finngraph/backend-migrations@${{ steps.migrations.outputs.image_digest }}
           health_url: http://127.0.0.1:8080/actuator/health

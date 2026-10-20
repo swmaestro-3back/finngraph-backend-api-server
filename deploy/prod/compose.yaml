@@ -40,3 +40,21 @@ services:
         max-file: "3"
     restart: unless-stopped
     stop_grace_period: 40s
+
+  migrate:
+    image: ${MIGRATIONS_IMAGE:?MIGRATIONS_IMAGE 를 .env 에 지정하세요}
+    platform: linux/arm64
+    env_file:
+      - path: migrate.env
+        required: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    restart: "no"
+    profiles: ["tools"]

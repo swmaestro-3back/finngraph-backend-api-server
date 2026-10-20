@@ -3,8 +3,6 @@ package com.finngraph.web.favorite
 import com.finngraph.composition.favorite.FavoriteComposer
 import com.finngraph.composition.favorite.FavoriteFeedComposer
 import com.finngraph.favorite.model.AddFavoriteResult
-import com.finngraph.favorite.model.FavoriteTarget
-import com.finngraph.favorite.model.FavoriteType
 import com.finngraph.news.model.NewsView
 import com.finngraph.news.model.PageResult
 import com.finngraph.web.common.AuthenticationFailedException
@@ -27,7 +25,7 @@ class FavoriteController(
         DataResponse(FavoriteListResponse.from(feedComposer.list(userId)))
 
     override fun add(userId: Long, type: String, key: String): DataResponse<FavoriteResponse> {
-        val target = parseTarget(type, key)
+        val target = parseFavoriteTarget(type, key)
         val result = favoriteComposer.add(userId, target)
             ?: throw AuthenticationFailedException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다")
         return when (result) {
@@ -41,27 +39,20 @@ class FavoriteController(
     }
 
     override fun remove(userId: Long, type: String, key: String) {
-        favoriteComposer.remove(userId, parseTarget(type, key))
+        favoriteComposer.remove(userId, parseFavoriteTarget(type, key))
+    }
+
+    override fun returns(userId: Long, period: String): DataResponse<FavoriteReturnsResponse> {
+        val parsed = parsePeriod(period) ?: throw InvalidParameterException(
+            "period가 올바르지 않습니다",
+            mapOf("period" to "must be one of 1W, 1M, 3M"),
+        )
+        return DataResponse(FavoriteReturnsResponse.from(feedComposer.returns(userId, parsed)))
     }
 
     override fun news(userId: Long, page: Int, size: Int): PageResponse<NewsResponse> {
         validatePaging(page, size)
         return feedComposer.newsPage(userId, page, size).toResponse()
-    }
-
-    private fun parseTarget(type: String, key: String): FavoriteTarget {
-        if (FavoriteType.entries.none { it.name == type }) {
-            throw InvalidParameterException(
-                "type은 STOCK 또는 THEME여야 합니다",
-                mapOf("type" to "must be one of STOCK, THEME"),
-            )
-        }
-        return runCatching { FavoriteTarget.of(type, key) }.getOrElse {
-            val rule =
-                if (type == FavoriteType.STOCK.name) "must be 1-20 alphanumeric characters"
-                else "must be a positive integer"
-            throw InvalidParameterException(it.message ?: "key가 올바르지 않습니다", mapOf("key" to rule))
-        }
     }
 
     private fun PageResult<NewsView>.toResponse() = PageResponse(

@@ -112,4 +112,22 @@ interface FavoriteApi {
         @Parameter(description = "0-기반 페이지 번호") @RequestParam(required = false, defaultValue = "0") page: Int,
         @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(required = false, defaultValue = "20") size: Int,
     ): PageResponse<NewsResponse>
+
+    @Operation(
+        summary = "관심 종목 수익률",
+        description = "관심 종목 전체를 같은 비중으로 묶은 누적 수익률(%) 시계열. 폴더 수익률과 같은 계산이며 관심 테마는 빠진다",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "period가 1W·1M·3M이 아님",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/returns")
+    fun returns(
+        @Parameter(hidden = true) @AuthenticationPrincipal userId: Long,
+        @Parameter(description = "1W, 1M, 3M") @RequestParam(required = false, defaultValue = "1M") period: String,
+    ): DataResponse<FavoriteReturnsResponse>
 }

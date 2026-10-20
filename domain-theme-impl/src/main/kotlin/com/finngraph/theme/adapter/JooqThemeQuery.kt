@@ -17,6 +17,7 @@ import com.finngraph.theme.model.ThemeId
 import com.finngraph.theme.model.ThemeIdentity
 import com.finngraph.theme.model.ThemeIndexStats
 import com.finngraph.theme.model.ThemeMember
+import com.finngraph.theme.model.ThemeMembership
 import com.finngraph.theme.model.ThemeSummary
 import com.finngraph.theme.model.TradeValueAverage
 import com.finngraph.theme.port.ThemeQueryPort
@@ -77,6 +78,27 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
         memberships(listOf(ticker))
             .sortedWith(PRIMARY_ORDER)
             .map { PrimaryTheme(it.themeId, it.themeName) }
+
+    override fun findMemberships(tickers: List<String>): Map<String, List<ThemeMembership>> {
+        if (tickers.isEmpty()) return emptyMap()
+        return dsl.select(STOCKS.TICKER, THEMES.ID, THEMES.NAME, THEME_SIZE)
+            .from(STOCKS)
+            .join(THEME_STOCKS).on(THEME_STOCKS.STOCK_ID.eq(STOCKS.ID))
+            .join(THEMES).on(THEMES.ID.eq(THEME_STOCKS.THEME_ID))
+            .join(THEME_SIZES).on(SIZE_THEME_ID.eq(THEME_STOCKS.THEME_ID))
+            .where(STOCKS.TICKER.`in`(tickers.distinct()).and(STOCKS.IS_ACTIVE.eq(true)))
+            .fetch()
+            .groupBy(
+                { requireNotNull(it.get(STOCKS.TICKER)) },
+                {
+                    ThemeMembership(
+                        id = requireNotNull(it.get(THEMES.ID)),
+                        name = requireNotNull(it.get(THEMES.NAME)),
+                        size = requireNotNull(it.get(THEME_SIZE)),
+                    )
+                },
+            )
+    }
 
     private fun memberships(values: List<String>): List<Membership> =
         dsl.select(STOCKS.TICKER, THEMES.ID, THEMES.NAME, THEME_CAP)
@@ -214,6 +236,26 @@ class JooqThemeQuery(private val dsl: DSLContext) : ThemeQueryPort {
 
         private val THEME_CAP: Field<BigDecimal?> =
             DSL.field(DSL.name(THEME_CAPS_ALIAS, THEME_CAP_NAME), SQLDataType.NUMERIC)
+
+        private const val THEME_SIZES_ALIAS = "theme_sizes"
+        private const val SIZE_THEME_ID_NAME = "size_theme_id"
+        private const val THEME_SIZE_NAME = "theme_size"
+
+        private val THEME_SIZES = run {
+            val ts = THEME_STOCKS.`as`("size_ts")
+            val st = STOCKS.`as`("size_st")
+            DSL.select(ts.THEME_ID.`as`(SIZE_THEME_ID_NAME), DSL.count().`as`(THEME_SIZE_NAME))
+                .from(ts)
+                .join(st).on(st.ID.eq(ts.STOCK_ID).and(st.IS_ACTIVE.eq(true)))
+                .groupBy(ts.THEME_ID)
+                .asTable(THEME_SIZES_ALIAS)
+        }
+
+        private val SIZE_THEME_ID: Field<Long?> =
+            DSL.field(DSL.name(THEME_SIZES_ALIAS, SIZE_THEME_ID_NAME), SQLDataType.BIGINT)
+
+        private val THEME_SIZE: Field<Int?> =
+            DSL.field(DSL.name(THEME_SIZES_ALIAS, THEME_SIZE_NAME), SQLDataType.INTEGER)
 
         private val PRIMARY_ORDER: Comparator<Membership> =
             compareBy<Membership> { it.cap == null }

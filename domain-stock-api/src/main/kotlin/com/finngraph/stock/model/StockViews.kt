@@ -111,6 +111,11 @@ data class StockPriceView(
     val marketCap: Long?,
 )
 
+data class DailyClose(
+    val date: LocalDate,
+    val close: BigDecimal,
+)
+
 data class Candle(
     val date: LocalDate,
     val open: BigDecimal,

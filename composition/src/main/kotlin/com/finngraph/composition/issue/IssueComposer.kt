@@ -149,6 +149,11 @@ class IssueComposer(
         return tickers.map { ticker -> LatestStockIssue(ticker, picks[ticker]?.let(built::get)) }
     }
 
+    fun eventLeads(ids: List<Long>): Map<Long, Long> {
+        val events = eventsOf(ids)
+        return ids.distinct().mapNotNull { id -> events[id]?.let { id to it.lead.id } }.toMap()
+    }
+
     fun themeBoard(themeIds: List<ThemeId>, date: LocalDate?): ThemeIssueBoard {
         val day = date ?: latestDay()
             ?: return ThemeIssueBoard(null, themeIds.map { ThemeIssues(it.value, 0, emptyList(), emptyList()) })

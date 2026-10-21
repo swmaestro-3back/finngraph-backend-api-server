@@ -277,6 +277,13 @@ data class StockIssueFlowResponse(
     }
 }
 
+data class IssueLeadResponse(
+    @Schema(description = "요청한 이슈 id(news_clusters.id)")
+    val id: Long,
+    @Schema(description = "같은 사건(same_event)으로 합쳐지는 이슈 묶음의 대표 이슈 id. 합쳐질 이슈가 없으면 id와 같다")
+    val leadId: Long,
+)
+
 data class LatestStockIssueResponse(
     val ticker: String,
     @Schema(description = "최근 30일 안에서 lastPublishedAt이 가장 늦은 이슈. 없으면 null")

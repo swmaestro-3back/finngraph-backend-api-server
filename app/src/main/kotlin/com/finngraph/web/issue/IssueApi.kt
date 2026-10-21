@@ -172,6 +172,24 @@ interface IssueApi {
     ): DataResponse<List<LatestStockIssueResponse>>
 
     @Operation(
+        summary = "같은 사건 대표 이슈",
+        description = "이슈 id마다 같은 사건(same_event)으로 합쳐지는 묶음의 대표 이슈 id를 낸다. 이슈 목록·상세·흐름이 한 노드로 보여 주는 대표와 같다. " +
+            "합쳐질 이슈가 없으면 자기 id를 내고, 공개 기사가 없는 이슈는 빼고 낸다",
+    )
+    @ApiResponses(
+        ApiResponse(responseCode = "200", description = "조회 성공"),
+        ApiResponse(
+            responseCode = "400",
+            description = "ids 누락, 양의 정수가 아닌 id, 200개 초과",
+            content = [Content(schema = Schema(implementation = ErrorResponse::class))],
+        ),
+    )
+    @GetMapping("/api/v1/issues/leads")
+    fun leads(
+        @Parameter(description = "쉼표로 구분한 이슈 id (최대 200개)") @RequestParam(required = false) ids: String?,
+    ): DataResponse<List<IssueLeadResponse>>
+
+    @Operation(
         summary = "테마별 그날 이슈",
         description = "date(KST) 이슈 목록에 나오는 이슈 중 언급 상장 종목(이슈 상세 companies 전체)에 그 테마의 활성 구성 종목이 하나라도 있는 이슈. " +
             "issueIds는 전부, issues는 상위 3개이며 정렬은 매체 수·기사 수·마지막 보도 내림차순. " +

@@ -34,10 +34,13 @@ services:
       retries: 3
       start_period: 60s
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: ap-northeast-2
+        awslogs-group: /finngraph/prod/backend
+        tag: "{{.Name}}/{{.ID}}"
+        mode: non-blocking
+        max-buffer-size: 4m
     restart: unless-stopped
     stop_grace_period: 40s
 
@@ -52,9 +55,12 @@ services:
     security_opt:
       - no-new-privileges:true
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: ap-northeast-2
+        awslogs-group: /finngraph/prod/backend
+        tag: "{{.Name}}/{{.ID}}"
+        mode: non-blocking
+        max-buffer-size: 4m
     restart: "no"
     profiles: ["tools"]

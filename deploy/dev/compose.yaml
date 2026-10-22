@@ -9,6 +9,14 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-northeast-2
+        awslogs-group: /finngraph/dev/backend
+        tag: "{{.Name}}/{{.ID}}"
+        mode: non-blocking
+        max-buffer-size: 4m
     depends_on:
       redis:
         condition: service_healthy
@@ -35,6 +43,14 @@ services:
     platform: linux/arm64
     env_file: migrate.env
     restart: "no"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-northeast-2
+        awslogs-group: /finngraph/dev/backend
+        tag: "{{.Name}}/{{.ID}}"
+        mode: non-blocking
+        max-buffer-size: 4m
     profiles: ["tools"]
 
 volumes:

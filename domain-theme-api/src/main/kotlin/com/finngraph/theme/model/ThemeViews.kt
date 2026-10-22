@@ -71,6 +71,12 @@ data class PrimaryTheme(
     val name: String,
 )
 
+data class ThemeMembership(
+    val id: Long,
+    val name: String,
+    val size: Int,
+)
+
 data class ThemeNameMatch(
     val themes: List<PrimaryTheme>,
     val tickers: List<String>,

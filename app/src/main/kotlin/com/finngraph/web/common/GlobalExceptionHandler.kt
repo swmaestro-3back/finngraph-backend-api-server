@@ -7,11 +7,14 @@ import com.finngraph.composition.account.PasswordMismatchException
 import com.finngraph.composition.account.PasswordNotSetException
 import com.finngraph.composition.account.PasswordRequiredException
 import com.finngraph.composition.account.RateLimitedException
+import com.finngraph.composition.favorite.FavoriteFolderNotFoundException
 import com.finngraph.composition.favorite.FavoriteTargetNotFoundException
 import com.finngraph.composition.port.KakaoAuthFailedException
 import com.finngraph.composition.port.KakaoUnavailableException
 import com.finngraph.composition.port.MailDeliveryFailedException
 import com.finngraph.web.auth.VerificationFailedException
+import com.finngraph.web.favorite.FavoriteFolderLimitExceededException
+import com.finngraph.web.favorite.FavoriteFolderNameDuplicateException
 import com.finngraph.web.favorite.FavoriteLimitExceededException
 import org.slf4j.LoggerFactory
 import org.springframework.dao.DataAccessException
@@ -157,6 +160,23 @@ class GlobalExceptionHandler {
             e.message ?: "관심 목록 상한을 초과했습니다.",
             mapOf("limit" to e.limit, "count" to e.count),
         )
+
+    @ExceptionHandler(FavoriteFolderNotFoundException::class)
+    fun handleFavoriteFolderNotFound(e: FavoriteFolderNotFoundException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.NOT_FOUND, ErrorCode.FAVORITE_FOLDER_NOT_FOUND, "존재하지 않는 관심 폴더입니다.")
+
+    @ExceptionHandler(FavoriteFolderLimitExceededException::class)
+    fun handleFavoriteFolderLimitExceeded(e: FavoriteFolderLimitExceededException): ResponseEntity<ErrorResponse> =
+        respond(
+            HttpStatus.CONFLICT,
+            ErrorCode.FAVORITE_FOLDER_LIMIT_EXCEEDED,
+            e.message ?: "관심 폴더 상한을 초과했습니다.",
+            mapOf("limit" to e.limit),
+        )
+
+    @ExceptionHandler(FavoriteFolderNameDuplicateException::class)
+    fun handleFavoriteFolderNameDuplicate(e: FavoriteFolderNameDuplicateException): ResponseEntity<ErrorResponse> =
+        respond(HttpStatus.CONFLICT, ErrorCode.FAVORITE_FOLDER_NAME_DUPLICATE, "같은 이름의 관심 폴더가 이미 있습니다.")
 
     @ExceptionHandler(KakaoAuthFailedException::class)
     fun handleKakaoAuthFailed(e: KakaoAuthFailedException): ResponseEntity<ErrorResponse> =

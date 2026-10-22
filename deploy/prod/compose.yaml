@@ -34,9 +34,33 @@ services:
       retries: 3
       start_period: 60s
     logging:
-      driver: json-file
+      driver: awslogs
       options:
-        max-size: "10m"
-        max-file: "3"
+        awslogs-region: ap-northeast-2
+        awslogs-group: /finngraph/prod/backend
+        tag: "{{.Name}}/{{.ID}}"
+        mode: non-blocking
+        max-buffer-size: 4m
     restart: unless-stopped
     stop_grace_period: 40s
+
+  migrate:
+    image: ${MIGRATIONS_IMAGE:?MIGRATIONS_IMAGE 를 .env 에 지정하세요}
+    platform: linux/arm64
+    env_file:
+      - path: migrate.env
+        required: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-northeast-2
+        awslogs-group: /finngraph/prod/backend
+        tag: "{{.Name}}/{{.ID}}"
+        mode: non-blocking
+        max-buffer-size: 4m
+    restart: "no"
+    profiles: ["tools"]

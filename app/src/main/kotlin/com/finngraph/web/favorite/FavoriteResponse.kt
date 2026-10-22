@@ -25,10 +25,18 @@ data class FavoriteListResponse(
     val count: Int,
     val limit: Int,
     val items: List<FavoriteItemResponse>,
+    @Schema(description = "나만의 테마(관심 폴더). position 순")
+    val folders: List<FolderSummaryResponse>,
+    val folderLimit: Int,
 ) {
     companion object {
-        fun from(list: FavoriteList) =
-            FavoriteListResponse(list.count, list.limit, list.items.map(FavoriteItemResponse::from))
+        fun from(list: FavoriteList) = FavoriteListResponse(
+            count = list.count,
+            limit = list.limit,
+            items = list.items.map(FavoriteItemResponse::from),
+            folders = list.folders.map(FolderSummaryResponse::from),
+            folderLimit = list.folderLimit,
+        )
     }
 }
 
@@ -39,6 +47,8 @@ data class FavoriteItemResponse(
     val resolved: Boolean,
     val stock: FavoriteStockResponse?,
     val theme: FavoriteThemeResponse?,
+    @Schema(description = "이 관심이 담긴 폴더 id")
+    val folderIds: List<Long>,
 ) {
     companion object {
         fun from(item: FavoriteItem) = FavoriteItemResponse(
@@ -48,6 +58,7 @@ data class FavoriteItemResponse(
             resolved = item.resolved,
             stock = item.stock?.let(FavoriteStockResponse::from),
             theme = item.theme?.let(FavoriteThemeResponse::from),
+            folderIds = item.folderIds,
         )
     }
 }

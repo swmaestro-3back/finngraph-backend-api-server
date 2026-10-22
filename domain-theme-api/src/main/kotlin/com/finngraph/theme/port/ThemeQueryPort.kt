@@ -5,6 +5,7 @@ import com.finngraph.theme.model.PricingBasis
 import com.finngraph.theme.model.PrimaryTheme
 import com.finngraph.theme.model.ThemeBoard
 import com.finngraph.theme.model.ThemeId
+import com.finngraph.theme.model.ThemeMembership
 import com.finngraph.theme.model.ThemeSummary
 
 interface ThemeQueryPort {
@@ -17,6 +18,7 @@ interface ThemeQueryPort {
     fun findByIds(ids: List<ThemeId>): Map<ThemeId, ThemeSummary>
     fun findPrimaryThemeByTickers(tickers: List<String>): Map<String, PrimaryTheme>
     fun findThemesByTicker(ticker: String): List<PrimaryTheme>
+    fun findMemberships(tickers: List<String>): Map<String, List<ThemeMembership>>
     fun marketStats(): MarketStats
     fun pricingBasis(): PricingBasis
 }

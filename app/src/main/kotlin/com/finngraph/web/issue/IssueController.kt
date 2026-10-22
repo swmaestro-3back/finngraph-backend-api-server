@@ -112,6 +112,21 @@ class IssueController(
         return DataResponse(composer.latestByStocks(requested).map(LatestStockIssueResponse::from))
     }
 
+    override fun leads(ids: String?): DataResponse<List<IssueLeadResponse>> {
+        val parsed = splitList(ids).map { it.toLongOrNull() }
+        val clusterIds = parsed.filterNotNull().filter { it > 0 }.distinct()
+        val error = when {
+            parsed.isEmpty() -> "required"
+            parsed.any { it == null || it <= 0 } -> "each must be a positive integer"
+            clusterIds.size > MAX_LEADS -> "must have at most $MAX_LEADS items"
+            else -> null
+        }
+        if (error != null) {
+            throw InvalidParameterException("이슈 id가 올바르지 않습니다", mapOf("ids" to error))
+        }
+        return DataResponse(composer.eventLeads(clusterIds).map { (id, lead) -> IssueLeadResponse(id, lead) })
+    }
+
     override fun themeIssues(ids: String?, date: String?): ThemeIssueBoardResponse {
         val parsed = splitList(ids).map { it.toLongOrNull() }
         val themeIds = parsed.filterNotNull().filter { it > 0 }.distinct()
@@ -155,6 +170,7 @@ class IssueController(
 
     private companion object {
         const val MAX_BATCH = 50
+        const val MAX_LEADS = 200
         const val MAX_TICKER_LENGTH = 20
         const val DATE_FORMAT = "must be YYYY-MM-DD"
         val ISO_DATE = Regex("\\d{4}-\\d{2}-\\d{2}")
